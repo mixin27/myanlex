@@ -19,8 +19,15 @@ export {
   SAFE_NORMALIZATION_PROFILE,
 } from './normalization/normalize-unicode.js';
 
+export {
+  segmentBurmeseSyllables,
+  SYLLABIFICATION_PROFILE,
+} from './syllabification/segment-burmese-syllables.js';
+
 export type {
   CharacterClass,
+  BurmeseSyllableSegment,
+  BurmeseSyllableSegmentKind,
   CodePointOffset,
   KinziToken,
   MyanmarSequenceToken,

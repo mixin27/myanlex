@@ -10,6 +10,8 @@ Current specifications:
 - [Myanmar sequence recognition](sequences.md) for Burmese kinzi and consonant
   stacks.
 - [Safe Unicode normalization](normalization.md), using NFC only.
+- [Burmese orthographic syllabification](syllabification.md), profile
+  `burmese-orthographic-v1`.
 
 ## First specification milestone
 
@@ -28,6 +30,6 @@ defined by ADR-0002.
 
 ## Unresolved work
 
-Character tables, normalization rules, and syllabification rules are
-intentionally not invented during repository bootstrap. They require documented
-linguistic evidence and reviewed examples.
+Zawgyi handling, non-Burmese Myanmar-language syllabification, orthographic
+validation, and linguist-reviewed natural-language cases remain unresolved. They
+require documented evidence and reviewed examples.

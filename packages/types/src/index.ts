@@ -53,3 +53,12 @@ export interface NormalizationResult {
   readonly changed: boolean;
   readonly profile: 'unicode-nfc';
 }
+
+export type BurmeseSyllableSegmentKind =
+  'burmese_syllable' | 'separator' | 'non_myanmar' | 'unsupported_myanmar';
+
+/** A lossless segment emitted by the Burmese orthographic syllabifier. */
+export interface BurmeseSyllableSegment extends TextSpan {
+  readonly kind: BurmeseSyllableSegmentKind;
+  readonly text: string;
+}

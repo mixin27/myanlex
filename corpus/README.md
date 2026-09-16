@@ -24,6 +24,10 @@ Character Database rather than from natural-language text. Its schema is
 Normalization cases use the profile named in each corpus file and must remain
 idempotent in addition to matching their expected output.
 
+The first syllabification corpus defines `burmese-orthographic-v1`. It contains
+project-authored, source-verified regression cases. It has not yet received the
+independent linguistic review required for `linguistically_reviewed` status.
+
 The repository's MIT License covers original project-authored corpus cases
 unless a dataset-specific notice says otherwise. Third-party data retains its
 own license.

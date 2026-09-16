@@ -1,0 +1,173 @@
+{
+  "$schema": "../schema/syllabification.schema.json",
+  "schema_version": 1,
+  "unicode_version": "17.0.0",
+  "profile": "burmese-orthographic-v1",
+  "description": "Source-verified modern Burmese orthographic-syllable cases.",
+  "license": "MIT",
+  "sources": [
+    "https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-16/",
+    "https://aclanthology.org/I08-3010/"
+  ],
+  "derivation": "Cases were manually constructed from Unicode 17 Table 16-4 and the published Burmese syllable structures and no-break exceptions. Mixed and malformed cases define project-owned lossless API behavior.",
+  "review_status": "source_verified",
+  "cases": [
+    {
+      "id": "empty-input",
+      "input": "",
+      "basis": "Empty input has no segments.",
+      "expected": []
+    },
+    {
+      "id": "simple-syllable-shapes",
+      "input": "ကံကာကား",
+      "basis": "The paper's CF, CV, and CVF structures each form one syllable.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "ကံ", "start": 0, "end": 2 },
+        { "kind": "burmese_syllable", "text": "ကာ", "start": 2, "end": 4 },
+        { "kind": "burmese_syllable", "text": "ကား", "start": 4, "end": 7 }
+      ]
+    },
+    {
+      "id": "medial-and-devowelised-final",
+      "input": "မြန်မာ",
+      "basis": "A medial stays with its base and a second consonant followed by asat is the final of the same syllable.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "မြန်", "start": 0, "end": 4 },
+        { "kind": "burmese_syllable", "text": "မာ", "start": 4, "end": 6 }
+      ]
+    },
+    {
+      "id": "multiword-burmese-text",
+      "input": "မြန်မာစာကောင်းပါတယ်",
+      "basis": "A continuous Burmese phrase composes the supported medial, vowel, final, and regular onset-boundary rules without relying on spaces.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "မြန်", "start": 0, "end": 4 },
+        { "kind": "burmese_syllable", "text": "မာ", "start": 4, "end": 6 },
+        { "kind": "burmese_syllable", "text": "စာ", "start": 6, "end": 8 },
+        { "kind": "burmese_syllable", "text": "ကောင်း", "start": 8, "end": 14 },
+        { "kind": "burmese_syllable", "text": "ပါ", "start": 14, "end": 16 },
+        { "kind": "burmese_syllable", "text": "တယ်", "start": 16, "end": 19 }
+      ]
+    },
+    {
+      "id": "complex-documented-shape",
+      "input": "ကျောင်း",
+      "basis": "The paper documents the CMVVCAF structure as one syllable.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "ကျောင်း", "start": 0, "end": 7 }
+      ]
+    },
+    {
+      "id": "kinzi-prefix",
+      "input": "င်္က",
+      "basis": "Unicode 17 defines U+1004 U+103A U+1039 as a kinzi prefix of the following base.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "င်္က", "start": 0, "end": 4 }
+      ]
+    },
+    {
+      "id": "kinzi-inside-written-syllable",
+      "input": "မင်္ဂလာ",
+      "basis": "The paper's kinzi no-break rule keeps the encoded kinzi and following base in the same written syllable.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "မင်္ဂ", "start": 0, "end": 5 },
+        { "kind": "burmese_syllable", "text": "လာ", "start": 5, "end": 7 }
+      ]
+    },
+    {
+      "id": "virama-syllable-chain",
+      "input": "ဝတ္ထု",
+      "basis": "A consonant followed by virama and a subjoined consonant is not split in written form.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "ဝတ္ထု", "start": 0, "end": 5 }
+      ]
+    },
+    {
+      "id": "great-sa-no-break",
+      "input": "မနုဿီဟ",
+      "basis": "The paper specifies no break before U+103F MYANMAR LETTER GREAT SA.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "မ", "start": 0, "end": 1 },
+        { "kind": "burmese_syllable", "text": "နုဿီ", "start": 1, "end": 5 },
+        { "kind": "burmese_syllable", "text": "ဟ", "start": 5, "end": 6 }
+      ]
+    },
+    {
+      "id": "written-contraction",
+      "input": "ယောက်ျား",
+      "basis": "The paper treats this double-acting-consonant contraction as one inseparable written syllable unit.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "ယောက်ျား", "start": 0, "end": 8 }
+      ]
+    },
+    {
+      "id": "independent-vowel-and-finals",
+      "input": "ဧကရာဇ်",
+      "basis": "Independent vowels stand alone; a following regular base starts a new syllable unless it is a devowelised final.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "ဧ", "start": 0, "end": 1 },
+        { "kind": "burmese_syllable", "text": "က", "start": 1, "end": 2 },
+        { "kind": "burmese_syllable", "text": "ရာဇ်", "start": 2, "end": 6 }
+      ]
+    },
+    {
+      "id": "digits-are-standalone",
+      "input": "၁၂",
+      "basis": "The published syllable structure treats each Myanmar digit as a stand-alone syllable.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "၁", "start": 0, "end": 1 },
+        { "kind": "burmese_syllable", "text": "၂", "start": 1, "end": 2 }
+      ]
+    },
+    {
+      "id": "punctuation-and-space",
+      "input": "က၊ ခ",
+      "basis": "Myanmar punctuation and whitespace are preserved as separator segments.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "က", "start": 0, "end": 1 },
+        { "kind": "separator", "text": "၊", "start": 1, "end": 2 },
+        { "kind": "separator", "text": " ", "start": 2, "end": 3 },
+        { "kind": "burmese_syllable", "text": "ခ", "start": 3, "end": 4 }
+      ]
+    },
+    {
+      "id": "mixed-text-code-point-offsets",
+      "input": "A😀မြန်!",
+      "basis": "Non-Myanmar text is losslessly grouped and offsets count code points rather than UTF-16 code units.",
+      "expected": [
+        { "kind": "non_myanmar", "text": "A😀", "start": 0, "end": 2 },
+        { "kind": "burmese_syllable", "text": "မြန်", "start": 2, "end": 6 },
+        { "kind": "separator", "text": "!", "start": 6, "end": 7 }
+      ]
+    },
+    {
+      "id": "unsupported-myanmar-is-explicit",
+      "input": "့ကၵ",
+      "basis": "A leading dependent mark and a non-Burmese Myanmar letter are not guessed into Burmese syllables.",
+      "expected": [
+        { "kind": "unsupported_myanmar", "text": "့", "start": 0, "end": 1 },
+        { "kind": "burmese_syllable", "text": "က", "start": 1, "end": 2 },
+        { "kind": "unsupported_myanmar", "text": "ၵ", "start": 2, "end": 3 }
+      ]
+    },
+    {
+      "id": "leading-virama-is-explicit",
+      "input": "္က",
+      "basis": "A leading virama is malformed for this profile and remains an unsupported segment.",
+      "expected": [
+        { "kind": "unsupported_myanmar", "text": "္", "start": 0, "end": 1 },
+        { "kind": "burmese_syllable", "text": "က", "start": 1, "end": 2 }
+      ]
+    },
+    {
+      "id": "second-final-starts-new-unit",
+      "input": "ကင်မ်",
+      "basis": "The supported syllable structure has one devowelised final; a second consonant-plus-asat begins another unit.",
+      "expected": [
+        { "kind": "burmese_syllable", "text": "ကင်", "start": 0, "end": 3 },
+        { "kind": "burmese_syllable", "text": "မ်", "start": 3, "end": 5 }
+      ]
+    }
+  ]
+}
