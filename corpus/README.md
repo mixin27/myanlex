@@ -41,6 +41,10 @@ embedded rules and 126 Google data-driven cases retain Apache-2.0; Rabbit
 compatibility cases retain WTFPL. Conversion direction is always part of each
 case.
 
+Transliteration cases define the mechanical `ala-lc-2011-mapping-v1` profile.
+They are source-verified against the Library of Congress table and preserve
+input spacing rather than attempting lexical word division or capitalization.
+
 The repository's MIT License covers original project-authored corpus cases
 unless a dataset-specific notice says otherwise. Third-party data retains its
 own license.

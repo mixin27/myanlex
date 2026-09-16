@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myanlex.org/schema/transliteration.schema.json",
+  "title": "MyanLex Myanmar transliteration corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "scheme",
+    "profile",
+    "description",
+    "license",
+    "sources",
+    "derivation",
+    "review_status",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "scheme": {
+      "const": "ala-lc-2011"
+    },
+    "profile": {
+      "const": "ala-lc-2011-mapping-v1"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "derivation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_status": {
+      "enum": ["draft", "source_verified", "linguistically_reviewed"]
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "input", "expected", "complete", "basis"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "input": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "basis": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

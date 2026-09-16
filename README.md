@@ -15,7 +15,8 @@ code-point handling, deterministic character classification, safe Unicode
 normalization, Burmese orthographic syllabification, linguistic specifications,
 structural orthography validation, corpus formats, and the core package
 boundary. It also provides conservative standard Unicode and Zawgyi detection
-and explicit conversion in both directions.
+and explicit conversion in both directions, plus source-preserving ALA-LC 2011
+Myanmar-to-Latin transliteration.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
@@ -23,13 +24,13 @@ Do not use the API or package interfaces as stable production contracts yet.
 
 - Myanmar Unicode and Zawgyi detection
 - Explicit Unicode and Zawgyi conversion
+- ALA-LC 2011 Myanmar-to-Latin transliteration
 - Unicode normalization
 - Myanmar syllabification
 - Structural Burmese orthography validation
 
 Planned next:
 
-- Myanmar-to-Latin transliteration
 - Tokenization and mixed-script detection
 
 ## Repository layout

@@ -118,3 +118,27 @@ export interface MyanmarEncodingConversionResult extends MyanmarEncodingConversi
   readonly changed: boolean;
   readonly profile: 'cldr-zawgyi-v1';
 }
+
+export type MyanmarTransliterationScheme = 'ala-lc-2011';
+
+export interface MyanmarTransliterationOptions {
+  readonly scheme: MyanmarTransliterationScheme;
+}
+
+export type MyanmarTransliterationSegmentKind =
+  'transliterated' | 'preserved' | 'unsupported';
+
+export interface MyanmarTransliterationSegment extends TextSpan {
+  readonly kind: MyanmarTransliterationSegmentKind;
+  readonly input: string;
+  readonly output: string;
+}
+
+export interface MyanmarTransliterationResult {
+  readonly input: string;
+  readonly output: string;
+  readonly scheme: MyanmarTransliterationScheme;
+  readonly profile: 'ala-lc-2011-mapping-v1';
+  readonly complete: boolean;
+  readonly segments: readonly MyanmarTransliterationSegment[];
+}

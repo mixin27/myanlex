@@ -1,0 +1,517 @@
+{
+  "$schema": "../schema/transliteration.schema.json",
+  "schema_version": 1,
+  "scheme": "ala-lc-2011",
+  "profile": "ala-lc-2011-mapping-v1",
+  "description": "Deterministic mechanical Myanmar-to-Latin mapping based on the ALA-LC Burmese Romanization Table (2011).",
+  "license": "MIT",
+  "sources": ["https://www.loc.gov/catdir/cpso/romanization/burmese.pdf"],
+  "derivation": "Mappings were transcribed from the Library of Congress source table. Project behavior preserves source spacing and case because automatic capitalization and lexical loanword division require context not present in the character mapping.",
+  "review_status": "source_verified",
+  "cases": [
+    {
+      "id": "consonant-ka",
+      "input": "က",
+      "expected": "ka",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-kha",
+      "input": "ခ",
+      "expected": "kha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ga",
+      "input": "ဂ",
+      "expected": "ga",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-gha",
+      "input": "ဃ",
+      "expected": "gha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-nga",
+      "input": "င",
+      "expected": "ṅa",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ca",
+      "input": "စ",
+      "expected": "ca",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-cha",
+      "input": "ဆ",
+      "expected": "cha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ja",
+      "input": "ဇ",
+      "expected": "ja",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-jha",
+      "input": "ဈ",
+      "expected": "jha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-nya-small",
+      "input": "ဉ",
+      "expected": "ña",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-nya",
+      "input": "ည",
+      "expected": "ñña",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-tta",
+      "input": "ဋ",
+      "expected": "ṭa",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ttha",
+      "input": "ဌ",
+      "expected": "ṭha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-dda",
+      "input": "ဍ",
+      "expected": "ḍa",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ddha",
+      "input": "ဎ",
+      "expected": "ḍha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-nna",
+      "input": "ဏ",
+      "expected": "ṇa",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ta",
+      "input": "တ",
+      "expected": "ta",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-tha",
+      "input": "ထ",
+      "expected": "tha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-da",
+      "input": "ဒ",
+      "expected": "da",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-dha",
+      "input": "ဓ",
+      "expected": "dha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-na",
+      "input": "န",
+      "expected": "na",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-pa",
+      "input": "ပ",
+      "expected": "pa",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-pha",
+      "input": "ဖ",
+      "expected": "pha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ba",
+      "input": "ဗ",
+      "expected": "ba",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-bha",
+      "input": "ဘ",
+      "expected": "bha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ma",
+      "input": "မ",
+      "expected": "ma",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ya",
+      "input": "ယ",
+      "expected": "ya",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ra",
+      "input": "ရ",
+      "expected": "ra",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-la",
+      "input": "လ",
+      "expected": "la",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-va",
+      "input": "ဝ",
+      "expected": "va",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-sa",
+      "input": "သ",
+      "expected": "sa",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-ha",
+      "input": "ဟ",
+      "expected": "ha",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-lla",
+      "input": "ဠ",
+      "expected": "ḷa",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "consonant-a-carrier",
+      "input": "အ",
+      "expected": "ʼa",
+      "complete": true,
+      "basis": "ALA-LC 2011 consonant table."
+    },
+    {
+      "id": "inherent-vowel",
+      "input": "က",
+      "expected": "ka",
+      "complete": true,
+      "basis": "ALA-LC represents an unmarked inherent vowel as a."
+    },
+    {
+      "id": "vowel-aa",
+      "input": "ကာ",
+      "expected": "kā",
+      "complete": true,
+      "basis": "ALA-LC dependent-vowel table."
+    },
+    {
+      "id": "vowel-tall-aa",
+      "input": "ကါ",
+      "expected": "kā",
+      "complete": true,
+      "basis": "ALA-LC dependent-vowel table."
+    },
+    {
+      "id": "vowel-i",
+      "input": "ကိ",
+      "expected": "ki",
+      "complete": true,
+      "basis": "ALA-LC dependent-vowel table."
+    },
+    {
+      "id": "vowel-ii",
+      "input": "ကီ",
+      "expected": "kī",
+      "complete": true,
+      "basis": "ALA-LC dependent-vowel table."
+    },
+    {
+      "id": "vowel-u",
+      "input": "ကု",
+      "expected": "ku",
+      "complete": true,
+      "basis": "ALA-LC dependent-vowel table."
+    },
+    {
+      "id": "vowel-uu",
+      "input": "ကူ",
+      "expected": "kū",
+      "complete": true,
+      "basis": "ALA-LC dependent-vowel table."
+    },
+    {
+      "id": "vowel-e",
+      "input": "ကေ",
+      "expected": "ke",
+      "complete": true,
+      "basis": "ALA-LC dependent-vowel table."
+    },
+    {
+      "id": "vowel-ai",
+      "input": "ကဲ",
+      "expected": "kai",
+      "complete": true,
+      "basis": "ALA-LC dependent-vowel table."
+    },
+    {
+      "id": "vowel-o",
+      "input": "ကော",
+      "expected": "ko",
+      "complete": true,
+      "basis": "ALA-LC compound-vowel table."
+    },
+    {
+      "id": "vowel-o-tall-aa",
+      "input": "ကေါ",
+      "expected": "ko",
+      "complete": true,
+      "basis": "ALA-LC compound-vowel table."
+    },
+    {
+      "id": "vowel-o-final",
+      "input": "ကော်",
+      "expected": "koʻ",
+      "complete": true,
+      "basis": "ALA-LC compound-vowel table."
+    },
+    {
+      "id": "vowel-ui",
+      "input": "ကို",
+      "expected": "kui",
+      "complete": true,
+      "basis": "ALA-LC compound-vowel table."
+    },
+    {
+      "id": "independent-vowels",
+      "input": "ဣဤဥဦဧဩဪ",
+      "expected": "iīuūeooʻ",
+      "complete": true,
+      "basis": "ALA-LC independent-vowel table."
+    },
+    {
+      "id": "medials",
+      "input": "ကျကြကွကှ",
+      "expected": "kyakrakvakha",
+      "complete": true,
+      "basis": "ALA-LC medial table in y/r-v-h order."
+    },
+    {
+      "id": "multiple-medials",
+      "input": "မြွှ",
+      "expected": "mrvha",
+      "complete": true,
+      "basis": "ALA-LC medial ordering example applied mechanically."
+    },
+    {
+      "id": "final-asat",
+      "input": "က်",
+      "expected": "kʻ",
+      "complete": true,
+      "basis": "ALA-LC final-symbol table."
+    },
+    {
+      "id": "final-asat-before-tone",
+      "input": "န့်",
+      "expected": "nʻʹ",
+      "complete": true,
+      "basis": "ALA-LC final and tone symbols are emitted in semantic order."
+    },
+    {
+      "id": "canonical-tone-before-asat",
+      "input": "န့်",
+      "expected": "nʻʹ",
+      "complete": true,
+      "basis": "Canonical Unicode mark order does not change ALA-LC output order."
+    },
+    {
+      "id": "anusvara",
+      "input": "ကံ",
+      "expected": "kaṃ",
+      "complete": true,
+      "basis": "ALA-LC final-symbol table."
+    },
+    {
+      "id": "low-tone",
+      "input": "က့",
+      "expected": "kaʹ",
+      "complete": true,
+      "basis": "ALA-LC tone-mark table."
+    },
+    {
+      "id": "high-tone",
+      "input": "ကား",
+      "expected": "kāʺ",
+      "complete": true,
+      "basis": "ALA-LC tone-mark table."
+    },
+    {
+      "id": "conjunct-university",
+      "input": "တက္ကသိုလ်",
+      "expected": "takkasuilʻ",
+      "complete": true,
+      "basis": "ALA-LC conjunct-consonant example."
+    },
+    {
+      "id": "conjunct-animal",
+      "input": "တိရစ္ဆာန်",
+      "expected": "tiracchānʻ",
+      "complete": true,
+      "basis": "ALA-LC conjunct-consonant example."
+    },
+    {
+      "id": "conjunct-world",
+      "input": "ကမ္ဘာ",
+      "expected": "kambhā",
+      "complete": true,
+      "basis": "ALA-LC conjunct-consonant example."
+    },
+    {
+      "id": "kinzi",
+      "input": "မင်္ဂလာပါ",
+      "expected": "maṅgalāpā",
+      "complete": true,
+      "basis": "ALA-LC kinzi mapping applied to a project-authored word case."
+    },
+    {
+      "id": "tone-low-example",
+      "input": "ပို့",
+      "expected": "puiʹ",
+      "complete": true,
+      "basis": "ALA-LC tone-mark example."
+    },
+    {
+      "id": "tone-high-example",
+      "input": "ပိုး",
+      "expected": "puiʺ",
+      "complete": true,
+      "basis": "ALA-LC tone-mark example."
+    },
+    {
+      "id": "modified-pali-example",
+      "input": "ဥပုသ်",
+      "expected": "upusʻ",
+      "complete": true,
+      "basis": "ALA-LC word-division example."
+    },
+    {
+      "id": "mon-loan-example",
+      "input": "ပန်းကန်",
+      "expected": "panʻʺkanʻ",
+      "complete": true,
+      "basis": "ALA-LC word-division example."
+    },
+    {
+      "id": "myanmar-name",
+      "input": "မြန်မာ",
+      "expected": "mranʻmā",
+      "complete": true,
+      "basis": "Mechanical ALA-LC mappings with source spacing preserved."
+    },
+    {
+      "id": "great-sa",
+      "input": "ဿ",
+      "expected": "ssa",
+      "complete": true,
+      "basis": "ALA-LC modified conjunct form."
+    },
+    {
+      "id": "digits",
+      "input": "၀၁၂၃၄၅၆၇၈၉",
+      "expected": "0123456789",
+      "complete": true,
+      "basis": "ALA-LC numeral table."
+    },
+    {
+      "id": "punctuation",
+      "input": "၊။",
+      "expected": ",.",
+      "complete": true,
+      "basis": "ALA-LC punctuation table."
+    },
+    {
+      "id": "abbreviations",
+      "input": "၏၍၌၎",
+      "expected": "e*r*n*l*",
+      "complete": true,
+      "basis": "ALA-LC abbreviation table."
+    },
+    {
+      "id": "mixed-text-preserved",
+      "input": "MyanLex မြန်မာ 👋",
+      "expected": "MyanLex mranʻmā 👋",
+      "complete": true,
+      "basis": "Non-Myanmar text and source separators are preserved."
+    },
+    {
+      "id": "unsupported-myanmar-preserved",
+      "input": "ၚ",
+      "expected": "ၚ",
+      "complete": false,
+      "basis": "Non-Burmese Myanmar letters are outside this profile and remain unchanged."
+    },
+    {
+      "id": "orphan-mark-preserved",
+      "input": "ါ",
+      "expected": "ါ",
+      "complete": false,
+      "basis": "Malformed Myanmar input remains unchanged and marks the result incomplete."
+    }
+  ]
+}

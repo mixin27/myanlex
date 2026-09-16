@@ -41,6 +41,11 @@ export {
   ENCODING_CONVERSION_PROFILE,
 } from './conversion/convert-myanmar-encoding.js';
 
+export {
+  MYANMAR_TRANSLITERATION_PROFILE,
+  transliterateMyanmar,
+} from './transliteration/transliterate-myanmar.js';
+
 export type {
   BurmeseOrthographyDiagnostic,
   BurmeseOrthographyDiagnosticCode,
@@ -58,6 +63,11 @@ export type {
   MyanmarEncodingSegment,
   MyanmarEncodingSegmentEncoding,
   MyanmarSequenceToken,
+  MyanmarTransliterationOptions,
+  MyanmarTransliterationResult,
+  MyanmarTransliterationScheme,
+  MyanmarTransliterationSegment,
+  MyanmarTransliterationSegmentKind,
   NormalizationResult,
   ScalarToken,
   StackToken,

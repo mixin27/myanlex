@@ -18,6 +18,8 @@ Current specifications:
   `zawgyi-unicode-v1`.
 - [Unicode and Zawgyi conversion](encoding-conversion.md), profile
   `cldr-zawgyi-v1`.
+- [Myanmar-to-Latin transliteration](transliteration.md), ALA-LC 2011 mapping
+  profile `ala-lc-2011-mapping-v1`.
 
 ## First specification milestone
 
