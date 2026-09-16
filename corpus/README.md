@@ -32,6 +32,10 @@ independent linguistic review required for `linguistically_reviewed` status.
 Orthography-validation cases define structural diagnostics and their code-point
 spans. They do not claim to validate dictionary spelling or linguistic meaning.
 
+Encoding-detection cases use the Apache-2.0 Google Myanmar Tools compatibility
+fixtures and model. Dataset-specific license metadata overrides the repository's
+default MIT corpus license where stated.
+
 The repository's MIT License covers original project-authored corpus cases
 unless a dataset-specific notice says otherwise. Third-party data retains its
 own license.

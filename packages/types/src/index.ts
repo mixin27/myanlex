@@ -84,3 +84,22 @@ export interface BurmeseOrthographyValidationResult {
   readonly profile: 'burmese-orthography-v1';
   readonly diagnostics: readonly BurmeseOrthographyDiagnostic[];
 }
+
+export type MyanmarEncoding =
+  'unicode' | 'zawgyi' | 'mixed' | 'unknown' | 'non_myanmar';
+
+export type MyanmarEncodingSegmentEncoding = 'unicode' | 'zawgyi' | 'unknown';
+
+export interface MyanmarEncodingSegment extends TextSpan {
+  readonly text: string;
+  readonly encoding: MyanmarEncodingSegmentEncoding;
+  readonly zawgyiProbability: number | null;
+}
+
+export interface MyanmarEncodingDetectionResult {
+  readonly input: string;
+  readonly encoding: MyanmarEncoding;
+  readonly confidence: number | null;
+  readonly profile: 'zawgyi-unicode-v1';
+  readonly segments: readonly MyanmarEncodingSegment[];
+}

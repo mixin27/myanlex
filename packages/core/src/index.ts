@@ -29,6 +29,13 @@ export {
   validateBurmeseOrthography,
 } from './validation/validate-burmese-orthography.js';
 
+export {
+  detectMyanmarEncoding,
+  ENCODING_DETECTION_PROFILE,
+  UNICODE_MAX_PROBABILITY,
+  ZAWGYI_MIN_PROBABILITY,
+} from './detection/detect-myanmar-encoding.js';
+
 export type {
   BurmeseOrthographyDiagnostic,
   BurmeseOrthographyDiagnosticCode,
@@ -38,6 +45,10 @@ export type {
   CharacterClass,
   CodePointOffset,
   KinziToken,
+  MyanmarEncoding,
+  MyanmarEncodingDetectionResult,
+  MyanmarEncodingSegment,
+  MyanmarEncodingSegmentEncoding,
   MyanmarSequenceToken,
   NormalizationResult,
   ScalarToken,
