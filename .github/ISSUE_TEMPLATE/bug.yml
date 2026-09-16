@@ -1,0 +1,33 @@
+name: Bug report
+description: Report reproducible incorrect behavior
+title: '[Bug]: '
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Minimal input and output
+      description: Include exact input, actual output, and expected output.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Linguistic evidence
+      description:
+        For language behavior, provide a source or explain how the expected
+        result was verified.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description:
+        Package version, runtime, operating system, and other relevant details.

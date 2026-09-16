@@ -1,0 +1,8 @@
+openapi: 3.1.0
+info:
+  title: MyanLex API
+  version: 0.0.0
+  description: >-
+    Reserved contract for the future MyanLex HTTP API. Endpoints will be added
+    only after the corresponding core behavior and public schemas are stable.
+paths: {}

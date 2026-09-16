@@ -1,0 +1,30 @@
+{
+  "name": "myanlex",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Open-source Myanmar-language processing tools",
+  "license": "MIT",
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10 <11"
+  },
+  "scripts": {
+    "build": "pnpm --recursive --if-present build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "pnpm --recursive --if-present test",
+    "typecheck": "pnpm --filter @myanlex/types build && pnpm --recursive --if-present typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.3",
+    "eslint": "^10.10.0",
+    "prettier": "^3.9.7",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^3.2.7"
+  }
+}
