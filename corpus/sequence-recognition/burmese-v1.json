@@ -1,0 +1,111 @@
+{
+  "$schema": "../schema/sequence-recognition.schema.json",
+  "schema_version": 1,
+  "unicode_version": "17.0.0",
+  "description": "Source-verified Burmese kinzi and consonant-stack recognition cases.",
+  "license": "MIT",
+  "sources": [
+    "https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-16/",
+    "https://www.unicode.org/notes/tn11/"
+  ],
+  "derivation": "Cases were manually constructed from the documented kinzi encoding and UTN #11 subjoined-consonant set; malformed and mixed-text cases verify conservative lossless behavior.",
+  "review_status": "source_verified",
+  "cases": [
+    {
+      "id": "empty-input",
+      "input": "",
+      "basis": "Empty input produces no tokens.",
+      "expected": []
+    },
+    {
+      "id": "kinzi-before-ka",
+      "input": "င်္က",
+      "basis": "U+1004 U+103A U+1039 is the Burmese kinzi prefix before a base consonant.",
+      "expected": [
+        { "kind": "kinzi", "text": "င်္", "start": 0, "end": 3 },
+        { "kind": "scalar", "text": "က", "start": 3, "end": 4 }
+      ]
+    },
+    {
+      "id": "kinzi-code-point-offset-after-emoji",
+      "input": "😀င်္က",
+      "basis": "Offsets count Unicode code points, not UTF-16 code units.",
+      "expected": [
+        { "kind": "scalar", "text": "😀", "start": 0, "end": 1 },
+        { "kind": "kinzi", "text": "င်္", "start": 1, "end": 4 },
+        { "kind": "scalar", "text": "က", "start": 4, "end": 5 }
+      ]
+    },
+    {
+      "id": "incomplete-kinzi",
+      "input": "င်္",
+      "basis": "A kinzi prefix without a following base remains lossless scalar input.",
+      "expected": [
+        { "kind": "scalar", "text": "င", "start": 0, "end": 1 },
+        { "kind": "scalar", "text": "်", "start": 1, "end": 2 },
+        { "kind": "scalar", "text": "္", "start": 2, "end": 3 }
+      ]
+    },
+    {
+      "id": "kinzi-before-digit-is-not-recognized",
+      "input": "င်္၁",
+      "basis": "A Myanmar digit is not a Burmese base consonant.",
+      "expected": [
+        { "kind": "scalar", "text": "င", "start": 0, "end": 1 },
+        { "kind": "scalar", "text": "်", "start": 1, "end": 2 },
+        { "kind": "scalar", "text": "္", "start": 2, "end": 3 },
+        { "kind": "scalar", "text": "၁", "start": 3, "end": 4 }
+      ]
+    },
+    {
+      "id": "basic-stack",
+      "input": "က္က",
+      "basis": "A virama between supported Burmese consonants forms a stack.",
+      "expected": [
+        { "kind": "scalar", "text": "က", "start": 0, "end": 1 },
+        { "kind": "stack", "text": "္က", "start": 1, "end": 3 }
+      ]
+    },
+    {
+      "id": "repeated-stack",
+      "input": "က္က္က",
+      "basis": "Each virama-plus-consonant pair is recognized independently.",
+      "expected": [
+        { "kind": "scalar", "text": "က", "start": 0, "end": 1 },
+        { "kind": "stack", "text": "္က", "start": 1, "end": 3 },
+        { "kind": "stack", "text": "္က", "start": 3, "end": 5 }
+      ]
+    },
+    {
+      "id": "unsupported-stack-target",
+      "input": "က္ယ",
+      "basis": "U+101A is not in the initial documented subjoined target set.",
+      "expected": [
+        { "kind": "scalar", "text": "က", "start": 0, "end": 1 },
+        { "kind": "scalar", "text": "္", "start": 1, "end": 2 },
+        { "kind": "scalar", "text": "ယ", "start": 2, "end": 3 }
+      ]
+    },
+    {
+      "id": "leading-virama",
+      "input": "္က",
+      "basis": "A stack requires a preceding Burmese base consonant.",
+      "expected": [
+        { "kind": "scalar", "text": "္", "start": 0, "end": 1 },
+        { "kind": "scalar", "text": "က", "start": 1, "end": 2 }
+      ]
+    },
+    {
+      "id": "mixed-text",
+      "input": "A က္က!",
+      "basis": "Unrelated text remains scalar and offsets remain contiguous.",
+      "expected": [
+        { "kind": "scalar", "text": "A", "start": 0, "end": 1 },
+        { "kind": "scalar", "text": " ", "start": 1, "end": 2 },
+        { "kind": "scalar", "text": "က", "start": 2, "end": 3 },
+        { "kind": "stack", "text": "္က", "start": 3, "end": 5 },
+        { "kind": "scalar", "text": "!", "start": 5, "end": 6 }
+      ]
+    }
+  ]
+}

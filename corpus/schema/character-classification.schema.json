@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "$schema",
     "schema_version",
     "unicode_version",
     "description",
@@ -16,6 +17,7 @@
     "cases"
   ],
   "properties": {
+    "$schema": { "type": "string" },
     "schema_version": { "const": 1 },
     "unicode_version": {
       "type": "string",

@@ -24,3 +24,25 @@ export type CharacterClass =
   | 'ascii_punctuation'
   | 'whitespace'
   | 'other';
+
+export interface ScalarToken extends TextSpan {
+  readonly kind: 'scalar';
+  readonly text: string;
+  readonly codePoint: number;
+  readonly characterClass: CharacterClass;
+}
+
+export interface KinziToken extends TextSpan {
+  readonly kind: 'kinzi';
+  readonly text: string;
+  readonly codePoints: readonly [0x1004, 0x103a, 0x1039];
+}
+
+export interface StackToken extends TextSpan {
+  readonly kind: 'stack';
+  readonly text: string;
+  readonly codePoints: readonly [0x1039, number];
+}
+
+/** A lossless token emitted by the Myanmar sequence recognizer. */
+export type MyanmarSequenceToken = ScalarToken | KinziToken | StackToken;

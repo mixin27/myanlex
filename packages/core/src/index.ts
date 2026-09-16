@@ -11,4 +11,14 @@ export {
   MYANLEX_UNICODE_VERSION,
 } from './classification/classify-code-point.js';
 
-export type { CharacterClass, CodePointOffset, TextSpan } from '@myanlex/types';
+export { scanMyanmarSequences } from './sequence/scan-myanmar-sequences.js';
+
+export type {
+  CharacterClass,
+  CodePointOffset,
+  KinziToken,
+  MyanmarSequenceToken,
+  ScalarToken,
+  StackToken,
+  TextSpan,
+} from '@myanlex/types';

@@ -7,6 +7,7 @@ incidental test fixture data.
 ## Areas
 
 - `character-classification/`
+- `sequence-recognition/`
 - `syllabification/`
 - `encoding/`
 - `normalization/`

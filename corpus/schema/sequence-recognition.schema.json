@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myanlex.org/schema/sequence-recognition.schema.json",
+  "title": "MyanLex sequence-recognition corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "unicode_version",
+    "description",
+    "license",
+    "sources",
+    "derivation",
+    "review_status",
+    "cases"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "const": 1 },
+    "unicode_version": { "const": "17.0.0" },
+    "description": { "type": "string", "minLength": 1 },
+    "license": { "type": "string", "minLength": 1 },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "format": "uri" }
+    },
+    "derivation": { "type": "string", "minLength": 1 },
+    "review_status": {
+      "enum": ["draft", "source_verified", "linguistically_reviewed"]
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "input", "expected", "basis"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "input": { "type": "string" },
+          "basis": { "type": "string", "minLength": 1 },
+          "expected": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "text", "start", "end"],
+              "properties": {
+                "kind": { "enum": ["scalar", "kinzi", "stack"] },
+                "text": { "type": "string", "minLength": 1 },
+                "start": { "type": "integer", "minimum": 0 },
+                "end": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

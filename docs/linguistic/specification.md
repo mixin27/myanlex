@@ -7,6 +7,8 @@ project behavior.
 Current specifications:
 
 - [Character classes](character-classes.md), pinned to Unicode 17.0.0.
+- [Myanmar sequence recognition](sequences.md) for Burmese kinzi and consonant
+  stacks.
 
 ## First specification milestone
 
