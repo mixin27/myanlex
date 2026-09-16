@@ -1,0 +1,265 @@
+{
+  "$schema": "../schema/character-classification.schema.json",
+  "schema_version": 1,
+  "unicode_version": "17.0.0",
+  "description": "Seed cases for deterministic scalar classification.",
+  "license": "MIT",
+  "source": "https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt",
+  "source_sha256": "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c",
+  "derivation": "Selected assigned and reserved scalar cases were transcribed from UnicodeData.txt without modifying character names or general categories.",
+  "review_status": "source_verified",
+  "cases": [
+    {
+      "id": "letter-ka",
+      "character": "က",
+      "code_point": "U+1000",
+      "expected": "myanmar_letter",
+      "basis": "Lo; MYANMAR LETTER KA"
+    },
+    {
+      "id": "letter-a",
+      "character": "အ",
+      "code_point": "U+1021",
+      "expected": "myanmar_letter",
+      "basis": "Lo; MYANMAR LETTER A"
+    },
+    {
+      "id": "independent-letter-i",
+      "character": "ဣ",
+      "code_point": "U+1023",
+      "expected": "myanmar_letter",
+      "basis": "Lo; MYANMAR LETTER I"
+    },
+    {
+      "id": "vowel-sign-aa",
+      "character": "ာ",
+      "code_point": "U+102C",
+      "expected": "myanmar_vowel_sign",
+      "basis": "Mc; MYANMAR VOWEL SIGN AA"
+    },
+    {
+      "id": "vowel-sign-i",
+      "character": "ိ",
+      "code_point": "U+102D",
+      "expected": "myanmar_vowel_sign",
+      "basis": "Mn; MYANMAR VOWEL SIGN I"
+    },
+    {
+      "id": "anusvara",
+      "character": "ံ",
+      "code_point": "U+1036",
+      "expected": "myanmar_mark",
+      "basis": "Mn; MYANMAR SIGN ANUSVARA"
+    },
+    {
+      "id": "dot-below",
+      "character": "့",
+      "code_point": "U+1037",
+      "expected": "myanmar_mark",
+      "basis": "Mn; MYANMAR SIGN DOT BELOW"
+    },
+    {
+      "id": "visarga",
+      "character": "း",
+      "code_point": "U+1038",
+      "expected": "myanmar_mark",
+      "basis": "Mc; MYANMAR SIGN VISARGA"
+    },
+    {
+      "id": "virama",
+      "character": "္",
+      "code_point": "U+1039",
+      "expected": "myanmar_virama",
+      "basis": "Mn; MYANMAR SIGN VIRAMA"
+    },
+    {
+      "id": "asat",
+      "character": "်",
+      "code_point": "U+103A",
+      "expected": "myanmar_asat",
+      "basis": "Mn; MYANMAR SIGN ASAT"
+    },
+    {
+      "id": "medial-ya",
+      "character": "ျ",
+      "code_point": "U+103B",
+      "expected": "myanmar_medial",
+      "basis": "Mc; MYANMAR CONSONANT SIGN MEDIAL YA"
+    },
+    {
+      "id": "medial-ha",
+      "character": "ှ",
+      "code_point": "U+103E",
+      "expected": "myanmar_medial",
+      "basis": "Mn; MYANMAR CONSONANT SIGN MEDIAL HA"
+    },
+    {
+      "id": "digit-zero",
+      "character": "၀",
+      "code_point": "U+1040",
+      "expected": "myanmar_digit",
+      "basis": "Nd; MYANMAR DIGIT ZERO"
+    },
+    {
+      "id": "little-section",
+      "character": "၊",
+      "code_point": "U+104A",
+      "expected": "myanmar_punctuation",
+      "basis": "Po; MYANMAR SIGN LITTLE SECTION"
+    },
+    {
+      "id": "mon-medial-na",
+      "character": "ၞ",
+      "code_point": "U+105E",
+      "expected": "myanmar_medial",
+      "basis": "Mn; MYANMAR CONSONANT SIGN MON MEDIAL NA"
+    },
+    {
+      "id": "karen-vowel",
+      "character": "ၢ",
+      "code_point": "U+1062",
+      "expected": "myanmar_vowel_sign",
+      "basis": "Mc; MYANMAR VOWEL SIGN SGAW KAREN EU"
+    },
+    {
+      "id": "karen-tone",
+      "character": "ၣ",
+      "code_point": "U+1063",
+      "expected": "myanmar_tone_mark",
+      "basis": "Mc; MYANMAR TONE MARK SGAW KAREN HATHI"
+    },
+    {
+      "id": "shan-medial-wa",
+      "character": "ႂ",
+      "code_point": "U+1082",
+      "expected": "myanmar_medial",
+      "basis": "Mn; MYANMAR CONSONANT SIGN SHAN MEDIAL WA"
+    },
+    {
+      "id": "shan-tone",
+      "character": "ႇ",
+      "code_point": "U+1087",
+      "expected": "myanmar_tone_mark",
+      "basis": "Mc; MYANMAR SIGN SHAN TONE-2"
+    },
+    {
+      "id": "shan-symbol",
+      "character": "႞",
+      "code_point": "U+109E",
+      "expected": "myanmar_symbol",
+      "basis": "So; MYANMAR SYMBOL SHAN ONE"
+    },
+    {
+      "id": "extended-b-letter",
+      "character": "ꧠ",
+      "code_point": "U+A9E0",
+      "expected": "myanmar_letter",
+      "basis": "Lo; MYANMAR LETTER SHAN GHA"
+    },
+    {
+      "id": "extended-b-mark",
+      "character": "ꧥ",
+      "code_point": "U+A9E5",
+      "expected": "myanmar_mark",
+      "basis": "Mn; MYANMAR SIGN SHAN SAW"
+    },
+    {
+      "id": "extended-b-digit",
+      "character": "꧰",
+      "code_point": "U+A9F0",
+      "expected": "myanmar_digit",
+      "basis": "Nd; MYANMAR TAI LAING DIGIT ZERO"
+    },
+    {
+      "id": "extended-b-reserved",
+      "character": "꧿",
+      "code_point": "U+A9FF",
+      "expected": "other",
+      "basis": "Unassigned in Unicode 17.0.0"
+    },
+    {
+      "id": "extended-a-letter",
+      "character": "ꩠ",
+      "code_point": "U+AA60",
+      "expected": "myanmar_letter",
+      "basis": "Lo; MYANMAR LETTER KHAMTI GA"
+    },
+    {
+      "id": "extended-a-symbol",
+      "character": "꩷",
+      "code_point": "U+AA77",
+      "expected": "myanmar_symbol",
+      "basis": "So; MYANMAR SYMBOL AITON EXCLAMATION"
+    },
+    {
+      "id": "extended-a-tone",
+      "character": "ꩻ",
+      "code_point": "U+AA7B",
+      "expected": "myanmar_tone_mark",
+      "basis": "Mc; MYANMAR SIGN PAO KAREN TONE"
+    },
+    {
+      "id": "extended-c-digit",
+      "character": "𑛐",
+      "code_point": "U+116D0",
+      "expected": "myanmar_digit",
+      "basis": "Nd; MYANMAR PAO DIGIT ZERO"
+    },
+    {
+      "id": "extended-c-reserved",
+      "character": "𑛤",
+      "code_point": "U+116E4",
+      "expected": "other",
+      "basis": "Unassigned in Unicode 17.0.0"
+    },
+    {
+      "id": "ascii-upper",
+      "character": "A",
+      "code_point": "U+0041",
+      "expected": "ascii_latin_letter",
+      "basis": "ASCII Latin letter"
+    },
+    {
+      "id": "ascii-lower",
+      "character": "z",
+      "code_point": "U+007A",
+      "expected": "ascii_latin_letter",
+      "basis": "ASCII Latin letter"
+    },
+    {
+      "id": "ascii-digit",
+      "character": "7",
+      "code_point": "U+0037",
+      "expected": "ascii_digit",
+      "basis": "ASCII digit"
+    },
+    {
+      "id": "ascii-punctuation",
+      "character": "!",
+      "code_point": "U+0021",
+      "expected": "ascii_punctuation",
+      "basis": "ASCII punctuation"
+    },
+    {
+      "id": "space",
+      "character": " ",
+      "code_point": "U+0020",
+      "expected": "whitespace",
+      "basis": "Unicode White_Space"
+    },
+    {
+      "id": "line-feed",
+      "character": "\n",
+      "code_point": "U+000A",
+      "expected": "whitespace",
+      "basis": "Unicode White_Space"
+    },
+    {
+      "id": "emoji",
+      "character": "😀",
+      "code_point": "U+1F600",
+      "expected": "other",
+      "basis": "No emoji class in scalar classifier v1"
+    }
+  ]
+}

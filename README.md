@@ -11,8 +11,8 @@ convenience.
 ## Status
 
 MyanLex is in early development. The current milestone establishes Unicode
-code-point handling, linguistic specifications, corpus formats, and the core
-package boundary.
+code-point handling, deterministic character classification, linguistic
+specifications, corpus formats, and the core package boundary.
 
 Do not use the API or package interfaces as stable production contracts yet.
 

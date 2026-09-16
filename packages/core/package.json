@@ -23,6 +23,7 @@
     "@myanlex/types": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "vitest": "catalog:"
   }
 }
