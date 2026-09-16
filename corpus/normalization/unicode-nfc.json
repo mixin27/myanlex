@@ -1,0 +1,87 @@
+{
+  "$schema": "../schema/normalization.schema.json",
+  "schema_version": 1,
+  "unicode_version": "17.0.0",
+  "profile": "unicode-nfc",
+  "description": "Source-verified cases for the safe Unicode NFC profile.",
+  "license": "MIT",
+  "sources": [
+    "https://www.unicode.org/reports/tr15/",
+    "https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt",
+    "https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-16/"
+  ],
+  "derivation": "Cases exercise the Myanmar canonical decomposition, Myanmar canonical combining classes, canonical equivalence outside Myanmar, and explicitly excluded compatibility behavior.",
+  "review_status": "source_verified",
+  "cases": [
+    {
+      "id": "empty-input",
+      "input": "",
+      "expected": "",
+      "changed": false,
+      "basis": "NFC preserves the empty string."
+    },
+    {
+      "id": "normalized-burmese-text",
+      "input": "မြန်မာ",
+      "expected": "မြန်မာ",
+      "changed": false,
+      "basis": "Already-normalized Myanmar text is unchanged."
+    },
+    {
+      "id": "compose-myanmar-letter-uu",
+      "input": "ဦ",
+      "expected": "ဦ",
+      "changed": true,
+      "basis": "U+1026 canonically decomposes to U+1025 U+102E and NFC recomposes it."
+    },
+    {
+      "id": "composed-myanmar-letter-uu",
+      "input": "ဦ",
+      "expected": "ဦ",
+      "changed": false,
+      "basis": "U+1026 is already in NFC."
+    },
+    {
+      "id": "order-dot-below-before-asat",
+      "input": "က့်",
+      "expected": "က့်",
+      "changed": true,
+      "basis": "Canonical combining class 7 sorts before class 9."
+    },
+    {
+      "id": "order-dot-below-before-virama",
+      "input": "က့္က",
+      "expected": "က့္က",
+      "changed": true,
+      "basis": "Canonical combining class 7 sorts before class 9."
+    },
+    {
+      "id": "order-dot-below-before-shan-emphatic-tone",
+      "input": "့ႍ",
+      "expected": "့ႍ",
+      "changed": true,
+      "basis": "Canonical combining class 7 sorts before class 220."
+    },
+    {
+      "id": "latin-canonical-composition",
+      "input": "é",
+      "expected": "é",
+      "changed": true,
+      "basis": "The safe profile applies NFC to the complete Unicode string."
+    },
+    {
+      "id": "compatibility-character-preserved",
+      "input": "Ａ",
+      "expected": "Ａ",
+      "changed": false,
+      "basis": "NFC does not apply compatibility decomposition."
+    },
+    {
+      "id": "mixed-text-and-emoji",
+      "input": "Hello 😀 မြန်မာ",
+      "expected": "Hello 😀 မြန်မာ",
+      "changed": false,
+      "basis": "Text without canonical normalization differences is preserved."
+    }
+  ]
+}

@@ -46,6 +46,10 @@ U+1000..U+1019, U+101C, U+101E, U+1020, U+1021
 Repeated stacks are recognized independently, allowing structures such as
 `<C, virama, C, virama, C>` without merging an entire cluster into one token.
 
+After NFC, `U+1037 MYANMAR SIGN DOT BELOW` may occur between the base consonant
+and virama because its canonical combining class is lower. The recognizer
+permits that one canonically ordered mark while locating the preceding base.
+
 ## Non-goals
 
 This layer does not:

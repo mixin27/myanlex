@@ -9,6 +9,7 @@ Current specifications:
 - [Character classes](character-classes.md), pinned to Unicode 17.0.0.
 - [Myanmar sequence recognition](sequences.md) for Burmese kinzi and consonant
   stacks.
+- [Safe Unicode normalization](normalization.md), using NFC only.
 
 ## First specification milestone
 

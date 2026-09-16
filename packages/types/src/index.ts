@@ -46,3 +46,10 @@ export interface StackToken extends TextSpan {
 
 /** A lossless token emitted by the Myanmar sequence recognizer. */
 export type MyanmarSequenceToken = ScalarToken | KinziToken | StackToken;
+
+export interface NormalizationResult {
+  readonly input: string;
+  readonly output: string;
+  readonly changed: boolean;
+  readonly profile: 'unicode-nfc';
+}

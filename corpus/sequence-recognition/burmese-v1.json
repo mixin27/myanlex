@@ -67,6 +67,16 @@
       ]
     },
     {
+      "id": "nfc-ordered-dot-below-before-stack",
+      "input": "က့္က",
+      "basis": "NFC moves U+1037 before U+1039; the virama still introduces the following supported subjoined consonant.",
+      "expected": [
+        { "kind": "scalar", "text": "က", "start": 0, "end": 1 },
+        { "kind": "scalar", "text": "့", "start": 1, "end": 2 },
+        { "kind": "stack", "text": "္က", "start": 2, "end": 4 }
+      ]
+    },
+    {
       "id": "repeated-stack",
       "input": "က္က္က",
       "basis": "Each virama-plus-consonant pair is recognized independently.",

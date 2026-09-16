@@ -21,6 +21,9 @@ The initial character-classification corpus is derived from the Unicode
 Character Database rather than from natural-language text. Its schema is
 `schema/character-classification.schema.json`.
 
+Normalization cases use the profile named in each corpus file and must remain
+idempotent in addition to matching their expected output.
+
 The repository's MIT License covers original project-authored corpus cases
 unless a dataset-specific notice says otherwise. Third-party data retains its
 own license.

@@ -9,6 +9,7 @@ import { classifyCodePoint } from '../classification/classify-code-point.js';
 import { scanCodePoints } from '../unicode/code-points.js';
 
 const MYANMAR_NGA = 0x1004;
+const MYANMAR_DOT_BELOW = 0x1037;
 const MYANMAR_VIRAMA = 0x1039;
 const MYANMAR_ASAT = 0x103a;
 
@@ -24,6 +25,20 @@ function isSupportedSubjoinedConsonant(codePoint: number | undefined): boolean {
       codePoint === 0x101e ||
       codePoint === 0x1020 ||
       codePoint === 0x1021)
+  );
+}
+
+function hasBurmeseBaseBeforeVirama(
+  codePoints: ReturnType<typeof scanCodePoints>,
+  viramaIndex: number,
+): boolean {
+  const previous = codePoints[viramaIndex - 1]?.codePoint;
+
+  if (isBurmeseBaseConsonant(previous)) return true;
+
+  return (
+    previous === MYANMAR_DOT_BELOW &&
+    isBurmeseBaseConsonant(codePoints[viramaIndex - 2]?.codePoint)
   );
 }
 
@@ -98,10 +113,9 @@ export function scanMyanmarSequences(
       continue;
     }
 
-    const previous = codePoints[index - 1];
     if (
       current.codePoint === MYANMAR_VIRAMA &&
-      isBurmeseBaseConsonant(previous?.codePoint) &&
+      hasBurmeseBaseBeforeVirama(codePoints, index) &&
       isSupportedSubjoinedConsonant(next?.codePoint)
     ) {
       tokens.push(
