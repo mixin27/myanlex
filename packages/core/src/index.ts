@@ -36,6 +36,11 @@ export {
   ZAWGYI_MIN_PROBABILITY,
 } from './detection/detect-myanmar-encoding.js';
 
+export {
+  convertMyanmarEncoding,
+  ENCODING_CONVERSION_PROFILE,
+} from './conversion/convert-myanmar-encoding.js';
+
 export type {
   BurmeseOrthographyDiagnostic,
   BurmeseOrthographyDiagnosticCode,
@@ -46,6 +51,9 @@ export type {
   CodePointOffset,
   KinziToken,
   MyanmarEncoding,
+  MyanmarConversionEncoding,
+  MyanmarEncodingConversionOptions,
+  MyanmarEncodingConversionResult,
   MyanmarEncodingDetectionResult,
   MyanmarEncodingSegment,
   MyanmarEncodingSegmentEncoding,

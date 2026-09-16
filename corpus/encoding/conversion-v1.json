@@ -1,0 +1,1441 @@
+{
+  "$schema": "../schema/encoding-conversion.schema.json",
+  "schema_version": 1,
+  "profile": "cldr-zawgyi-v1",
+  "rule_source": {
+    "name": "google-myanmar-tools",
+    "version": "1.2.0",
+    "license": "Apache-2.0",
+    "source": "https://github.com/google/myanmar-tools/tree/v1.2.0/clients/js"
+  },
+  "description": "Explicit whole-string conversion between standard Myanmar Unicode and Zawgyi-One.",
+  "license": "MIT; Rabbit-derived cases retain WTFPL",
+  "sources": [
+    "https://github.com/google/myanmar-tools/tree/v1.2.0/clients/js",
+    "https://github.com/Rabbit-Converter/Rabbit/blob/081d464a91ab4dde14b799a54d1e89dde55b438e/source/res/sample.json"
+  ],
+  "derivation": "Google Myanmar Tools generated rules were adapted without changing rule order. Its 126 data-driven fixtures are retained as Zawgyi-to-Unicode cases. Rabbit sample pairs are retained as secondary compatibility cases.",
+  "review_status": "source_verified",
+  "cases": [
+    {
+      "id": "empty-zawgyi-to-unicode",
+      "input": "",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "",
+      "changed": false,
+      "source": "project-authored",
+      "basis": "Empty input is preserved."
+    },
+    {
+      "id": "unicode-identity",
+      "input": "မြန်မာ",
+      "from": "unicode",
+      "to": "unicode",
+      "expected": "မြန်မာ",
+      "changed": false,
+      "source": "project-authored",
+      "basis": "Equal source and target encodings are an exact no-op."
+    },
+    {
+      "id": "zawgyi-identity",
+      "input": "ျမန္မာ",
+      "from": "zawgyi",
+      "to": "zawgyi",
+      "expected": "ျမန္မာ",
+      "changed": false,
+      "source": "project-authored",
+      "basis": "Equal source and target encodings are an exact no-op."
+    },
+    {
+      "id": "non-myanmar-preserved",
+      "input": "MyanLex 👋 123",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "MyanLex 👋 123",
+      "changed": false,
+      "source": "project-authored",
+      "basis": "Characters not matched by conversion rules are preserved."
+    },
+    {
+      "id": "google-basic-zawgyi-to-unicode",
+      "input": "မ္း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မ်း",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Documented Google Myanmar Tools JavaScript example."
+    },
+    {
+      "id": "google-basic-unicode-to-zawgyi",
+      "input": "မ်း",
+      "from": "unicode",
+      "to": "zawgyi",
+      "expected": "မ္း",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Reverse direction of the documented basic compatibility example."
+    },
+    {
+      "id": "udhr-zawgyi-to-unicode",
+      "input": "အျပည္ျပည္ဆိုင္ရာ လူ႔အခြင့္အေရး ေၾကညာစာတမ္း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "အပြည်ပြည်ဆိုင်ရာ လူ့အခွင့်အရေး ကြေညာစာတမ်း",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Representative UDHR wording from the upstream compatibility data."
+    },
+    {
+      "id": "udhr-unicode-to-zawgyi",
+      "input": "အပြည်ပြည်ဆိုင်ရာ လူ့အခွင့်အရေး ကြေညာစာတမ်း",
+      "from": "unicode",
+      "to": "zawgyi",
+      "expected": "အျပည္ျပည္ဆိုင္ရာ လူ႔အခြင့္အေရး ေၾကညာစာတမ္း",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "CLDR-derived Unicode-to-Zawgyi output for representative UDHR wording."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-001",
+      "input": " ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": " ",
+      "changed": false,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 1."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-002",
+      "input": "123",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "123",
+      "changed": false,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 2."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-003",
+      "input": "abc",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "abc",
+      "changed": false,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 3."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-004",
+      "input": ".!@|",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": ".!@|",
+      "changed": false,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 4."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-005",
+      "input": "အာဏာပိုင္ေတြ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "အာဏာပိုင်တွေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 5."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-006",
+      "input": "ဘယ္ေလာက္တားတား ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဘယ်လောက်တားတား ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 6."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-007",
+      "input": "ထိုင္းကို",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ထိုင်းကို",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 7."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-008",
+      "input": "ႏိုင္ၿပီး",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "နိုင်ပြီး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 8."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-009",
+      "input": "ေျခတလွမ္းတိုးလိုက္တဲ့",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခြေတလှမ်းတိုးလိုက်တဲ့",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 9."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-010",
+      "input": "ျမန္မာ ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မြန်မာ ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 10."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-011",
+      "input": "အမ်ိဳးသမီး",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "အမျိုးသမီး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 11."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-012",
+      "input": "ေဘာလံုးအသင္း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဘောလုံးအသင်း",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 12."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-013",
+      "input": "ေဆာင္းဦးလင္း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဆောင်းဦးလင်း",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 13."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-014",
+      "input": "ျမန္မာအသင္းဟာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မြန်မာအသင်းဟာ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 14."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-015",
+      "input": "အာဆီယံေဒသတြင္းမွ ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "အာဆီယံဒေသတွင်းမှ ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 15."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-016",
+      "input": " တသင္းတည္းေသာ ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": " တသင်းတည်းသော ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 16."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-017",
+      "input": " အသင္းအျဖစ္ ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": " အသင်းအဖြစ် ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 17."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-018",
+      "input": "ျမန္မာ့ႏိုင္ငံေရးမွာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မြန်မာ့နိုင်ငံရေးမှာ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 18."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-019",
+      "input": "စစ္တပ္ပါဝင္ၿပီး",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "စစ်တပ်ပါဝင်ပြီး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 19."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-020",
+      "input": "ဆိုရင္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဆိုရင်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 20."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-021",
+      "input": "ျပဳျပင္ေျပာင္းလဲေရးေဖာ္ေဆာင္ေနတဲ့",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ပြုပြင်ပြောင်းလဲရေးဖော်ဆောင်နေတဲ့",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 21."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-022",
+      "input": "ပညာေရးေပၚလစီဆိုုင္ရာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ပညာရေးပေါ်လစီဆိုင်ရာ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 22."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-023",
+      "input": "လူရွင္သခ်ၤဳိင္းမ်ားအေၾကာင္း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "လူရှင်သင်္ချိုင်းများအကြောင်း",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 23."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-024",
+      "input": "ခုုႏွစ္အတြက္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခုနှစ်အတွက်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 24."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-025",
+      "input": "တံဆိပ္အက်ႌေတြေရာင္းခ်ျဖစ္ခဲ့တဲ့",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "တံဆိပ်အင်္ကျီတွေရောင်းချဖြစ်ခဲ့တဲ့",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 25."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-026",
+      "input": "လံုလံုၿခံဳၿခံဳ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "လုံလုံခြုံခြုံ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 26."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-027",
+      "input": "စစ္အုုပ္ခ်ဳပ္မႈ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "စစ်အုပ်ချုပ်မှု",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 27."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-028",
+      "input": "ေအာ္ဘုန္းၾကီးမီးၿမႇိက္ျပီးမွကန္ေတာ့တဲ့လား",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "အော်ဘုန်းကြီးမီးမြှိက်ပြီးမှကန်တော့တဲ့လား",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 28."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-029",
+      "input": "ဖိုုရမ္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဖိုရမ်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 29."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-030",
+      "input": "င့္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "င့်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 30."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-031",
+      "input": "ဆက္က်င့္သံုးမယ္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဆက်ကျင့်သုံးမယ်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 31."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-032",
+      "input": "တက္၀င္ေရာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "တက်ဝင်ရော",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 32."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-033",
+      "input": "ေန ့စဥ္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "နေ့ စဉ်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 33."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-034",
+      "input": "ကမၻာ့ေစ်းအ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကမ္ဘာ့ဈေးအ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 34."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-035",
+      "input": "မွႈခင္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မှုခင်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 35."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-036",
+      "input": "က ါ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကါ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 36."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-037",
+      "input": "က​ါ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကါ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 37."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-038",
+      "input": "က⁠ါ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကါ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 38."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-039",
+      "input": "က﻿ါ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကါ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 39."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-040",
+      "input": "က  ါ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကါ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 40."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-041",
+      "input": "က ‌‍​⁠﻿ါ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကါ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 41."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-042",
+      "input": "က ် ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 42."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-043",
+      "input": "က​် ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 43."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-044",
+      "input": "က⁠် ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 44."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-045",
+      "input": "က﻿် ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 45."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-046",
+      "input": "ကျ် ေခာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျြ ခော",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 46."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-047",
+      "input": "က်ျ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျြ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 47."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-048",
+      "input": "က ျ် ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျြ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 48."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-049",
+      "input": "ၾကဳ ေျခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကြု ခြေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 49."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-050",
+      "input": "က​်⁠ွ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျှ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 50."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-051",
+      "input": "က  ် ေျခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျ ခြေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 51."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-052",
+      "input": "က​် ျ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျြ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 52."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-053",
+      "input": "က ၳ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "က္ထ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 53."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-054",
+      "input": "က ၴ ေခ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "က္ထ ခေ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 54."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-055",
+      "input": "ႁခြင္းခ်က﻿္မရွိ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခြွင်းချက်မရှိ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 55."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-056",
+      "input": "ႁခ ⁠ ြင္းခ်က ​္မ ၍",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခြွင်းချက်မ ၍",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 56."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-057",
+      "input": "ႁခြင္းခ်က​္မရွိ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခြွင်းချက်မရှိ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 57."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-058",
+      "input": "ႁခြင္းခ်က⁠္မရွိ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခြွင်းချက်မရှိ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 58."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-059",
+      "input": "ႁခြင္းခ်က‌္မရွိ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခြွင်းချက်မရှိ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 59."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-060",
+      "input": "ႁခြင္းခ်က‍္မရွိ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခြွင်းချက်မရှိ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 60."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-061",
+      "input": "ခ ါဘယ်",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခါဘယျ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 61."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-062",
+      "input": "ခ ူဘယ်",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခူဘယျ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 62."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-063",
+      "input": "ခ ေဘယ်",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခ ဘေယျ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 63."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-064",
+      "input": "ခ⁠ဲဘယ်",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခဲဘယျ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 64."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-065",
+      "input": "ခ⁠ဲဘယ်",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခဲဘယျ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 65."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-066",
+      "input": "ခ‍ှဘယ်",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခှဘယျ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 66."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-067",
+      "input": "ဃ ၠဃၠဃ ႓ဃ‍႓ဃ⁠႔ဆ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဃ္ကဃ္ကဃ္ဘဃ္ဘဃ့⁠ဆ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 67."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-068",
+      "input": "ခ ေဘယ္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခ ဘေယ်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 68."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-069",
+      "input": "၁၉၄၈ ခုႏွစ္​၊ ဒီဇင္​သာလ ၁၀ ရက္​​ေန႔တြင္​ ကဓၻာ့ကုလသမဂအဖဲြ႔ အတည္​ျပဳ၍ ​ေၾကညာလိုက္​ရာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "၁၉၄၈ ခုနှစ်​၊ ဒီဇင်​သာလ ၁၀ ရက်​နေ့တွင်​ကဓ္ဘာ့ကုလသမဂအဖွဲ့ အတည်​ပြု၍​ကြေညာလိုက်​ရာ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 69."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-070",
+      "input": "၁၉၄၈ ခုႏွစ​္၊ ဒီဇင​္သာလ ၁၀ ရက​္ေန႔တ​ြင္ ကဓၻာ​့ကုလသမဂအဖဲြ႔",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "၁၉၄၈ ခုနှစ်၊ ဒီဇင်သာလ ၁၀ ရက်နေ့တွင် ကဓ္ဘာ့​ကုလသမဂအဖွဲ့",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 70."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-071",
+      "input": "ျျက",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကြ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 71."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-072",
+      "input": "ျျၾက",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကြ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 72."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-073",
+      "input": "ၿႄႂက",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကြ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 73."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-074",
+      "input": "ျၿႀႃႄႁႂက",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကြ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 74."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-075",
+      "input": "ကိိ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကိ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 75."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-076",
+      "input": "ခီီ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ခီ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 76."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-077",
+      "input": "ဂုု",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဂု",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 77."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-078",
+      "input": "ဃူူ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဃူ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 78."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-079",
+      "input": "ငဲဲ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ငဲ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 79."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-080",
+      "input": "စဳဳ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "စု",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 80."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-081",
+      "input": "စဳဳ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "စု",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 81."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-082",
+      "input": "စူူ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "စူ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 82."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-083",
+      "input": "ဆံံ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဆံ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 83."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-084",
+      "input": "ဇ့့",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဇ့",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 84."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-085",
+      "input": "ဉ္္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဉ်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 85."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-086",
+      "input": "ည််",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ညျ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 86."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-087",
+      "input": "ျဋျျ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဋြ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 87."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-088",
+      "input": "ဍွွ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဍှ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 88."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-089",
+      "input": "ဎှှ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဎှ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 89."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-090",
+      "input": "ျၿႀႁဏ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဏြ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 90."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-091",
+      "input": "ျျမန္​မာကာမန္​မာကာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မြန်​မာကာမန်​မာကာ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 91."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-092",
+      "input": "အခ်စ္႔႔သီေသာ pdf",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "အချစ့်သီသော pdf",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 92."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-093",
+      "input": "တကယ္ဆို အၿငႇိဳးေတြမဲ႔ေသာလမ္းေသာလမ္းမွာ တိုႈျပန္ဆံုျကတဲ႔အခါ ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "တကယ်ဆို အငြှိုးတွေမဲ့သောလမ်းသောလမ်းမှာ တှိုပြန်ဆုံကြတဲ့အခါ ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 93."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-094",
+      "input": "ျမန္္မာကို",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မြန်မာကို",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 94."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-095",
+      "input": "တာ ့မိမိရဲ့",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "တာ့ မိမိရဲ့",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 95."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-096",
+      "input": "မိုလေ၀သ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မိုလဝေသ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 96."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-097",
+      "input": "အား ​ေသျပီ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "အား​သေပြီ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 97."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-098",
+      "input": "ဆိုေတး အေ၀းေရာက္ခ်စ္သူ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဆိုတေး အဝေးရောက်ချစ်သူ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 98."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-099",
+      "input": "myanmar ေငြေစ်း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "myanmar ငွေဈေး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 99."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-100",
+      "input": "l ဆိုင္းဇီ ေ၀ခြဲမရပါလား",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "l ဆိုင်းဇီ ဝေခွဲမရပါလား",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 100."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-101",
+      "input": "ေ၀သစ္လြင္ about",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဝေသစ်လွင် about",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 101."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-102",
+      "input": "ျပန္လမ္းမဲ့ကြၽန္းအပိုင္း၄",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ပြန်လမ်းမဲ့ကျွန်းအပိုင်း၎",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 102."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-103",
+      "input": "xxx.ေေလးေလးလို း ကား",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "xxx.လေးလေးလိုး ကား",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 103."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-104",
+      "input": "ေမာင္ေမာင္၀",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မောင်မောင်ဝ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 104."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-105",
+      "input": "မိုလေ၀သ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မိုလဝေသ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 105."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-106",
+      "input": "ဆိုေတး အေ၀းေရာက္ခ်စ္သူ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဆိုတေး အဝေးရောက်ချစ်သူ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 106."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-107",
+      "input": "ေေလးေလးလို း ကား",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "လေးလေးလိုး ကား",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 107."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-108",
+      "input": "၀ိုင္း၀ိုင္း သီခ်င္းမ်ား",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဝိုင်းဝိုင်း သီချင်းများ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 108."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-109",
+      "input": "ေ၀လ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဝေလ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 109."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-110",
+      "input": "ေရႊေစ်း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ရွှေဈေး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 110."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-111",
+      "input": "ရိုးရွင္းေသာအဂၤလိပ္ဝါက်မ်ားကိုယ္တိုင္တည္ေဆာက္ျခင္း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ရိုးရှင်းသောအင်္ဂလိပ်ဝါကျများကိုယ်တိုင်တည်ဆောက်ခြင်း",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 111."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-112",
+      "input": "​ေရႊေစ်း​",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ရွှေဈေး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 112."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-113",
+      "input": "​​​ေရႊေစ်း​​​",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ရွှေဈေး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 113."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-114",
+      "input": "က႑ခၮး",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကဏ္ဍခဍ္ဍး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 114."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-115",
+      "input": "ျႏၵာႂကၵာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "န္ဒြာက္ဒြာ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 115."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-116",
+      "input": "ျႏၵီာႂကၵ္ာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "န္ဒြီာက္ဒြ်ာ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 116."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-117",
+      "input": "တာ ့မိမိရဲ့",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "တာ့ မိမိရဲ့",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 117."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-118",
+      "input": "အ‌ေႂကြး",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "အ‌ကြွေး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 118."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-119",
+      "input": "ေကြၽးေမြး",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျွေးမွေး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 119."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-120",
+      "input": "ဆႏၵႀကီး ေႂကြးေၾကာ္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဆန္ဒကြီး ကြွေးကြော်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 120."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-121",
+      "input": "ေက်းကြၽန္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျေးကျွန်",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 121."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-122",
+      "input": "ကြၽ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ကျွ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 122."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-123",
+      "input": "ႏြံေတ်း",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "နွံတျေး",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 123."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-124",
+      "input": "ျမႇင့္ၿမႇိက္ၿငႇိဳးၿခံဳျမႇဴၿမႇီႃႏြဲေႁႏြဳ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မြှင့်မြှိက်ငြှိုးခြုံမြှူမြှီနြွဲနြွေု",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 124."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-125",
+      "input": "႑",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဏ္ဍ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 125."
+    },
+    {
+      "id": "google-zawgyi-to-unicode-126",
+      "input": "ၮ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဍ္ဍ",
+      "changed": true,
+      "source": "google-myanmar-tools",
+      "basis": "Google Myanmar Tools data-driven converter fixture 126."
+    },
+    {
+      "id": "rabbit-zawgyi-to-unicode-1",
+      "input": "မဂၤလာပါ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မင်္ဂလာပါ",
+      "changed": true,
+      "source": "rabbit-sample",
+      "basis": "Rabbit compatibility pair; output also matches the CLDR-derived transform."
+    },
+    {
+      "id": "rabbit-zawgyi-to-unicode-2",
+      "input": "သီဟိုဠ္မွ ဉာဏ္ႀကီးရွင္သည္ အာယုဝဍ္ဎနေဆးၫႊန္းစာကို ဇလြန္ေဈးေဘးဗာဒံပင္ထက္ အဓိ႒ာန္လ်က္ ဂဃနဏဖတ္ခဲ့သည္။",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "သီဟိုဠ်မှ ဉာဏ်ကြီးရှင်သည် အာယုဝဍ်ဎနဆေးညွှန်းစာကို ဇလွန်ဈေးဘေးဗာဒံပင်ထက် အဓိဋ္ဌာန်လျက် ဂဃနဏဖတ်ခဲ့သည်။",
+      "changed": true,
+      "source": "rabbit-sample",
+      "basis": "Rabbit compatibility pair; output also matches the CLDR-derived transform."
+    },
+    {
+      "id": "rabbit-zawgyi-to-unicode-3",
+      "input": "ေယဓမၼာ ေဟတုပၸဘဝါ ေတသံ ေဟတုံ တထာဂေတာ အာဟ ေတသၪၥ ေယာနိေရာေဓါ ဧဝံ ဝါဒီ မဟာသမေဏာ။",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ယေဓမ္မာ ဟေတုပ္ပဘဝါ တေသံ ဟေတုံ တထာဂတော အာဟ တေသဉ္စ ယောနိရောဓေါ ဧဝံ ဝါဒီ မဟာသမဏော။",
+      "changed": true,
+      "source": "rabbit-sample",
+      "basis": "Rabbit compatibility pair; output also matches the CLDR-derived transform."
+    },
+    {
+      "id": "rabbit-zawgyi-to-unicode-4",
+      "input": "ျမန္မာလိုေျပာမယ္လကြာ",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "မြန်မာလိုပြောမယ်လကွာ",
+      "changed": true,
+      "source": "rabbit-sample",
+      "basis": "Rabbit compatibility pair; output also matches the CLDR-derived transform."
+    },
+    {
+      "id": "rabbit-zawgyi-to-unicode-5",
+      "input": "ေဘာလုံးကန္တာမွ ေကာင္းဦးမယ္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "ဘောလုံးကန်တာမှ ကောင်းဦးမယ်",
+      "changed": true,
+      "source": "rabbit-sample",
+      "basis": "Rabbit compatibility pair; output also matches the CLDR-derived transform."
+    },
+    {
+      "id": "rabbit-zawgyi-to-unicode-6",
+      "input": "Rabbit ကြန္ဗက္တာကို သိလား",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "Rabbit ကွန်ဗက်တာကို သိလား",
+      "changed": true,
+      "source": "rabbit-sample",
+      "basis": "Rabbit compatibility pair; output also matches the CLDR-derived transform."
+    },
+    {
+      "id": "rabbit-zawgyi-to-unicode-7",
+      "input": "တေစၦ တစ္ေကာင္မိထားတယ္",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "တစ္ဆေ တစ်ကောင်မိထားတယ်",
+      "changed": true,
+      "source": "rabbit-sample",
+      "basis": "Rabbit compatibility pair; output also matches the CLDR-derived transform."
+    },
+    {
+      "id": "rabbit-zawgyi-to-unicode-8",
+      "input": "တိရစာၦန္ တစ္ေကာင္ ကမာၻေျမႀကီးမွာ ကမာၻ႔ေျမအဆီအလႊာမ်ား စားသုံး",
+      "from": "zawgyi",
+      "to": "unicode",
+      "expected": "တိရစ္ဆာန် တစ်ကောင် ကမ္ဘာမြေကြီးမှာ ကမ္ဘာ့မြေအဆီအလွှာများ စားသုံး",
+      "changed": true,
+      "source": "rabbit-sample",
+      "basis": "Rabbit compatibility pair; output also matches the CLDR-derived transform."
+    }
+  ]
+}

@@ -16,6 +16,8 @@ Current specifications:
   `burmese-orthography-v1`.
 - [Unicode and Zawgyi detection](encoding-detection.md), profile
   `zawgyi-unicode-v1`.
+- [Unicode and Zawgyi conversion](encoding-conversion.md), profile
+  `cldr-zawgyi-v1`.
 
 ## First specification milestone
 
@@ -34,6 +36,6 @@ defined by ADR-0002.
 
 ## Unresolved work
 
-Zawgyi conversion, non-Burmese Myanmar-language syllabification, lexical
-spelling validation, and linguist-reviewed natural-language cases remain
-unresolved. They require documented evidence and reviewed examples.
+Non-Burmese Myanmar-language syllabification, lexical spelling validation, and
+linguist-reviewed natural-language cases remain unresolved. They require
+documented evidence and reviewed examples.

@@ -36,6 +36,11 @@ Encoding-detection cases use the Apache-2.0 Google Myanmar Tools compatibility
 fixtures and model. Dataset-specific license metadata overrides the repository's
 default MIT corpus license where stated.
 
+Encoding-conversion cases define the explicit `cldr-zawgyi-v1` profile. The
+embedded rules and 126 Google data-driven cases retain Apache-2.0; Rabbit
+compatibility cases retain WTFPL. Conversion direction is always part of each
+case.
+
 The repository's MIT License covers original project-authored corpus cases
 unless a dataset-specific notice says otherwise. Third-party data retains its
 own license.

@@ -1,8 +1,9 @@
 # Third-party notices for @myanlex/core
 
-## Google Myanmar Tools Zawgyi detector
+## Google Myanmar Tools Zawgyi detector and converter
 
-The compiled package includes an adapted detector and trained model from
+The compiled package includes an adapted detector, trained model, conversion
+engine, and CLDR-derived generated rules from
 [google/myanmar-tools](https://github.com/google/myanmar-tools), version 1.2.0.
 
 Copyright 2017 Google LLC.

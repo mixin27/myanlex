@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myanlex.org/schema/encoding-conversion.schema.json",
+  "title": "MyanLex Myanmar encoding-conversion corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "profile",
+    "rule_source",
+    "description",
+    "license",
+    "sources",
+    "derivation",
+    "review_status",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "profile": {
+      "const": "cldr-zawgyi-v1"
+    },
+    "rule_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "license", "source"],
+      "properties": {
+        "name": {
+          "const": "google-myanmar-tools"
+        },
+        "version": {
+          "const": "1.2.0"
+        },
+        "license": {
+          "const": "Apache-2.0"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "derivation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_status": {
+      "enum": ["draft", "source_verified", "linguistically_reviewed"]
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "input",
+          "from",
+          "to",
+          "expected",
+          "changed",
+          "source",
+          "basis"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "input": {
+            "type": "string"
+          },
+          "from": {
+            "enum": ["unicode", "zawgyi"]
+          },
+          "to": {
+            "enum": ["unicode", "zawgyi"]
+          },
+          "expected": {
+            "type": "string"
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "project-authored",
+              "google-myanmar-tools",
+              "rabbit-sample"
+            ]
+          },
+          "basis": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

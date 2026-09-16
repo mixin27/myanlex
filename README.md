@@ -14,20 +14,21 @@ MyanLex is in early development. The current milestone establishes Unicode
 code-point handling, deterministic character classification, safe Unicode
 normalization, Burmese orthographic syllabification, linguistic specifications,
 structural orthography validation, corpus formats, and the core package
-boundary. It also provides conservative standard Unicode and Zawgyi detection.
+boundary. It also provides conservative standard Unicode and Zawgyi detection
+and explicit conversion in both directions.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
 ## Capabilities
 
 - Myanmar Unicode and Zawgyi detection
+- Explicit Unicode and Zawgyi conversion
 - Unicode normalization
 - Myanmar syllabification
 - Structural Burmese orthography validation
 
 Planned next:
 
-- Unicode/Zawgyi conversion
 - Myanmar-to-Latin transliteration
 - Tokenization and mixed-script detection
 

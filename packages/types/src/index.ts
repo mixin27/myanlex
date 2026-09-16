@@ -103,3 +103,18 @@ export interface MyanmarEncodingDetectionResult {
   readonly profile: 'zawgyi-unicode-v1';
   readonly segments: readonly MyanmarEncodingSegment[];
 }
+
+/** An encoding accepted by the explicit Unicode/Zawgyi converter. */
+export type MyanmarConversionEncoding = 'unicode' | 'zawgyi';
+
+export interface MyanmarEncodingConversionOptions {
+  readonly from: MyanmarConversionEncoding;
+  readonly to: MyanmarConversionEncoding;
+}
+
+export interface MyanmarEncodingConversionResult extends MyanmarEncodingConversionOptions {
+  readonly input: string;
+  readonly output: string;
+  readonly changed: boolean;
+  readonly profile: 'cldr-zawgyi-v1';
+}
