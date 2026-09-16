@@ -97,6 +97,25 @@
       ]
     },
     {
+      "id": "unicode-17-supported-subjoined-ra",
+      "input": "က္ရ",
+      "basis": "U+101B is in the Unicode 17 Table 16-4 subscript-consonant set.",
+      "expected": [
+        { "kind": "scalar", "text": "က", "start": 0, "end": 1 },
+        { "kind": "stack", "text": "္ရ", "start": 1, "end": 3 }
+      ]
+    },
+    {
+      "id": "unicode-17-unsupported-subjoined-nnya",
+      "input": "က္ဉ",
+      "basis": "U+1009 is not in the Unicode 17 Table 16-4 subscript-consonant set.",
+      "expected": [
+        { "kind": "scalar", "text": "က", "start": 0, "end": 1 },
+        { "kind": "scalar", "text": "္", "start": 1, "end": 2 },
+        { "kind": "scalar", "text": "ဉ", "start": 2, "end": 3 }
+      ]
+    },
+    {
       "id": "leading-virama",
       "input": "္က",
       "basis": "A stack requires a preceding Burmese base consonant.",

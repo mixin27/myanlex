@@ -52,7 +52,8 @@ The current supported subjoined-consonant set is shared with the conservative
 sequence-recognition milestone:
 
 ```text
-U+1000..U+1019, U+101C, U+101E, U+1020, U+1021
+U+1000..U+1008, U+100A..U+1019,
+U+101B, U+101C, U+101E, U+1020, U+1021
 ```
 
 Myanmar digits U+1040..U+1049 and independent signs U+104C, U+104D, and U+104F

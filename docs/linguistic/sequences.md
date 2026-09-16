@@ -37,10 +37,11 @@ A stack is encoded with a virama between consonants. This milestone emits a
 3. the following scalar is in the documented set of known Burmese subjoined
    consonants.
 
-The initial target set follows UTN #11:
+The target set follows Unicode 17 Table 16-4:
 
 ```text
-U+1000..U+1019, U+101C, U+101E, U+1020, U+1021
+U+1000..U+1008, U+100A..U+1019,
+U+101B, U+101C, U+101E, U+1020, U+1021
 ```
 
 Repeated stacks are recognized independently, allowing structures such as

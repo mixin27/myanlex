@@ -3,6 +3,18 @@ import type {
   BurmeseSyllableSegmentKind,
 } from '@myanlex/types';
 
+import {
+  isBurmeseBase,
+  isBurmeseConsonant,
+  isBurmeseContinuation,
+  isBurmeseStandalone,
+  isSupportedSubjoinedConsonant,
+  MYANMAR_ASAT,
+  MYANMAR_DOT_BELOW,
+  MYANMAR_GREAT_SA,
+  MYANMAR_NGA,
+  MYANMAR_VIRAMA,
+} from '../burmese/code-points.js';
 import { classifyCodePoint } from '../classification/classify-code-point.js';
 import {
   scanCodePoints,
@@ -10,59 +22,6 @@ import {
 } from '../unicode/code-points.js';
 
 export const SYLLABIFICATION_PROFILE = 'burmese-orthographic-v1' as const;
-
-const MYANMAR_NGA = 0x1004;
-const MYANMAR_GREAT_SA = 0x103f;
-const MYANMAR_ASAT = 0x103a;
-const MYANMAR_VIRAMA = 0x1039;
-const MYANMAR_DOT_BELOW = 0x1037;
-
-function isBurmeseConsonant(codePoint: number | undefined): boolean {
-  return codePoint !== undefined && codePoint >= 0x1000 && codePoint <= 0x1021;
-}
-
-function isBurmeseIndependentBase(codePoint: number | undefined): boolean {
-  return (
-    codePoint !== undefined &&
-    ((codePoint >= 0x1023 && codePoint <= 0x1027) ||
-      codePoint === 0x1029 ||
-      codePoint === 0x102a ||
-      codePoint === 0x104e)
-  );
-}
-
-function isBurmeseBase(codePoint: number | undefined): boolean {
-  return isBurmeseConsonant(codePoint) || isBurmeseIndependentBase(codePoint);
-}
-
-function isBurmeseStandalone(codePoint: number | undefined): boolean {
-  return (
-    codePoint !== undefined &&
-    ((codePoint >= 0x1040 && codePoint <= 0x1049) ||
-      codePoint === 0x104c ||
-      codePoint === 0x104d ||
-      codePoint === 0x104f)
-  );
-}
-
-function isBurmeseContinuation(codePoint: number | undefined): boolean {
-  return (
-    codePoint !== undefined &&
-    ((codePoint >= 0x102b && codePoint <= 0x1038) ||
-      (codePoint >= 0x103a && codePoint <= 0x103e))
-  );
-}
-
-function isSupportedSubjoinedConsonant(codePoint: number | undefined): boolean {
-  return (
-    codePoint !== undefined &&
-    ((codePoint >= 0x1000 && codePoint <= 0x1019) ||
-      codePoint === 0x101c ||
-      codePoint === 0x101e ||
-      codePoint === 0x1020 ||
-      codePoint === 0x1021)
-  );
-}
 
 function isKinziAt(
   codePoints: readonly ScannedCodePoint[],
@@ -72,7 +31,7 @@ function isKinziAt(
     codePoints[index]?.codePoint === MYANMAR_NGA &&
     codePoints[index + 1]?.codePoint === MYANMAR_ASAT &&
     codePoints[index + 2]?.codePoint === MYANMAR_VIRAMA &&
-    isBurmeseBase(codePoints[index + 3]?.codePoint)
+    isBurmeseConsonant(codePoints[index + 3]?.codePoint)
   );
 }
 

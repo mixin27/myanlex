@@ -24,10 +24,18 @@ export {
   SYLLABIFICATION_PROFILE,
 } from './syllabification/segment-burmese-syllables.js';
 
+export {
+  BURMESE_ORTHOGRAPHY_PROFILE,
+  validateBurmeseOrthography,
+} from './validation/validate-burmese-orthography.js';
+
 export type {
-  CharacterClass,
+  BurmeseOrthographyDiagnostic,
+  BurmeseOrthographyDiagnosticCode,
+  BurmeseOrthographyValidationResult,
   BurmeseSyllableSegment,
   BurmeseSyllableSegmentKind,
+  CharacterClass,
   CodePointOffset,
   KinziToken,
   MyanmarSequenceToken,

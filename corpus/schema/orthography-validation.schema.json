@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myanlex.org/schema/orthography-validation.schema.json",
+  "title": "MyanLex orthography-validation corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "unicode_version",
+    "profile",
+    "description",
+    "license",
+    "sources",
+    "derivation",
+    "review_status",
+    "cases"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "const": 1 },
+    "unicode_version": { "const": "17.0.0" },
+    "profile": { "const": "burmese-orthography-v1" },
+    "description": { "type": "string", "minLength": 1 },
+    "license": { "type": "string", "minLength": 1 },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "format": "uri" }
+    },
+    "derivation": { "type": "string", "minLength": 1 },
+    "review_status": {
+      "enum": ["draft", "source_verified", "linguistically_reviewed"]
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "input", "valid", "diagnostics", "basis"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "input": { "type": "string" },
+          "valid": { "type": "boolean" },
+          "basis": { "type": "string", "minLength": 1 },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["code", "start", "end"],
+              "properties": {
+                "code": {
+                  "enum": [
+                    "component_order",
+                    "dangling_virama",
+                    "duplicate_component",
+                    "invalid_syllable_start",
+                    "orphan_mark",
+                    "unsupported_myanmar",
+                    "unsupported_stack_target"
+                  ]
+                },
+                "start": { "type": "integer", "minimum": 0 },
+                "end": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

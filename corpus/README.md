@@ -9,6 +9,7 @@ incidental test fixture data.
 - `character-classification/`
 - `sequence-recognition/`
 - `syllabification/`
+- `orthography-validation/`
 - `encoding/`
 - `normalization/`
 - `transliteration/`
@@ -27,6 +28,9 @@ idempotent in addition to matching their expected output.
 The first syllabification corpus defines `burmese-orthographic-v1`. It contains
 project-authored, source-verified regression cases. It has not yet received the
 independent linguistic review required for `linguistically_reviewed` status.
+
+Orthography-validation cases define structural diagnostics and their code-point
+spans. They do not claim to validate dictionary spelling or linguistic meaning.
 
 The repository's MIT License covers original project-authored corpus cases
 unless a dataset-specific notice says otherwise. Third-party data retains its

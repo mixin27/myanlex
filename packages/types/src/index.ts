@@ -62,3 +62,25 @@ export interface BurmeseSyllableSegment extends TextSpan {
   readonly kind: BurmeseSyllableSegmentKind;
   readonly text: string;
 }
+
+export type BurmeseOrthographyDiagnosticCode =
+  | 'component_order'
+  | 'dangling_virama'
+  | 'duplicate_component'
+  | 'invalid_syllable_start'
+  | 'orphan_mark'
+  | 'unsupported_myanmar'
+  | 'unsupported_stack_target';
+
+export interface BurmeseOrthographyDiagnostic extends TextSpan {
+  readonly code: BurmeseOrthographyDiagnosticCode;
+  readonly severity: 'error';
+  readonly message: string;
+}
+
+export interface BurmeseOrthographyValidationResult {
+  readonly input: string;
+  readonly valid: boolean;
+  readonly profile: 'burmese-orthography-v1';
+  readonly diagnostics: readonly BurmeseOrthographyDiagnostic[];
+}

@@ -5,28 +5,16 @@ import type {
   StackToken,
 } from '@myanlex/types';
 
+import {
+  isBurmeseConsonant,
+  isSupportedSubjoinedConsonant,
+  MYANMAR_ASAT,
+  MYANMAR_DOT_BELOW,
+  MYANMAR_NGA,
+  MYANMAR_VIRAMA,
+} from '../burmese/code-points.js';
 import { classifyCodePoint } from '../classification/classify-code-point.js';
 import { scanCodePoints } from '../unicode/code-points.js';
-
-const MYANMAR_NGA = 0x1004;
-const MYANMAR_DOT_BELOW = 0x1037;
-const MYANMAR_VIRAMA = 0x1039;
-const MYANMAR_ASAT = 0x103a;
-
-function isBurmeseBaseConsonant(codePoint: number | undefined): boolean {
-  return codePoint !== undefined && codePoint >= 0x1000 && codePoint <= 0x1021;
-}
-
-function isSupportedSubjoinedConsonant(codePoint: number | undefined): boolean {
-  return (
-    codePoint !== undefined &&
-    ((codePoint >= 0x1000 && codePoint <= 0x1019) ||
-      codePoint === 0x101c ||
-      codePoint === 0x101e ||
-      codePoint === 0x1020 ||
-      codePoint === 0x1021)
-  );
-}
 
 function hasBurmeseBaseBeforeVirama(
   codePoints: ReturnType<typeof scanCodePoints>,
@@ -34,11 +22,11 @@ function hasBurmeseBaseBeforeVirama(
 ): boolean {
   const previous = codePoints[viramaIndex - 1]?.codePoint;
 
-  if (isBurmeseBaseConsonant(previous)) return true;
+  if (isBurmeseConsonant(previous)) return true;
 
   return (
     previous === MYANMAR_DOT_BELOW &&
-    isBurmeseBaseConsonant(codePoints[viramaIndex - 2]?.codePoint)
+    isBurmeseConsonant(codePoints[viramaIndex - 2]?.codePoint)
   );
 }
 
@@ -101,7 +89,7 @@ export function scanMyanmarSequences(
       current.codePoint === MYANMAR_NGA &&
       next?.codePoint === MYANMAR_ASAT &&
       afterNext?.codePoint === MYANMAR_VIRAMA &&
-      isBurmeseBaseConsonant(kinziBase?.codePoint)
+      isBurmeseConsonant(kinziBase?.codePoint)
     ) {
       tokens.push(
         createKinziToken(

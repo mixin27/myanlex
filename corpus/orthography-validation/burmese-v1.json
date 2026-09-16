@@ -1,0 +1,147 @@
+{
+  "$schema": "../schema/orthography-validation.schema.json",
+  "schema_version": 1,
+  "unicode_version": "17.0.0",
+  "profile": "burmese-orthography-v1",
+  "description": "Source-verified structural and component-order validation cases for modern Burmese Unicode.",
+  "license": "MIT",
+  "sources": [
+    "https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-16/",
+    "https://aclanthology.org/I08-3010/"
+  ],
+  "derivation": "Cases were manually constructed from Unicode 17 Table 16-4 ordering and the published Burmese syllable structures. Failure categories and mixed-text behavior are project-authored API decisions.",
+  "review_status": "source_verified",
+  "cases": [
+    {
+      "id": "empty-input",
+      "input": "",
+      "valid": true,
+      "basis": "Empty input contains no invalid Burmese structure.",
+      "diagnostics": []
+    },
+    {
+      "id": "documented-component-order",
+      "input": "ကျောင်း",
+      "valid": true,
+      "basis": "Medial ya, vowel e, vowel aa, devowelised final, and visarga occur in supported order.",
+      "diagnostics": []
+    },
+    {
+      "id": "continuous-burmese-phrase",
+      "input": "မြန်မာစာကောင်းပါတယ်",
+      "valid": true,
+      "basis": "The source-backed syllable structures compose across text without spaces.",
+      "diagnostics": []
+    },
+    {
+      "id": "kinzi-stack-and-contraction",
+      "input": "မင်္ဂလာ ဝတ္ထု ယောက်ျား နုဿီ",
+      "valid": true,
+      "basis": "Documented kinzi, virama chaining, written contraction, and Great Sa no-break structures are supported.",
+      "diagnostics": []
+    },
+    {
+      "id": "canonical-asat-dot-orders",
+      "input": "က့် က့်",
+      "valid": true,
+      "basis": "Unicode requires canonically equivalent asat and dot-below orders to be treated as the same text.",
+      "diagnostics": []
+    },
+    {
+      "id": "mixed-non-myanmar-text",
+      "input": "API 😀 မြန်မာ!",
+      "valid": true,
+      "basis": "The Burmese validator ignores non-Myanmar text and separators.",
+      "diagnostics": []
+    },
+    {
+      "id": "orphan-vowel",
+      "input": "ာက",
+      "valid": false,
+      "basis": "A dependent vowel cannot begin a supported Burmese syllable.",
+      "diagnostics": [{ "code": "orphan_mark", "start": 0, "end": 1 }]
+    },
+    {
+      "id": "dangling-virama",
+      "input": "က်္",
+      "valid": false,
+      "basis": "Virama requires a following supported subjoined consonant.",
+      "diagnostics": [{ "code": "dangling_virama", "start": 2, "end": 3 }]
+    },
+    {
+      "id": "unsupported-stack-target",
+      "input": "က္ဉ",
+      "valid": false,
+      "basis": "U+1009 is outside the Unicode 17 modern Burmese subscript-consonant set.",
+      "diagnostics": [
+        { "code": "unsupported_stack_target", "start": 1, "end": 2 }
+      ]
+    },
+    {
+      "id": "medial-order",
+      "input": "ကွြ",
+      "valid": false,
+      "basis": "Medial ra must precede medial wa in the Unicode component order.",
+      "diagnostics": [{ "code": "component_order", "start": 2, "end": 3 }]
+    },
+    {
+      "id": "vowel-order",
+      "input": "ကာေ",
+      "valid": false,
+      "basis": "Vowel e must precede vowel aa in encoded component order.",
+      "diagnostics": [{ "code": "component_order", "start": 2, "end": 3 }]
+    },
+    {
+      "id": "duplicate-medial",
+      "input": "ကျျ",
+      "valid": false,
+      "basis": "The same medial component cannot occur twice in one component sequence.",
+      "diagnostics": [{ "code": "duplicate_component", "start": 2, "end": 3 }]
+    },
+    {
+      "id": "duplicate-vowel-slot",
+      "input": "ကိီ",
+      "valid": false,
+      "basis": "The upper-vowel slot cannot occur twice in one component sequence.",
+      "diagnostics": [{ "code": "duplicate_component", "start": 2, "end": 3 }]
+    },
+    {
+      "id": "duplicate-asat",
+      "input": "က််",
+      "valid": false,
+      "basis": "Asat cannot occur twice at the same attachment position.",
+      "diagnostics": [{ "code": "duplicate_component", "start": 2, "end": 3 }]
+    },
+    {
+      "id": "stack-after-vowel",
+      "input": "ကာ္က",
+      "valid": false,
+      "basis": "A subscript consonant must precede vowel components.",
+      "diagnostics": [{ "code": "component_order", "start": 2, "end": 3 }]
+    },
+    {
+      "id": "great-sa-cannot-start",
+      "input": "ဿီ",
+      "valid": false,
+      "basis": "The source-backed Burmese profile treats Great Sa as dependent on a preceding consonant.",
+      "diagnostics": [
+        { "code": "invalid_syllable_start", "start": 0, "end": 1 },
+        { "code": "orphan_mark", "start": 1, "end": 2 }
+      ]
+    },
+    {
+      "id": "unsupported-myanmar-language-letter",
+      "input": "ကၵ",
+      "valid": false,
+      "basis": "A Shan letter is outside this explicitly Burmese-only validation profile.",
+      "diagnostics": [{ "code": "unsupported_myanmar", "start": 1, "end": 2 }]
+    },
+    {
+      "id": "code-point-offset-after-emoji",
+      "input": "😀ာ",
+      "valid": false,
+      "basis": "Diagnostic spans use Unicode code-point offsets rather than UTF-16 code units.",
+      "diagnostics": [{ "code": "orphan_mark", "start": 1, "end": 2 }]
+    }
+  ]
+}

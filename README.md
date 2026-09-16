@@ -13,7 +13,8 @@ convenience.
 MyanLex is in early development. The current milestone establishes Unicode
 code-point handling, deterministic character classification, safe Unicode
 normalization, Burmese orthographic syllabification, linguistic specifications,
-corpus formats, and the core package boundary.
+structural orthography validation, corpus formats, and the core package
+boundary.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
