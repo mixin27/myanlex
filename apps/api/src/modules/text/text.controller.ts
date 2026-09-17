@@ -1,8 +1,4 @@
-import type {
-  ConvertTextRequest,
-  MyanLexApplication,
-  TextRequest,
-} from '@myanlex/application';
+import type { ConvertTextRequest, TextRequest } from '@myanlex/application';
 import type {
   MyanmarEncodingConversionResult,
   MyanmarEncodingDetectionResult,
@@ -17,26 +13,21 @@ import {
   Post,
 } from '@nestjs/common';
 
-import { MYANLEX_APPLICATION } from '../api.tokens.js';
-import {
-  convertTextRequestSchema,
-  textRequestSchema,
-} from '../http/request-schemas.js';
-import { ZodBodyPipe } from '../http/zod-body.pipe.js';
+import { textRequestSchema } from '../../common/validation/text-request.schema.js';
+import { ZodBodyPipe } from '../../common/validation/zod-body.pipe.js';
+import { convertTextRequestSchema } from './dto/convert-text-request.schema.js';
+import { TextService } from './text.service.js';
 
 @Controller('text')
 export class TextController {
-  constructor(
-    @Inject(MYANLEX_APPLICATION)
-    private readonly application: MyanLexApplication,
-  ) {}
+  constructor(@Inject(TextService) private readonly textService: TextService) {}
 
   @Post('detect')
   @HttpCode(HttpStatus.OK)
   detectText(
     @Body(new ZodBodyPipe(textRequestSchema)) request: TextRequest,
   ): MyanmarEncodingDetectionResult {
-    return this.application.detectText(request);
+    return this.textService.detect(request);
   }
 
   @Post('normalize')
@@ -44,7 +35,7 @@ export class TextController {
   normalizeText(
     @Body(new ZodBodyPipe(textRequestSchema)) request: TextRequest,
   ): NormalizationResult {
-    return this.application.normalizeText(request);
+    return this.textService.normalize(request);
   }
 
   @Post('convert')
@@ -53,6 +44,6 @@ export class TextController {
     @Body(new ZodBodyPipe(convertTextRequestSchema))
     request: ConvertTextRequest,
   ): MyanmarEncodingConversionResult {
-    return this.application.convertText(request);
+    return this.textService.convert(request);
   }
 }

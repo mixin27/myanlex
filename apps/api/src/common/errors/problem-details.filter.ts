@@ -1,6 +1,6 @@
+import { ApplicationInputError } from '@myanlex/application';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { Catch, HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ApplicationInputError } from '@myanlex/application';
 
 interface HttpRequest {
   readonly id: string;

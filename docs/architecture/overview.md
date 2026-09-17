@@ -50,6 +50,15 @@ Zod request schemas, a bearer API-key guard, and a global RFC 9457
 problem-details filter. Its end-to-end tests call Fastify's in-memory injection
 API and cover every operation declared in the initial OpenAPI contract.
 
+The API follows Nest's module-oriented application structure while pnpm remains
+the repository workspace manager. `AppModule` is a composition root, each HTTP
+capability lives in `apps/api/src/modules/<capability>`, and reusable NestJS
+transport concerns live in `apps/api/src/common`. Feature services may depend on
+`@myanlex/application`, but neither the controllers nor the services may bypass
+that boundary to call `@myanlex/core` directly. External persistence, cache,
+queue, and telemetry adapters will live in `apps/api/src/infrastructure` when
+they are introduced.
+
 ## Delivery order
 
 1. Linguistic specifications and corpus schemas.

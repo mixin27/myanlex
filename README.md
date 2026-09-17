@@ -63,7 +63,8 @@ authoritative specifications.
 
 ## Requirements
 
-- Node.js 22 or newer
+- Node.js 24.21.0 (recommended via `.nvmrc`; compatible ranges are declared in
+  `package.json`)
 - pnpm 10.18.3 or a compatible pnpm 10 release
 
 Enable Corepack if pnpm is not already available:
@@ -100,7 +101,7 @@ Build and start the versioned HTTP API with a development-only bearer key:
 
 ```sh
 pnpm build
-MYANLEX_API_KEY=local-development-key pnpm --filter @myanlex/api start
+MYANLEX_API_KEY=local-development-key pnpm --filter @myanlex/api start:prod
 ```
 
 The unauthenticated health endpoint is `GET http://localhost:3000/v1/health`.

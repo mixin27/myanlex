@@ -4,7 +4,7 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { API_KEY } from '../api.tokens.js';
+import { API_KEY } from '../tokens.js';
 import { IS_PUBLIC_ROUTE } from './public.decorator.js';
 
 function secretsMatch(actual: string, expected: string): boolean {
