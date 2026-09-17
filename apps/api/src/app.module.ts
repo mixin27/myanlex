@@ -4,7 +4,9 @@ import { Module } from '@nestjs/common';
 import { ApplicationModule } from './common/application/application.module.js';
 import { AuthModule } from './common/auth/auth.module.js';
 import { ErrorsModule } from './common/errors/errors.module.js';
+import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
 import { RuntimeConfigModule } from './common/runtime/runtime-config.module.js';
+import { BatchModule } from './modules/batch/batch.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { OrthographyModule } from './modules/orthography/orthography.module.js';
 import { SyllabifyModule } from './modules/syllabify/syllabify.module.js';
@@ -14,6 +16,8 @@ import { TransliterateModule } from './modules/transliterate/transliterate.modul
 
 export interface ApiModuleOptions {
   readonly apiKey?: string;
+  readonly rateLimitMaxRequests?: number;
+  readonly rateLimitWindowMs?: number;
   readonly serviceVersion?: string;
 }
 
@@ -26,7 +30,9 @@ export class AppModule {
         RuntimeConfigModule.register(options),
         ApplicationModule,
         AuthModule,
+        RateLimitModule,
         ErrorsModule,
+        BatchModule,
         HealthModule,
         TextModule,
         SyllabifyModule,

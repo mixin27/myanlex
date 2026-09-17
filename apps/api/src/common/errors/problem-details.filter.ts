@@ -2,12 +2,15 @@ import { ApplicationInputError } from '@myanlex/application';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { Catch, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 
+import { RateLimitExceededException } from '../rate-limit/rate-limit-exceeded.exception.js';
+
 interface HttpRequest {
   readonly id: string;
   readonly url: string;
 }
 
 interface HttpReply {
+  header(name: string, value: number): HttpReply;
   status(code: number): HttpReply;
   type(contentType: string): HttpReply;
   send(body: unknown): void;
@@ -46,6 +49,14 @@ function getTransportStatus(exception: unknown): number | undefined {
   return statusCode >= 400 && statusCode <= 599 ? statusCode : undefined;
 }
 
+function isPayloadTooLarge(code: ApplicationInputError['code']): boolean {
+  return (
+    code === 'batch_too_large' ||
+    code === 'batch_too_many_items' ||
+    code === 'text_too_long'
+  );
+}
+
 @Catch()
 @Injectable()
 export class ProblemDetailsFilter implements ExceptionFilter {
@@ -59,12 +70,16 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     let detail = 'An unexpected service error occurred.';
 
     if (exception instanceof ApplicationInputError) {
-      status =
-        exception.code === 'text_too_long'
-          ? HttpStatus.PAYLOAD_TOO_LARGE
-          : HttpStatus.BAD_REQUEST;
+      status = isPayloadTooLarge(exception.code)
+        ? HttpStatus.PAYLOAD_TOO_LARGE
+        : HttpStatus.BAD_REQUEST;
       code = exception.code;
       detail = exception.message;
+    } else if (exception instanceof RateLimitExceededException) {
+      status = HttpStatus.TOO_MANY_REQUESTS;
+      code = 'rate_limited';
+      detail = exception.message;
+      reply.header('Retry-After', exception.retryAfterSeconds);
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       code =
@@ -72,14 +87,22 @@ export class ProblemDetailsFilter implements ExceptionFilter {
           ? 'unauthorized'
           : status === HttpStatus.NOT_FOUND
             ? 'not_found'
-            : 'invalid_request';
+            : status === HttpStatus.PAYLOAD_TOO_LARGE
+              ? 'payload_too_large'
+              : 'invalid_request';
       detail = exception.message;
     } else {
       const transportStatus = getTransportStatus(exception);
       if (transportStatus !== undefined) {
         status = transportStatus;
         code =
-          status === HttpStatus.NOT_FOUND ? 'not_found' : 'invalid_request';
+          status === HttpStatus.NOT_FOUND
+            ? 'not_found'
+            : status === HttpStatus.PAYLOAD_TOO_LARGE
+              ? 'payload_too_large'
+              : status === HttpStatus.TOO_MANY_REQUESTS
+                ? 'rate_limited'
+                : 'invalid_request';
         detail = titleForStatus(status);
       }
     }

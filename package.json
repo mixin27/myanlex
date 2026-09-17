@@ -10,6 +10,7 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
+    "benchmark": "pnpm build && node --expose-gc benchmarks/application.mjs",
     "build": "pnpm --recursive --if-present build",
     "check": "pnpm format:check && pnpm lint && pnpm openapi:lint && pnpm typecheck && pnpm test",
     "format": "prettier --write .",
@@ -22,10 +23,10 @@
   "devDependencies": {
     "@redocly/cli": "^2.53.3",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^22.20.3",
+    "@types/node": "^24.13.5",
     "eslint": "^10.10.0",
     "prettier": "^3.9.7",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.0",
     "vitest": "^5.0.1"
   }

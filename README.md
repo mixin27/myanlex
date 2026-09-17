@@ -20,7 +20,8 @@ Myanmar-to-Latin transliteration and lossless Myanmar-aware tokenization with
 mixed-script reporting. A framework-independent application-service boundary and
 linted OpenAPI 3.2.1 contract now expose those capabilities for future HTTP
 adapters. The first adapter is a NestJS 12 and Fastify 5 API with bearer-key
-authentication, strict request validation, and RFC 9457 problem responses.
+authentication, rate limiting, strict request validation, batch processing, and
+RFC 9457 problem responses.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
@@ -34,12 +35,15 @@ Do not use the API or package interfaces as stable production contracts yet.
 - Structural Burmese orthography validation
 - Myanmar-aware tokenization and Myanmar/Latin mixed-script reporting
 - Framework-independent application services with Unicode input limits
-- OpenAPI 3.2.1 contract for seven text-processing operations and health
-- NestJS/Fastify HTTP adapter with authentication and request validation
+- Ordered syllabification and transliteration batches with per-item failures
+- OpenAPI 3.2.1 contract for nine text-processing operations and health
+- NestJS/Fastify HTTP adapter with authentication, rate limiting, and request
+  validation
+- Repeatable application and in-memory HTTP performance benchmarks
 
 Planned next:
 
-- Batch operations, rate limiting, and performance benchmarks
+- Developer projects, API keys, and usage tracking
 
 ## Repository layout
 
@@ -55,6 +59,7 @@ docs/
   architecture/      System and package boundaries
   linguistic/        Authoritative linguistic specifications
   decisions/         Architecture decision records
+  performance/       Reproducible benchmark baselines and targets
 openapi/              Authoritative HTTP API contract
 ```
 
@@ -89,6 +94,7 @@ pnpm test
 pnpm typecheck
 pnpm lint
 pnpm format
+pnpm benchmark
 ```
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change. Changes to

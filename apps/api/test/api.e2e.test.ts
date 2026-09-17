@@ -157,4 +157,151 @@ describe('MyanLex HTTP API', () => {
       code: 'text_too_long',
     });
   });
+
+  it('processes syllabification batches in order', async () => {
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/batch/syllabify',
+      headers: { authorization: `Bearer ${API_KEY}` },
+      payload: {
+        items: [
+          { id: 'first', text: 'မြန်မာ' },
+          { id: 'second', text: 'က' },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      results: [
+        { id: 'first', success: true, result: { input: 'မြန်မာ' } },
+        { id: 'second', success: true, result: { input: 'က' } },
+      ],
+    });
+  });
+
+  it('isolates batch item failures', async () => {
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/batch/transliterate',
+      headers: { authorization: `Bearer ${API_KEY}` },
+      payload: {
+        scheme: 'ala-lc-2011',
+        items: [
+          { id: 'too-long', text: 'က'.repeat(100_001) },
+          { id: 'valid', text: 'က' },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      results: [
+        {
+          id: 'too-long',
+          success: false,
+          error: { code: 'text_too_long' },
+        },
+        { id: 'valid', success: true, result: { output: 'ka' } },
+      ],
+    });
+  });
+
+  it('rejects batches above the 1,000-item limit', async () => {
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/batch/syllabify',
+      headers: { authorization: `Bearer ${API_KEY}` },
+      payload: {
+        items: Array.from({ length: 1_001 }, (_, index) => ({
+          id: String(index),
+          text: '',
+        })),
+      },
+    });
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toMatchObject({
+      status: 413,
+      code: 'batch_too_many_items',
+    });
+  });
+
+  it('rejects more than 1,000,000 UTF-8 bytes of batch text', async () => {
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/batch/syllabify',
+      headers: { authorization: `Bearer ${API_KEY}` },
+      payload: {
+        items: [{ id: 'large', text: 'a'.repeat(1_000_001) }],
+      },
+    });
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toMatchObject({
+      status: 413,
+      code: 'batch_too_large',
+    });
+  });
+
+  it('rejects HTTP bodies above one mebibyte', async () => {
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/tokenize',
+      headers: { authorization: `Bearer ${API_KEY}` },
+      payload: { text: 'a'.repeat(1_048_576) },
+    });
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toMatchObject({
+      status: 413,
+      code: 'payload_too_large',
+    });
+  });
+
+  it('rate limits authenticated operations but not health checks', async () => {
+    const limited = await createApiApplication({
+      apiKey: 'rate-limit-test-key',
+      logger: false,
+      rateLimitMaxRequests: 2,
+      rateLimitWindowMs: 60_000,
+      serviceVersion: 'test',
+    });
+
+    try {
+      await limited.inject({ method: 'GET', url: '/v1/health' });
+      await limited.inject({ method: 'GET', url: '/v1/health' });
+
+      const first = await limited.inject({
+        method: 'POST',
+        url: '/v1/tokenize',
+        headers: { authorization: 'Bearer rate-limit-test-key' },
+        payload: { text: 'က' },
+      });
+      const second = await limited.inject({
+        method: 'POST',
+        url: '/v1/tokenize',
+        headers: { authorization: 'Bearer rate-limit-test-key' },
+        payload: { text: 'ခ' },
+      });
+      const limitedResponse = await limited.inject({
+        method: 'POST',
+        url: '/v1/tokenize',
+        headers: { authorization: 'Bearer rate-limit-test-key' },
+        payload: { text: 'ဂ' },
+      });
+
+      expect(first.statusCode).toBe(200);
+      expect(first.headers['ratelimit-limit']).toBe('2');
+      expect(second.headers['ratelimit-remaining']).toBe('0');
+      expect(limitedResponse.statusCode).toBe(429);
+      expect(limitedResponse.headers['retry-after']).toBe('60');
+      expect(limitedResponse.json()).toMatchObject({
+        status: 429,
+        code: 'rate_limited',
+      });
+    } finally {
+      await limited.close();
+    }
+  });
 });

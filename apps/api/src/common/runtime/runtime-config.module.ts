@@ -5,10 +5,18 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { z } from 'zod';
 
-import { API_KEY, HTTP_PORT, SERVICE_VERSION } from '../tokens.js';
+import {
+  API_KEY,
+  HTTP_PORT,
+  RATE_LIMIT_MAX_REQUESTS,
+  RATE_LIMIT_WINDOW_MS,
+  SERVICE_VERSION,
+} from '../tokens.js';
 
 export interface RuntimeConfigOptions {
   readonly apiKey?: string;
+  readonly rateLimitMaxRequests?: number;
+  readonly rateLimitWindowMs?: number;
   readonly serviceVersion?: string;
 }
 
@@ -18,6 +26,12 @@ const environmentFile = fileURLToPath(
 
 const runtimeEnvironmentSchema = z.object({
   MYANLEX_API_KEY: z.string().trim().min(1),
+  MYANLEX_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
+  MYANLEX_RATE_LIMIT_WINDOW_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .default(60_000),
   MYANLEX_VERSION: z.string().trim().min(1).default('0.0.0'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
 });
@@ -33,6 +47,12 @@ function validateEnvironment(
     ...(options.apiKey === undefined
       ? {}
       : { MYANLEX_API_KEY: options.apiKey }),
+    ...(options.rateLimitMaxRequests === undefined
+      ? {}
+      : { MYANLEX_RATE_LIMIT_MAX: options.rateLimitMaxRequests }),
+    ...(options.rateLimitWindowMs === undefined
+      ? {}
+      : { MYANLEX_RATE_LIMIT_WINDOW_MS: options.rateLimitWindowMs }),
     ...(options.serviceVersion === undefined
       ? {}
       : { MYANLEX_VERSION: options.serviceVersion }),
@@ -79,8 +99,26 @@ export class RuntimeConfigModule {
           useFactory: (config: ConfigService): string =>
             config.getOrThrow<string>('MYANLEX_VERSION'),
         },
+        {
+          provide: RATE_LIMIT_MAX_REQUESTS,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): number =>
+            config.getOrThrow<number>('MYANLEX_RATE_LIMIT_MAX'),
+        },
+        {
+          provide: RATE_LIMIT_WINDOW_MS,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): number =>
+            config.getOrThrow<number>('MYANLEX_RATE_LIMIT_WINDOW_MS'),
+        },
       ],
-      exports: [API_KEY, HTTP_PORT, SERVICE_VERSION],
+      exports: [
+        API_KEY,
+        HTTP_PORT,
+        RATE_LIMIT_MAX_REQUESTS,
+        RATE_LIMIT_WINDOW_MS,
+        SERVICE_VERSION,
+      ],
     };
   }
 }

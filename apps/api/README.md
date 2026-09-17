@@ -15,6 +15,7 @@ src/
     application/               Framework-independent use-case provider
     auth/                      Shared authentication policy
     errors/                    Shared HTTP error mapping
+    rate-limit/                API-key request allowance
     runtime/                   Runtime configuration providers
     validation/                Shared request-validation primitives
   modules/
@@ -43,9 +44,20 @@ pnpm --filter @myanlex/application build
 pnpm --filter @myanlex/api start:dev
 ```
 
-`apps/api/.env` supports `MYANLEX_API_KEY`, `PORT`, and `MYANLEX_VERSION`.
-Values supplied by the shell or deployment environment take precedence over the
-file. The real `.env` file is ignored by Git; only `.env.example` is committed.
+`apps/api/.env` supports `MYANLEX_API_KEY`, `PORT`, `MYANLEX_VERSION`,
+`MYANLEX_RATE_LIMIT_MAX`, and `MYANLEX_RATE_LIMIT_WINDOW_MS`. Values supplied by
+the shell or deployment environment take precedence over the file. The real
+`.env` file is ignored by Git; only `.env.example` is committed.
+
+Authenticated routes default to 60 requests per 60-second fixed window for each
+API key. Health checks are excluded. The limiter is intentionally in-memory for
+the current single-instance phase; a horizontally scaled deployment requires a
+shared storage implementation before it can enforce a global allowance.
+
+Batch syllabification and transliteration preserve request order and isolate
+text-validation failures to individual items. A batch accepts at most 1,000
+items and 1,000,000 UTF-8 bytes of combined text. Fastify rejects HTTP bodies
+larger than 1 MiB.
 
 Nest CLI generators can be run from this directory. For example:
 

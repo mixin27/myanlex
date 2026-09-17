@@ -18,6 +18,10 @@ import type {
 } from '@myanlex/types';
 
 import type {
+  BatchItemResult,
+  BatchResult,
+  BatchSyllabifyRequest,
+  BatchTransliterateRequest,
   ConvertTextRequest,
   MyanLexApplication,
   SyllabificationResult,
@@ -25,31 +29,46 @@ import type {
   TransliterateTextRequest,
 } from './contracts.js';
 import {
+  ApplicationInputError,
+  assertValidBatchInput,
   assertValidTextInput,
+  DEFAULT_MAX_BATCH_ITEMS,
+  DEFAULT_MAX_BATCH_UTF8_BYTES,
   DEFAULT_MAX_TEXT_CODE_POINTS,
 } from './input-validation.js';
 
 export interface MyanLexApplicationOptions {
+  readonly maximumBatchItems?: number;
+  readonly maximumBatchUtf8Bytes?: number;
   readonly maximumTextCodePoints?: number;
 }
 
 export class DefaultMyanLexApplication implements MyanLexApplication {
+  readonly #maximumBatchItems: number;
+  readonly #maximumBatchUtf8Bytes: number;
   readonly #maximumTextCodePoints: number;
 
   constructor(options: MyanLexApplicationOptions = {}) {
     const maximumTextCodePoints =
       options.maximumTextCodePoints ?? DEFAULT_MAX_TEXT_CODE_POINTS;
+    const maximumBatchItems =
+      options.maximumBatchItems ?? DEFAULT_MAX_BATCH_ITEMS;
+    const maximumBatchUtf8Bytes =
+      options.maximumBatchUtf8Bytes ?? DEFAULT_MAX_BATCH_UTF8_BYTES;
 
-    if (
-      !Number.isSafeInteger(maximumTextCodePoints) ||
-      maximumTextCodePoints < 0
-    ) {
-      throw new RangeError(
-        'maximumTextCodePoints must be a non-negative safe integer.',
-      );
-    }
+    this.#assertNonNegativeSafeInteger(
+      maximumTextCodePoints,
+      'maximumTextCodePoints',
+    );
+    this.#assertNonNegativeSafeInteger(maximumBatchItems, 'maximumBatchItems');
+    this.#assertNonNegativeSafeInteger(
+      maximumBatchUtf8Bytes,
+      'maximumBatchUtf8Bytes',
+    );
 
     this.#maximumTextCodePoints = maximumTextCodePoints;
+    this.#maximumBatchItems = maximumBatchItems;
+    this.#maximumBatchUtf8Bytes = maximumBatchUtf8Bytes;
   }
 
   detectText({ text }: TextRequest): MyanmarEncodingDetectionResult {
@@ -100,8 +119,64 @@ export class DefaultMyanLexApplication implements MyanLexApplication {
     return tokenizeText(text);
   }
 
+  batchSyllabify({
+    items,
+  }: BatchSyllabifyRequest): BatchResult<SyllabificationResult> {
+    this.#assertBatch(items);
+    return {
+      results: items.map(({ id, text }) =>
+        this.#executeBatchItem(id, () => this.syllabifyText({ text })),
+      ),
+    };
+  }
+
+  batchTransliterate({
+    items,
+    scheme,
+  }: BatchTransliterateRequest): BatchResult<MyanmarTransliterationResult> {
+    this.#assertBatch(items);
+    return {
+      results: items.map(({ id, text }) =>
+        this.#executeBatchItem(id, () =>
+          this.transliterateText({ text, scheme }),
+        ),
+      ),
+    };
+  }
+
   #assertText(text: string): void {
     assertValidTextInput(text, this.#maximumTextCodePoints);
+  }
+
+  #assertBatch(items: BatchSyllabifyRequest['items']): void {
+    assertValidBatchInput(
+      items,
+      this.#maximumBatchItems,
+      this.#maximumBatchUtf8Bytes,
+    );
+  }
+
+  #assertNonNegativeSafeInteger(value: number, name: string): void {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new RangeError(`${name} must be a non-negative safe integer.`);
+    }
+  }
+
+  #executeBatchItem<Result>(
+    id: string,
+    operation: () => Result,
+  ): BatchItemResult<Result> {
+    try {
+      return { id, success: true, result: operation() };
+    } catch (error) {
+      if (!(error instanceof ApplicationInputError)) throw error;
+
+      return {
+        id,
+        success: false,
+        error: { code: error.code, message: error.message },
+      };
+    }
   }
 }
 

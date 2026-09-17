@@ -61,9 +61,20 @@ they are introduced.
 
 Runtime configuration is resolved inside the API's `RuntimeConfigModule`. Local
 development may use `apps/api/.env`; deployment environment variables take
-precedence. The API key, HTTP port, and service version are validated at startup
-and exposed to the rest of the application through explicit injection tokens
-rather than direct `process.env` access.
+precedence. The API key, HTTP port, service version, and rate-limit policy are
+validated at startup and exposed to the rest of the application through explicit
+injection tokens rather than direct `process.env` access.
+
+Batch-wide limits are enforced by `@myanlex/application`, so non-HTTP consumers
+receive the same protection. Individual text-validation failures are returned in
+order without hiding unexpected internal errors. The HTTP adapter also caps the
+parsed body at 1 MiB.
+
+Rate limiting currently uses one fixed-window, in-memory bucket per hashed API
+key and excludes public health checks. This is deliberately a single-instance
+implementation. Before horizontal scaling, the storage must become shared so the
+advertised allowance remains global. Initial benchmarks meet the documented
+targets without caching, so Redis is not part of the current architecture.
 
 ## Delivery order
 
