@@ -7,20 +7,18 @@ import {
 import { AppModule } from './app.module.js';
 
 export interface CreateApiApplicationOptions {
-  readonly apiKey: string;
+  readonly apiKey?: string;
   readonly logger?: false;
   readonly serviceVersion?: string;
 }
 
-export async function createApiApplication({
-  apiKey,
-  logger,
-  serviceVersion = '0.0.0',
-}: CreateApiApplicationOptions): Promise<NestFastifyApplication> {
+export async function createApiApplication(
+  options: CreateApiApplicationOptions = {},
+): Promise<NestFastifyApplication> {
   const application = await NestFactory.create<NestFastifyApplication>(
-    AppModule.register({ apiKey, serviceVersion }),
+    AppModule.register(options),
     new FastifyAdapter(),
-    logger === false ? { logger: false } : {},
+    options.logger === false ? { logger: false } : {},
   );
 
   application.setGlobalPrefix('v1');

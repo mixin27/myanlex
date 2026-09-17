@@ -32,15 +32,20 @@ represented in the OpenAPI contract and end-to-end tests.
 
 ## Development
 
-Build the framework-independent workspace packages before starting the API in
-watch mode:
+Create the local environment file, then build the framework-independent
+workspace packages before starting the API in watch mode:
 
 ```sh
+cp apps/api/.env.example apps/api/.env
 pnpm --filter @myanlex/types build
 pnpm --filter @myanlex/core build
 pnpm --filter @myanlex/application build
 pnpm --filter @myanlex/api start:dev
 ```
+
+`apps/api/.env` supports `MYANLEX_API_KEY`, `PORT`, and `MYANLEX_VERSION`.
+Values supplied by the shell or deployment environment take precedence over the
+file. The real `.env` file is ignored by Git; only `.env.example` is committed.
 
 Nest CLI generators can be run from this directory. For example:
 

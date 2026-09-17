@@ -13,13 +13,13 @@ import { TokenizeModule } from './modules/tokenize/tokenize.module.js';
 import { TransliterateModule } from './modules/transliterate/transliterate.module.js';
 
 export interface ApiModuleOptions {
-  readonly apiKey: string;
-  readonly serviceVersion: string;
+  readonly apiKey?: string;
+  readonly serviceVersion?: string;
 }
 
 @Module({})
 export class AppModule {
-  static register(options: ApiModuleOptions): DynamicModule {
+  static register(options: ApiModuleOptions = {}): DynamicModule {
     return {
       module: AppModule,
       imports: [

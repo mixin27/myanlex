@@ -97,12 +97,16 @@ implementation together.
 
 ## Local API
 
-Build and start the versioned HTTP API with a development-only bearer key:
+Create an app-local environment file, then build and start the versioned HTTP
+API:
 
 ```sh
+cp apps/api/.env.example apps/api/.env
 pnpm build
-MYANLEX_API_KEY=local-development-key pnpm --filter @myanlex/api start:prod
+pnpm --filter @myanlex/api start:prod
 ```
+
+Deployment environment variables override values loaded from the local file.
 
 The unauthenticated health endpoint is `GET http://localhost:3000/v1/health`.
 All language operations require `Authorization: Bearer <key>` and follow

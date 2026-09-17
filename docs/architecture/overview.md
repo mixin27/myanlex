@@ -59,6 +59,12 @@ that boundary to call `@myanlex/core` directly. External persistence, cache,
 queue, and telemetry adapters will live in `apps/api/src/infrastructure` when
 they are introduced.
 
+Runtime configuration is resolved inside the API's `RuntimeConfigModule`. Local
+development may use `apps/api/.env`; deployment environment variables take
+precedence. The API key, HTTP port, and service version are validated at startup
+and exposed to the rest of the application through explicit injection tokens
+rather than direct `process.env` access.
+
 ## Delivery order
 
 1. Linguistic specifications and corpus schemas.
