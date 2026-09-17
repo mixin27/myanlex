@@ -10,14 +10,17 @@ convenience.
 
 ## Status
 
-MyanLex is in early development. The current milestone establishes Unicode
+MyanLex is in early development. The current milestones establish Unicode
 code-point handling, deterministic character classification, safe Unicode
 normalization, Burmese orthographic syllabification, linguistic specifications,
 structural orthography validation, corpus formats, and the core package
 boundary. It also provides conservative standard Unicode and Zawgyi detection
 and explicit conversion in both directions, plus source-preserving ALA-LC 2011
 Myanmar-to-Latin transliteration and lossless Myanmar-aware tokenization with
-mixed-script reporting.
+mixed-script reporting. A framework-independent application-service boundary and
+linted OpenAPI 3.2.1 contract now expose those capabilities for future HTTP
+adapters. The first adapter is a NestJS 12 and Fastify 5 API with bearer-key
+authentication, strict request validation, and RFC 9457 problem responses.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
@@ -30,24 +33,29 @@ Do not use the API or package interfaces as stable production contracts yet.
 - Myanmar syllabification
 - Structural Burmese orthography validation
 - Myanmar-aware tokenization and Myanmar/Latin mixed-script reporting
+- Framework-independent application services with Unicode input limits
+- OpenAPI 3.2.1 contract for seven text-processing operations and health
+- NestJS/Fastify HTTP adapter with authentication and request validation
 
 Planned next:
 
-- Stable application-service and HTTP API contracts
+- Batch operations, rate limiting, and performance benchmarks
 
 ## Repository layout
 
 ```text
 packages/
   core/              Framework-independent language engine
+  application/       Framework-independent use cases and input policy
   types/             Shared public domain types
+apps/
+  api/               NestJS/Fastify HTTP adapter
 corpus/              Reviewed linguistic regression data
 docs/
   architecture/      System and package boundaries
   linguistic/        Authoritative linguistic specifications
   decisions/         Architecture decision records
-openapi/              Future HTTP API contract
-apps/                 Future deployable applications
+openapi/              Authoritative HTTP API contract
 ```
 
 Planning drafts are retained under `local/` for reference. They are not
@@ -85,6 +93,19 @@ pnpm format
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change. Changes to
 linguistic behavior must update the specification, corpus, tests, and
 implementation together.
+
+## Local API
+
+Build and start the versioned HTTP API with a development-only bearer key:
+
+```sh
+pnpm build
+MYANLEX_API_KEY=local-development-key pnpm --filter @myanlex/api start
+```
+
+The unauthenticated health endpoint is `GET http://localhost:3000/v1/health`.
+All language operations require `Authorization: Bearer <key>` and follow
+[`openapi/openapi.yaml`](openapi/openapi.yaml).
 
 ## License
 

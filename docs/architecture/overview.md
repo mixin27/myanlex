@@ -23,10 +23,32 @@ variables, or deployment concerns.
 - `@myanlex/core` contains Unicode handling and, as specifications mature,
   detection, normalization, conversion, syllabification, transliteration, and
   tokenization.
+- `@myanlex/application` defines framework-independent use cases, input limits,
+  and result envelopes. HTTP adapters depend on this package rather than calling
+  the core directly.
 
 Feature modules initially remain inside `@myanlex/core`. They should become
 independently published packages only when a concrete consumer or versioning
 requirement justifies that boundary.
+
+## Application and HTTP boundaries
+
+Application services accept well-formed Unicode strings of at most 100,000 code
+points per operation. They do not infer encodings, normalization profiles, or
+transliteration schemes. Every operation delegates to one documented core
+profile and preserves its result without transport-specific fields.
+
+The public HTTP contract is `openapi/openapi.yaml`. It uses OpenAPI 3.2.1,
+versioned `/v1` servers, JSON request bodies, RFC 9457-compatible problem
+responses, and bearer API-key authentication except for health checks. The
+contract is linted in the normal `pnpm check` path. Controllers and framework
+code belong in `apps/` and must implement this contract through
+`@myanlex/application`.
+
+`apps/api` is the first adapter. It uses NestJS 12 with the Fastify 5 platform,
+Zod request schemas, a bearer API-key guard, and a global RFC 9457
+problem-details filter. Its end-to-end tests call Fastify's in-memory injection
+API and cover every operation declared in the initial OpenAPI contract.
 
 ## Delivery order
 

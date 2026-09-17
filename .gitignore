@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-store/
 dist/
 coverage/
 local/
@@ -17,4 +18,3 @@ local/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
-
