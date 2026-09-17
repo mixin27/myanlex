@@ -13,6 +13,7 @@ incidental test fixture data.
 - `encoding/`
 - `normalization/`
 - `transliteration/`
+- `tokenization/`
 
 Each area defines its JSON schema before accepting data. Every dataset must
 include provenance, redistribution terms, transformation history, and review
@@ -44,6 +45,10 @@ case.
 Transliteration cases define the mechanical `ala-lc-2011-mapping-v1` profile.
 They are source-verified against the Library of Congress table and preserve
 input spacing rather than attempting lexical word division or capitalization.
+
+Tokenization cases define the lossless `myanmar-script-tokens-v1` profile. They
+exercise Burmese syllables, mixed-script runs, and Unicode 17 emoji data; they
+do not claim Burmese dictionary word segmentation.
 
 The repository's MIT License covers original project-authored corpus cases
 unless a dataset-specific notice says otherwise. Third-party data retains its

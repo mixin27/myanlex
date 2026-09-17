@@ -16,7 +16,8 @@ normalization, Burmese orthographic syllabification, linguistic specifications,
 structural orthography validation, corpus formats, and the core package
 boundary. It also provides conservative standard Unicode and Zawgyi detection
 and explicit conversion in both directions, plus source-preserving ALA-LC 2011
-Myanmar-to-Latin transliteration.
+Myanmar-to-Latin transliteration and lossless Myanmar-aware tokenization with
+mixed-script reporting.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
@@ -28,10 +29,11 @@ Do not use the API or package interfaces as stable production contracts yet.
 - Unicode normalization
 - Myanmar syllabification
 - Structural Burmese orthography validation
+- Myanmar-aware tokenization and Myanmar/Latin mixed-script reporting
 
 Planned next:
 
-- Tokenization and mixed-script detection
+- Stable application-service and HTTP API contracts
 
 ## Repository layout
 

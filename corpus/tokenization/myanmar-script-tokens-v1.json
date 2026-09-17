@@ -1,0 +1,387 @@
+{
+  "$schema": "../schema/tokenization.schema.json",
+  "schema_version": 1,
+  "unicode_version": "17.0.0",
+  "profile": "myanmar-script-tokens-v1",
+  "description": "Source-verified lossless Myanmar-aware tokenization cases.",
+  "license": "MIT",
+  "sources": [
+    "https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-16/",
+    "https://www.unicode.org/Public/17.0.0/ucd/emoji/emoji-data.txt",
+    "https://www.unicode.org/reports/tr51/"
+  ],
+  "derivation": "Cases were manually constructed from the MyanLex Burmese syllabification profile and Unicode 17 emoji properties. No natural-language corpus text was copied.",
+  "review_status": "source_verified",
+  "cases": [
+    {
+      "id": "empty-input",
+      "input": "",
+      "basis": "Empty input contains no tokens or strong scripts.",
+      "expected": { "tokens": [], "scripts": [], "mixedScript": false }
+    },
+    {
+      "id": "burmese-syllables-not-words",
+      "input": "မြန်မာစာ",
+      "basis": "Burmese output reuses orthographic syllables and does not claim dictionary word segmentation.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "burmese_syllable",
+            "text": "မြန်",
+            "script": "myanmar",
+            "start": 0,
+            "end": 4
+          },
+          {
+            "kind": "burmese_syllable",
+            "text": "မာ",
+            "script": "myanmar",
+            "start": 4,
+            "end": 6
+          },
+          {
+            "kind": "burmese_syllable",
+            "text": "စာ",
+            "script": "myanmar",
+            "start": 6,
+            "end": 8
+          }
+        ],
+        "scripts": ["myanmar"],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "mixed-myanmar-latin",
+      "input": "MyanLex မြန်မာ",
+      "basis": "ASCII Latin and Burmese are reported as two strong scripts in encounter order.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "latin_word",
+            "text": "MyanLex",
+            "script": "latin",
+            "start": 0,
+            "end": 7
+          },
+          {
+            "kind": "whitespace",
+            "text": " ",
+            "script": "common",
+            "start": 7,
+            "end": 8
+          },
+          {
+            "kind": "burmese_syllable",
+            "text": "မြန်",
+            "script": "myanmar",
+            "start": 8,
+            "end": 12
+          },
+          {
+            "kind": "burmese_syllable",
+            "text": "မာ",
+            "script": "myanmar",
+            "start": 12,
+            "end": 14
+          }
+        ],
+        "scripts": ["latin", "myanmar"],
+        "mixedScript": true
+      }
+    },
+    {
+      "id": "numbers-do-not-cross-scripts",
+      "input": "123၁၂",
+      "basis": "Number runs are maximal within one script classification.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "number",
+            "text": "123",
+            "script": "common",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "kind": "number",
+            "text": "၁၂",
+            "script": "myanmar",
+            "start": 3,
+            "end": 5
+          }
+        ],
+        "scripts": ["myanmar"],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "punctuation-and-whitespace-runs",
+      "input": "Hi!?  \nက၊။",
+      "basis": "Compatible punctuation and whitespace runs coalesce without crossing script boundaries.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "latin_word",
+            "text": "Hi",
+            "script": "latin",
+            "start": 0,
+            "end": 2
+          },
+          {
+            "kind": "punctuation",
+            "text": "!?",
+            "script": "common",
+            "start": 2,
+            "end": 4
+          },
+          {
+            "kind": "whitespace",
+            "text": "  \n",
+            "script": "common",
+            "start": 4,
+            "end": 7
+          },
+          {
+            "kind": "burmese_syllable",
+            "text": "က",
+            "script": "myanmar",
+            "start": 7,
+            "end": 8
+          },
+          {
+            "kind": "punctuation",
+            "text": "၊။",
+            "script": "myanmar",
+            "start": 8,
+            "end": 10
+          }
+        ],
+        "scripts": ["latin", "myanmar"],
+        "mixedScript": true
+      }
+    },
+    {
+      "id": "unsupported-myanmar-run",
+      "input": "ၵၶA",
+      "basis": "Unsupported Myanmar text remains explicit and still contributes the Myanmar script.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "unsupported_myanmar",
+            "text": "ၵၶ",
+            "script": "myanmar",
+            "start": 0,
+            "end": 2
+          },
+          {
+            "kind": "latin_word",
+            "text": "A",
+            "script": "latin",
+            "start": 2,
+            "end": 3
+          }
+        ],
+        "scripts": ["myanmar", "latin"],
+        "mixedScript": true
+      }
+    },
+    {
+      "id": "unknown-latin-extension",
+      "input": "café",
+      "basis": "V1 recognizes ASCII Latin only and preserves unsupported characters as unknown.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "latin_word",
+            "text": "caf",
+            "script": "latin",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "kind": "other",
+            "text": "é",
+            "script": "unknown",
+            "start": 3,
+            "end": 4
+          }
+        ],
+        "scripts": ["latin"],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "emoji-code-point-offsets",
+      "input": "A👋🏽က",
+      "basis": "An emoji modifier stays with its base and supplementary scalars count as one code point.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "latin_word",
+            "text": "A",
+            "script": "latin",
+            "start": 0,
+            "end": 1
+          },
+          {
+            "kind": "emoji",
+            "text": "👋🏽",
+            "script": "common",
+            "start": 1,
+            "end": 3
+          },
+          {
+            "kind": "burmese_syllable",
+            "text": "က",
+            "script": "myanmar",
+            "start": 3,
+            "end": 4
+          }
+        ],
+        "scripts": ["latin", "myanmar"],
+        "mixedScript": true
+      }
+    },
+    {
+      "id": "emoji-zwj-sequence",
+      "input": "👩‍💻",
+      "basis": "Extended pictographs joined by U+200D form one emoji token.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "emoji",
+            "text": "👩‍💻",
+            "script": "common",
+            "start": 0,
+            "end": 3
+          }
+        ],
+        "scripts": [],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "emoji-variation-selector",
+      "input": "❤️",
+      "basis": "An emoji variation selector stays with its extended-pictographic base.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "emoji",
+            "text": "❤️",
+            "script": "common",
+            "start": 0,
+            "end": 2
+          }
+        ],
+        "scripts": [],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "emoji-tag-sequence",
+      "input": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+      "basis": "Emoji tag characters and the cancel tag stay with their pictographic base.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "emoji",
+            "text": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+            "script": "common",
+            "start": 0,
+            "end": 7
+          }
+        ],
+        "scripts": [],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "standalone-emoji-modifier",
+      "input": "🏽",
+      "basis": "An isolated Unicode emoji modifier remains an emoji token rather than unknown text.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "emoji",
+            "text": "🏽",
+            "script": "common",
+            "start": 0,
+            "end": 1
+          }
+        ],
+        "scripts": [],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "regional-indicator-flag",
+      "input": "🇲🇲",
+      "basis": "A pair of regional indicators forms one flag token.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "emoji",
+            "text": "🇲🇲",
+            "script": "common",
+            "start": 0,
+            "end": 2
+          }
+        ],
+        "scripts": [],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "keycap-sequence",
+      "input": "1️⃣2",
+      "basis": "A keycap sequence is emoji while the following plain digit is a number.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "emoji",
+            "text": "1️⃣",
+            "script": "common",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "kind": "number",
+            "text": "2",
+            "script": "common",
+            "start": 3,
+            "end": 4
+          }
+        ],
+        "scripts": [],
+        "mixedScript": false
+      }
+    },
+    {
+      "id": "adjacent-emoji-stay-distinct",
+      "input": "😀👋",
+      "basis": "Distinct emoji units are not merged into a run.",
+      "expected": {
+        "tokens": [
+          {
+            "kind": "emoji",
+            "text": "😀",
+            "script": "common",
+            "start": 0,
+            "end": 1
+          },
+          {
+            "kind": "emoji",
+            "text": "👋",
+            "script": "common",
+            "start": 1,
+            "end": 2
+          }
+        ],
+        "scripts": [],
+        "mixedScript": false
+      }
+    }
+  ]
+}

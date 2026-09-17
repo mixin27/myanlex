@@ -46,6 +46,11 @@ export {
   transliterateMyanmar,
 } from './transliteration/transliterate-myanmar.js';
 
+export {
+  TEXT_TOKENIZATION_PROFILE,
+  tokenizeText,
+} from './tokenization/tokenize-text.js';
+
 export type {
   BurmeseOrthographyDiagnostic,
   BurmeseOrthographyDiagnosticCode,
@@ -54,6 +59,7 @@ export type {
   BurmeseSyllableSegmentKind,
   CharacterClass,
   CodePointOffset,
+  DetectedTextScript,
   KinziToken,
   MyanmarEncoding,
   MyanmarConversionEncoding,
@@ -72,4 +78,8 @@ export type {
   ScalarToken,
   StackToken,
   TextSpan,
+  TextToken,
+  TextTokenizationResult,
+  TextTokenKind,
+  TextTokenScript,
 } from '@myanlex/types';

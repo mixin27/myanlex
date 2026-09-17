@@ -20,6 +20,8 @@ Current specifications:
   `cldr-zawgyi-v1`.
 - [Myanmar-to-Latin transliteration](transliteration.md), ALA-LC 2011 mapping
   profile `ala-lc-2011-mapping-v1`.
+- [Myanmar-aware text tokenization](tokenization.md), lossless profile
+  `myanmar-script-tokens-v1` with scoped mixed-script reporting.
 
 ## First specification milestone
 

@@ -142,3 +142,32 @@ export interface MyanmarTransliterationResult {
   readonly complete: boolean;
   readonly segments: readonly MyanmarTransliterationSegment[];
 }
+
+export type TextTokenKind =
+  | 'burmese_syllable'
+  | 'latin_word'
+  | 'number'
+  | 'punctuation'
+  | 'whitespace'
+  | 'emoji'
+  | 'unsupported_myanmar'
+  | 'other';
+
+export type TextTokenScript = 'myanmar' | 'latin' | 'common' | 'unknown';
+
+/** A lossless lexical/script token with Unicode code-point offsets. */
+export interface TextToken extends TextSpan {
+  readonly kind: TextTokenKind;
+  readonly text: string;
+  readonly script: TextTokenScript;
+}
+
+export type DetectedTextScript = 'myanmar' | 'latin';
+
+export interface TextTokenizationResult {
+  readonly input: string;
+  readonly profile: 'myanmar-script-tokens-v1';
+  readonly tokens: readonly TextToken[];
+  readonly scripts: readonly DetectedTextScript[];
+  readonly mixedScript: boolean;
+}
