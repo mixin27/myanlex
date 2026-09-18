@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../apps/api/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String               @id @default(uuid()) @db.Uuid
+  email           String               @unique @db.VarChar(320)
+  passwordHash    String?              @map("password_hash")
+  name            String               @db.VarChar(120)
+  emailVerifiedAt DateTime?            @map("email_verified_at") @db.Timestamptz(3)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  memberships     OrganizationMember[]
+
+  @@map("users")
+}
+
+model Organization {
+  id            String               @id @default(uuid()) @db.Uuid
+  name          String               @db.VarChar(120)
+  slug          String               @unique @db.VarChar(80)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  members       OrganizationMember[]
+  roles         Role[]
+  projects      Project[]
+  subscriptions Subscription[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  roleId         String       @map("role_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           Role         @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([organizationId, userId])
+  @@index([userId])
+  @@index([roleId, organizationId])
+  @@map("organization_members")
+}
+
+model Role {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  name           String               @db.VarChar(80)
+  slug           String               @db.VarChar(80)
+  description    String?
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        OrganizationMember[]
+  permissions    RolePermission[]
+
+  @@unique([organizationId, slug])
+  @@unique([id, organizationId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  key         String           @unique @db.VarChar(120)
+  description String
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  roles       RolePermission[]
+  apiKeys     ApiKeyScope[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Project {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(120)
+  slug           String       @db.VarChar(80)
+  environment    String       @default("development") @db.VarChar(40)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  apiKeys        ApiKey[]
+  usage          ApiUsage[]
+  dailyUsage     DailyUsage[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("projects")
+}
+
+model ApiKey {
+  id         String        @id @default(uuid()) @db.Uuid
+  projectId  String        @map("project_id") @db.Uuid
+  name       String        @db.VarChar(120)
+  prefix     String        @db.VarChar(24)
+  keyHash    String        @unique @map("key_hash") @db.Char(64)
+  lastUsedAt DateTime?     @map("last_used_at") @db.Timestamptz(3)
+  expiresAt  DateTime?     @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime?     @map("revoked_at") @db.Timestamptz(3)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  project    Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scopes     ApiKeyScope[]
+  usage      ApiUsage[]
+
+  @@index([projectId])
+  @@index([prefix])
+  @@map("api_keys")
+}
+
+model ApiKeyScope {
+  apiKeyId     String     @map("api_key_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  apiKey       ApiKey     @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@id([apiKeyId, permissionId])
+  @@index([permissionId])
+  @@map("api_key_scopes")
+}
+
+model ApiUsage {
+  id                  BigInt   @id @default(autoincrement())
+  projectId           String   @map("project_id") @db.Uuid
+  apiKeyId            String   @map("api_key_id") @db.Uuid
+  endpoint            String   @db.VarChar(160)
+  statusCode          Int      @map("status_code") @db.SmallInt
+  requestUnits        Int      @default(1) @map("request_units")
+  charactersProcessed Int      @default(0) @map("characters_processed")
+  processingTimeMs    Int      @map("processing_time_ms")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apiKey              ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@map("api_usage")
+}
+
+model DailyUsage {
+  projectId           String   @map("project_id") @db.Uuid
+  date                DateTime @db.Date
+  requestCount        BigInt   @default(0) @map("request_count")
+  errorCount          BigInt   @default(0) @map("error_count")
+  charactersProcessed BigInt   @default(0) @map("characters_processed")
+  computeUnits        BigInt   @default(0) @map("compute_units")
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, date])
+  @@map("daily_usage")
+}
+
+model Plan {
+  id                    String         @id @default(uuid()) @db.Uuid
+  name                  String         @db.VarChar(80)
+  slug                  String         @unique @db.VarChar(80)
+  monthlyRequestLimit   BigInt?        @map("monthly_request_limit")
+  monthlyCharacterLimit BigInt?        @map("monthly_character_limit")
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  subscriptions         Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  planId         String       @map("plan_id") @db.Uuid
+  status         String       @db.VarChar(40)
+  startsAt       DateTime     @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime?    @map("ends_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan           Plan         @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@index([planId])
+  @@map("subscriptions")
+}

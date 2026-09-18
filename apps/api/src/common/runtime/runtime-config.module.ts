@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import {
   API_KEY,
+  DATABASE_URL,
   HTTP_PORT,
   RATE_LIMIT_MAX_REQUESTS,
   RATE_LIMIT_WINDOW_MS,
@@ -15,6 +16,7 @@ import {
 
 export interface RuntimeConfigOptions {
   readonly apiKey?: string;
+  readonly databaseUrl?: string;
   readonly rateLimitMaxRequests?: number;
   readonly rateLimitWindowMs?: number;
   readonly serviceVersion?: string;
@@ -24,17 +26,39 @@ const environmentFile = fileURLToPath(
   new URL('../../../.env', import.meta.url),
 );
 
-const runtimeEnvironmentSchema = z.object({
-  MYANLEX_API_KEY: z.string().trim().min(1),
-  MYANLEX_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
-  MYANLEX_RATE_LIMIT_WINDOW_MS: z.coerce
-    .number()
-    .int()
-    .min(1_000)
-    .default(60_000),
-  MYANLEX_VERSION: z.string().trim().min(1).default('0.0.0'),
-  PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
-});
+const runtimeEnvironmentSchema = z
+  .object({
+    DATABASE_URL: z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          value.startsWith('postgresql://') || value.startsWith('postgres://'),
+        'DATABASE_URL must be a PostgreSQL connection URL.',
+      )
+      .optional(),
+    MYANLEX_API_KEY: z.string().trim().min(1).optional(),
+    MYANLEX_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
+    MYANLEX_RATE_LIMIT_WINDOW_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .default(60_000),
+    MYANLEX_VERSION: z.string().trim().min(1).default('0.0.0'),
+    PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  })
+  .superRefine((environment, context) => {
+    if (
+      environment.DATABASE_URL === undefined &&
+      environment.MYANLEX_API_KEY === undefined
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Either DATABASE_URL or MYANLEX_API_KEY must be configured.',
+        path: ['DATABASE_URL'],
+      });
+    }
+  });
 
 type RuntimeEnvironment = z.infer<typeof runtimeEnvironmentSchema>;
 
@@ -44,6 +68,9 @@ function validateEnvironment(
 ): Record<string, unknown> & RuntimeEnvironment {
   const result = runtimeEnvironmentSchema.safeParse({
     ...environment,
+    ...(options.databaseUrl === undefined
+      ? {}
+      : { DATABASE_URL: options.databaseUrl }),
     ...(options.apiKey === undefined
       ? {}
       : { MYANLEX_API_KEY: options.apiKey }),
@@ -84,8 +111,14 @@ export class RuntimeConfigModule {
         {
           provide: API_KEY,
           inject: [ConfigService],
-          useFactory: (config: ConfigService): string =>
-            config.getOrThrow<string>('MYANLEX_API_KEY'),
+          useFactory: (config: ConfigService): string | undefined =>
+            config.get<string>('MYANLEX_API_KEY'),
+        },
+        {
+          provide: DATABASE_URL,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): string | undefined =>
+            config.get<string>('DATABASE_URL'),
         },
         {
           provide: HTTP_PORT,
@@ -114,6 +147,7 @@ export class RuntimeConfigModule {
       ],
       exports: [
         API_KEY,
+        DATABASE_URL,
         HTTP_PORT,
         RATE_LIMIT_MAX_REQUESTS,
         RATE_LIMIT_WINDOW_MS,

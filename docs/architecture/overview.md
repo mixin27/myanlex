@@ -76,6 +76,20 @@ implementation. Before horizontal scaling, the storage must become shared so the
 advertised allowance remains global. Initial benchmarks meet the documented
 targets without caching, so Redis is not part of the current architecture.
 
+The developer-platform boundary uses PostgreSQL through Prisma adapters in
+`apps/api/src/infrastructure`. Platform persistence contains users,
+organizations, projects, API keys, usage, plans, subscriptions, roles, and
+permissions; it never contains linguistic rules or submitted text. Roles are
+organization-owned records and authorization is resolved through
+`role_permissions`, not an enum or hard-coded role-name switch. API keys may be
+scoped to permission records, and language operations require `api.invoke`.
+
+The checked-in OpenAPI document remains the single HTTP contract. The Nest
+adapter serves it as JSON and YAML and renders it through Swagger UI and Scalar.
+The Next.js developer portal is a separate application and uses App Router route
+groups for its account and portal shells. Control-plane account authentication
+is intentionally not inferred from NLP API keys.
+
 ## Delivery order
 
 1. Linguistic specifications and corpus schemas.
@@ -83,4 +97,5 @@ targets without caching, so Redis is not part of the current architecture.
 3. Safe normalization and syllabification.
 4. Additional language-engine capabilities.
 5. Stable OpenAPI contract and HTTP API.
-6. SDKs and developer platform.
+6. Developer platform and interactive API documentation.
+7. SDKs and production hardening.

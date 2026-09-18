@@ -5,9 +5,11 @@ import {
 } from '@nestjs/platform-fastify';
 
 import { AppModule } from './app.module.js';
+import { configureApiDocumentation } from './common/docs/api-documentation.js';
 
 export interface CreateApiApplicationOptions {
   readonly apiKey?: string;
+  readonly databaseUrl?: string;
   readonly logger?: false;
   readonly rateLimitMaxRequests?: number;
   readonly rateLimitWindowMs?: number;
@@ -24,6 +26,7 @@ export async function createApiApplication(
   );
 
   application.setGlobalPrefix('v1');
+  configureApiDocumentation(application);
   application.enableShutdownHooks();
   await application.init();
   await application.getHttpAdapter().getInstance().ready();

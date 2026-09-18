@@ -29,6 +29,7 @@ interface ProblemDetails {
 function titleForStatus(status: number): string {
   if (status === HttpStatus.BAD_REQUEST) return 'Bad Request';
   if (status === HttpStatus.UNAUTHORIZED) return 'Unauthorized';
+  if (status === HttpStatus.FORBIDDEN) return 'Forbidden';
   if (status === HttpStatus.PAYLOAD_TOO_LARGE) return 'Payload Too Large';
   if (status === HttpStatus.NOT_FOUND) return 'Not Found';
   if (status === HttpStatus.TOO_MANY_REQUESTS) return 'Too Many Requests';
@@ -85,11 +86,13 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       code =
         status === HttpStatus.UNAUTHORIZED
           ? 'unauthorized'
-          : status === HttpStatus.NOT_FOUND
-            ? 'not_found'
-            : status === HttpStatus.PAYLOAD_TOO_LARGE
-              ? 'payload_too_large'
-              : 'invalid_request';
+          : status === HttpStatus.FORBIDDEN
+            ? 'forbidden'
+            : status === HttpStatus.NOT_FOUND
+              ? 'not_found'
+              : status === HttpStatus.PAYLOAD_TOO_LARGE
+                ? 'payload_too_large'
+                : 'invalid_request';
       detail = exception.message;
     } else {
       const transportStatus = getTransportStatus(exception);

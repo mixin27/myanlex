@@ -21,7 +21,10 @@ mixed-script reporting. A framework-independent application-service boundary and
 linted OpenAPI 3.2.1 contract now expose those capabilities for future HTTP
 adapters. The first adapter is a NestJS 12 and Fastify 5 API with bearer-key
 authentication, rate limiting, strict request validation, batch processing, and
-RFC 9457 problem responses.
+RFC 9457 problem responses. The developer-platform foundation now adds a
+PostgreSQL/Prisma schema, dynamic roles and permissions, hashed project API
+keys, privacy-safe usage records, Swagger and Scalar documentation, and a
+Next.js developer portal shell.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
@@ -40,10 +43,15 @@ Do not use the API or package interfaces as stable production contracts yet.
 - NestJS/Fastify HTTP adapter with authentication, rate limiting, and request
   validation
 - Repeatable application and in-memory HTTP performance benchmarks
+- Dynamic database-backed RBAC and scoped project API-key foundations
+- Swagger UI and Scalar over the authoritative OpenAPI contract
+- Next.js portal routes for login, dashboard, projects, keys, usage, docs, and
+  account
 
 Planned next:
 
-- Developer projects, API keys, and usage tracking
+- Account authentication and connected control-plane workflows
+- TypeScript and Dart SDKs
 
 ## Repository layout
 
@@ -54,6 +62,8 @@ packages/
   types/             Shared public domain types
 apps/
   api/               NestJS/Fastify HTTP adapter
+  web/               Next.js developer portal
+prisma/              Platform schema, migrations, and seed data
 corpus/              Reviewed linguistic regression data
 docs/
   architecture/      System and package boundaries
@@ -95,6 +105,9 @@ pnpm typecheck
 pnpm lint
 pnpm format
 pnpm benchmark
+pnpm db:generate
+pnpm db:deploy
+pnpm db:seed
 ```
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change. Changes to
@@ -117,6 +130,9 @@ Deployment environment variables override values loaded from the local file.
 The unauthenticated health endpoint is `GET http://localhost:3000/v1/health`.
 All language operations require `Authorization: Bearer <key>` and follow
 [`openapi/openapi.yaml`](openapi/openapi.yaml).
+
+Interactive API documentation is served by the Nest application at
+`http://localhost:3000/docs` (Scalar) and `http://localhost:3000/swagger`.
 
 ## License
 

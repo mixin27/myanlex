@@ -14,6 +14,7 @@ import {
   Post,
 } from '@nestjs/common';
 
+import { RequirePermissions } from '../../common/auth/require-permissions.decorator.js';
 import { ZodBodyPipe } from '../../common/validation/zod-body.pipe.js';
 import { BatchService } from './batch.service.js';
 import {
@@ -22,6 +23,7 @@ import {
 } from './dto/batch-request.schema.js';
 
 @Controller('batch')
+@RequirePermissions('api.invoke')
 export class BatchController {
   constructor(
     @Inject(BatchService) private readonly batchService: BatchService,

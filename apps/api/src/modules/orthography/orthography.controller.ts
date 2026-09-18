@@ -9,11 +9,13 @@ import {
   Post,
 } from '@nestjs/common';
 
+import { RequirePermissions } from '../../common/auth/require-permissions.decorator.js';
 import { textRequestSchema } from '../../common/validation/text-request.schema.js';
 import { ZodBodyPipe } from '../../common/validation/zod-body.pipe.js';
 import { OrthographyService } from './orthography.service.js';
 
 @Controller('orthography')
+@RequirePermissions('api.invoke')
 export class OrthographyController {
   constructor(
     @Inject(OrthographyService)

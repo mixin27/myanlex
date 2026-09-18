@@ -6,6 +6,8 @@ import { AuthModule } from './common/auth/auth.module.js';
 import { ErrorsModule } from './common/errors/errors.module.js';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
 import { RuntimeConfigModule } from './common/runtime/runtime-config.module.js';
+import { UsageModule } from './common/usage/usage.module.js';
+import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { BatchModule } from './modules/batch/batch.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { OrthographyModule } from './modules/orthography/orthography.module.js';
@@ -16,6 +18,7 @@ import { TransliterateModule } from './modules/transliterate/transliterate.modul
 
 export interface ApiModuleOptions {
   readonly apiKey?: string;
+  readonly databaseUrl?: string;
   readonly rateLimitMaxRequests?: number;
   readonly rateLimitWindowMs?: number;
   readonly serviceVersion?: string;
@@ -28,9 +31,11 @@ export class AppModule {
       module: AppModule,
       imports: [
         RuntimeConfigModule.register(options),
+        DatabaseModule,
         ApplicationModule,
         AuthModule,
         RateLimitModule,
+        UsageModule,
         ErrorsModule,
         BatchModule,
         HealthModule,

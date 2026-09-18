@@ -5,10 +5,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { IS_PUBLIC_ROUTE } from '../auth/public.decorator.js';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.js';
 import { RateLimitExceededException } from './rate-limit-exceeded.exception.js';
 import { RateLimitService } from './rate-limit.service.js';
 
-interface RateLimitedRequest {
+interface RateLimitedRequest extends AuthenticatedRequest {
   readonly headers: { readonly authorization?: string };
   readonly ip: string;
 }
@@ -18,7 +19,10 @@ interface RateLimitedReply {
 }
 
 function trackerFor(request: RateLimitedRequest): string {
-  const identity = request.headers.authorization ?? request.ip;
+  const identity =
+    request.apiKeyPrincipal?.apiKeyId ??
+    request.headers.authorization ??
+    request.ip;
   return createHash('sha256').update(identity).digest('base64url');
 }
 

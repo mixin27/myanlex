@@ -1,0 +1,178 @@
+:root {
+  --ink: #15211c;
+  --muted: #65736b;
+  --surface: #ffffff;
+  --surface-soft: #f3f7f4;
+  --line: #d8e1db;
+  --accent: #176b4d;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), sans-serif;
+  min-height: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.portal-shell {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #10271f;
+  color: #eaf6ef;
+  padding: 1.5rem 1rem;
+}
+
+.brand {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  margin: 0 0.75rem 2rem;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.sidebar nav a {
+  border-radius: 0.55rem;
+  color: #bfd5c8;
+  padding: 0.7rem 0.75rem;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a:focus-visible {
+  background: #1c3a2f;
+  color: white;
+  outline: none;
+}
+
+.portal-content {
+  margin: 0 auto;
+  max-width: 76rem;
+  padding: 2.5rem;
+  width: 100%;
+}
+
+.page-heading {
+  margin-bottom: 1.75rem;
+}
+
+.page-heading h1 {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  letter-spacing: -0.04em;
+  margin-bottom: 0.45rem;
+}
+
+.page-heading p,
+.muted {
+  color: var(--muted);
+}
+
+.card-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.card,
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  padding: 1.25rem;
+}
+
+.card strong {
+  display: block;
+  font-size: 1.65rem;
+  margin-top: 0.5rem;
+}
+
+.panel {
+  margin-top: 1rem;
+}
+
+.panel h2 {
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+}
+
+.button {
+  background: var(--accent);
+  border: 0;
+  border-radius: 0.55rem;
+  color: white;
+  display: inline-block;
+  font-weight: 650;
+  padding: 0.7rem 1rem;
+}
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  padding: 1.5rem;
+  place-items: center;
+}
+
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  max-width: 28rem;
+  padding: 2rem;
+  width: 100%;
+}
+
+.auth-card label {
+  display: grid;
+  font-weight: 600;
+  gap: 0.4rem;
+  margin: 1rem 0;
+}
+
+.auth-card input {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .portal-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portal-content {
+    padding: 1.5rem;
+  }
+}

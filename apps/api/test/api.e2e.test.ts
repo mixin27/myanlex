@@ -32,6 +32,33 @@ describe('MyanLex HTTP API', () => {
     expect(response.json()).toEqual({ status: 'ok', version: 'test' });
   });
 
+  it('serves the authoritative OpenAPI contract as JSON and YAML', async () => {
+    const [jsonResponse, yamlResponse] = await Promise.all([
+      application.inject({ method: 'GET', url: '/openapi.json' }),
+      application.inject({ method: 'GET', url: '/openapi.yaml' }),
+    ]);
+
+    expect(jsonResponse.statusCode).toBe(200);
+    expect(jsonResponse.json()).toMatchObject({
+      openapi: '3.2.1',
+      info: { title: 'MyanLex API' },
+    });
+    expect(yamlResponse.statusCode).toBe(200);
+    expect(yamlResponse.body).toContain('openapi: 3.2.1');
+  });
+
+  it('serves Swagger and Scalar API documentation', async () => {
+    const [swaggerResponse, scalarResponse] = await Promise.all([
+      application.inject({ method: 'GET', url: '/swagger' }),
+      application.inject({ method: 'GET', url: '/docs' }),
+    ]);
+
+    expect(swaggerResponse.statusCode).toBe(200);
+    expect(swaggerResponse.body).toContain('Swagger UI');
+    expect(scalarResponse.statusCode).toBe(200);
+    expect(scalarResponse.body).toContain('MyanLex API Reference');
+  });
+
   it('requires a bearer API key for language operations', async () => {
     const response = await application.inject({
       method: 'POST',
