@@ -27,6 +27,22 @@ narrow client boundary. Account authentication and control-plane mutations are
 not implemented yet; API bearer keys are intentionally not used as portal
 sessions.
 
+## UI system
+
+The portal uses Tailwind CSS v4 and shadcn/ui's `base-nova` configuration.
+Component source is deliberately checked into `src/components/ui`, so it is
+reviewable and can be adapted to MyanLex rather than treated as a black-box
+dependency. `src/components/data-table.tsx` is the shared typed TanStack Table
+foundation; add only the table features that a screen needs.
+
+Add new primitives from this workspace with:
+
+```sh
+pnpm dlx shadcn@latest add <component> -c apps/web
+```
+
+The root layout already mounts Sonner and the tooltip provider.
+
 ## Development
 
 From the repository root:
