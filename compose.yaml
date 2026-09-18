@@ -19,7 +19,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - myanlex-postgres:/var/lib/postgresql/data
+      - myanlex-postgres:/var/lib/postgresql
 
 volumes:
   myanlex-postgres:
