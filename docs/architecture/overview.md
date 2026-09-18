@@ -87,8 +87,10 @@ scoped to permission records, and language operations require `api.invoke`.
 The checked-in OpenAPI document remains the single HTTP contract. The Nest
 adapter serves it as JSON and YAML and renders it through Swagger UI and Scalar.
 The Next.js developer portal is a separate application and uses App Router route
-groups for its account and portal shells. Control-plane account authentication
-is intentionally not inferred from NLP API keys.
+groups for its account and portal shells. Account authentication uses Better
+Auth in NestJS with Prisma persistence and a same-origin Next.js proxy. See ADR
+0007 and docs/authentication.md for the account protocol and deployment setup.
+Control-plane permissions remain separate from authentication and NLP API keys.
 
 ## Delivery order
 

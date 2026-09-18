@@ -1,23 +1,17 @@
-export default function LoginPage() {
-  return (
-    <main className="auth-shell">
-      <section className="auth-card" aria-labelledby="login-title">
-        <p className="muted">MyanLex developer portal</p>
-        <h1 id="login-title">Sign in</h1>
-        <p className="muted">
-          Account authentication will be connected before the portal accepts
-          real developer data.
-        </p>
-        <form>
-          <label>
-            Email
-            <input type="email" name="email" autoComplete="email" disabled />
-          </label>
-          <button className="button" type="submit" disabled>
-            Continue
-          </button>
-        </form>
-      </section>
-    </main>
-  );
+import { AuthForm } from '@/components/auth/auth-form';
+import { getAuthProviders } from '@/lib/auth-server';
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; verified?: string }>;
+}) {
+  const { error, verified } = await searchParams;
+  const notice = error
+    ? 'Sign-in or verification could not be completed. Please try again or sign in with your existing method before linking an account.'
+    : verified === 'true'
+      ? 'Your email is verified. You can now sign in.'
+      : '';
+  const configuration = await getAuthProviders();
+  return <AuthForm mode="login" notice={notice} {...configuration} />;
 }

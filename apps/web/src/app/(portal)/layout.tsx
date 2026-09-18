@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { requireSession } from '@/lib/auth-server';
 
 const navigation = [
   ['Dashboard', '/dashboard'],
@@ -10,7 +11,12 @@ const navigation = [
   ['Account', '/account'],
 ] as const;
 
-export default function PortalLayout({ children }: { children: ReactNode }) {
+export default async function PortalLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  await requireSession();
   return (
     <div className="portal-shell">
       <aside className="sidebar">

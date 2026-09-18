@@ -5,6 +5,7 @@ import {
 } from '@nestjs/platform-fastify';
 
 import { AppModule } from './app.module.js';
+import { configureAccountAuth } from './modules/account-auth/account-auth.routes.js';
 import { configureApiDocumentation } from './common/docs/api-documentation.js';
 
 export interface CreateApiApplicationOptions {
@@ -26,6 +27,7 @@ export async function createApiApplication(
   );
 
   application.setGlobalPrefix('v1');
+  configureAccountAuth(application);
   configureApiDocumentation(application);
   application.enableShutdownHooks();
   await application.init();

@@ -48,9 +48,12 @@ Do not use the API or package interfaces as stable production contracts yet.
 - Next.js portal routes for login, dashboard, projects, keys, usage, docs, and
   account
 
+- Self-hosted email/password sessions and optional Google/GitHub OAuth;
+  [setup and verification](docs/authentication.md)
+
 Planned next:
 
-- Account authentication and connected control-plane workflows
+- Connected project, API-key and organization management workflows
 - TypeScript and Dart SDKs
 
 ## Repository layout

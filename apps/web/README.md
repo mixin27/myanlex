@@ -23,9 +23,11 @@ src/app/
 ```
 
 Pages remain server components unless browser state or event handlers require a
-narrow client boundary. Account authentication and control-plane mutations are
-not implemented yet; API bearer keys are intentionally not used as portal
-sessions.
+narrow client boundary. Account authentication uses the NestJS Better Auth
+service through a same-origin proxy. Registration, verification, password reset,
+sign-in, logout and explicit Google/GitHub linking are available. Project and
+API-key mutations are not implemented yet. See
+[account setup](../../docs/authentication.md).
 
 ## UI system
 
