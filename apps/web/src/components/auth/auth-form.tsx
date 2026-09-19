@@ -48,6 +48,11 @@ export function AuthForm({
     try {
       if (mode === 'login') {
         const result = await authClient.signIn.email({ email, password });
+        if (result.error?.code === 'EMAIL_NOT_VERIFIED') {
+          throw new Error(
+            'Your email is not verified. Follow the verification link in your inbox, or use Resend verification below.',
+          );
+        }
         if (result.error)
           throw new Error(result.error.message ?? 'Unable to sign in.');
         router.replace('/dashboard');

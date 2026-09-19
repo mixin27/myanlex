@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import { memoryAdapter } from 'better-auth/adapters/memory';
 import type { MemoryDB } from 'better-auth/adapters/memory';
+import { verifyPassword } from 'better-auth/crypto';
 import { describe, expect, it } from 'vitest';
 import { createApiApplication } from '../src/create-api-application.js';
 import { AccountAuthService } from '../src/modules/account-auth/account-auth.service.js';
@@ -168,7 +169,19 @@ describe('self-hosted account authentication', () => {
       200,
     );
     expect(database.session).toHaveLength(0);
-    expect(database.account?.[0].password).not.toBe(identity.password);
+    const account = database.account?.[0];
+    expect(account?.providerId).toBe('credential');
+    expect(account?.password).toEqual(expect.any(String));
+    expect(
+      await verifyPassword({
+        hash: account!.password as string,
+        password: identity.password,
+      }),
+    ).toBe(true);
+    expect(database.user?.[0].passwordHash).toBeUndefined();
+    expect(database.user?.[0].emailVerified).toBe(false);
+    // Legacy timestamps must not bypass the email verification protocol.
+    database.user![0].emailVerifiedAt = new Date();
     expect(mail).toHaveLength(1);
     expect((await request('/api/auth/sign-in/email', identity)).status).toBe(
       403,

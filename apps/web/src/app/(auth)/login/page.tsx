@@ -1,11 +1,12 @@
 import { AuthForm } from '@/components/auth/auth-form';
-import { getAuthProviders } from '@/lib/auth-server';
+import { getAuthProviders, redirectAuthenticatedUser } from '@/lib/auth-server';
 
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string; verified?: string }>;
 }) {
+  await redirectAuthenticatedUser();
   const { error, verified } = await searchParams;
   const notice = error
     ? 'Sign-in or verification could not be completed. Please try again or sign in with your existing method before linking an account.'

@@ -10,8 +10,10 @@ datasource db {
 model User {
   id              String               @id @default(uuid()) @db.Uuid
   email           String               @unique @db.VarChar(320)
+  /// Legacy only. Better Auth credential hashes are stored in Account.password.
   passwordHash    String?              @map("password_hash")
   name            String               @db.VarChar(120)
+  /// Legacy only. Runtime verification uses emailVerified, not this timestamp.
   emailVerifiedAt DateTime?            @map("email_verified_at") @db.Timestamptz(3)
   createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)

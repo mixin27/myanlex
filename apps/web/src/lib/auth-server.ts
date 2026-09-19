@@ -1,14 +1,15 @@
 import 'server-only';
 
+import { getSessionCookie } from 'better-auth/cookies';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 
 const apiOrigin = process.env.API_INTERNAL_URL ?? 'http://localhost:3001';
 
-export const requireSession = cache(async () => {
+export const getSession = cache(async () => {
   const cookie = (await cookies()).toString();
-  if (!cookie) redirect('/login');
+  if (!getSessionCookie(new Headers({ cookie }))) return null;
   const response = await fetch(
     `${apiOrigin}/api/auth/get-session?disableRefresh=true`,
     {
@@ -22,9 +23,18 @@ export const requireSession = cache(async () => {
   const session = (await response.json()) as {
     user: { id: string; name: string; email: string; emailVerified: boolean };
   } | null;
-  if (!session?.user.emailVerified) redirect('/login');
-  return session;
+  return session?.user.emailVerified ? session : null;
 });
+
+export async function requireSession() {
+  const session = await getSession();
+  if (!session) redirect('/login');
+  return session;
+}
+
+export async function redirectAuthenticatedUser() {
+  if (await getSession()) redirect('/dashboard');
+}
 
 export async function getAuthProviders(): Promise<{
   enabled: boolean;

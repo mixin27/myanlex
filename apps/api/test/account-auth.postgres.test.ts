@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { PrismaPg } from '@prisma/adapter-pg';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { verifyPassword } from 'better-auth/crypto';
 import { describe, expect, it } from 'vitest';
 
 import { PrismaClient } from '../src/generated/prisma/client.js';
@@ -56,6 +57,27 @@ describe.skipIf(!databaseURL)('account persistence in PostgreSQL', () => {
         (await request('/api/auth/sign-up/email', credentials)).status,
       ).toBe(200);
       expect(mail).toHaveLength(1);
+      const account = await prisma.account.findFirstOrThrow({
+        where: { user: { email }, providerId: 'credential' },
+      });
+      expect(account.password).toEqual(expect.any(String));
+      expect(
+        await verifyPassword({
+          hash: account.password!,
+          password: credentials.password,
+        }),
+      ).toBe(true);
+      const user = await prisma.user.update({
+        where: { email },
+        data: { emailVerifiedAt: new Date() },
+      });
+      expect(user.passwordHash).toBeNull();
+      expect(user.emailVerified).toBe(false);
+      const unverified = await request('/api/auth/sign-in/email', credentials);
+      expect(unverified.status).toBe(403);
+      expect(await unverified.json()).toMatchObject({
+        code: 'EMAIL_NOT_VERIFIED',
+      });
       expect((await request(mail[0]!.match(/https?:\/\/\S+/)![0])).status).toBe(
         302,
       );

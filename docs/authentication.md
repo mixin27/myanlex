@@ -30,6 +30,36 @@ slash. Use HTTPS and a real SMTP service in production. Secrets stay
 server-side. AUTH_ENABLED=false keeps the language API usable without account
 authentication.
 
+## Password storage and email verification
+
+Better Auth stores password hashes in `accounts.password` for the account with
+`provider_id = 'credential'`. It does not populate `users.password_hash`.
+OAuth-only accounts do not need a password. Never copy hashes between these
+columns or store a plaintext password.
+
+The active verification field is `users.email_verified` (Prisma
+`User.emailVerified`). `users.email_verified_at` and `users.password_hash` are
+legacy fields retained for migration compatibility, not runtime auth fields. The
+initial auth migration copied existing verification timestamps once; editing a
+timestamp afterward does not verify an account.
+
+If login reports `Email is not verified`, use **Resend verification** on the
+login page and follow the emailed link. Locally, open Mailpit at
+http://localhost:8025 after starting `docker compose --profile auth up -d`. Do
+not bypass verification by manually editing database fields.
+
+## Portal redirects
+
+`apps/web/src/proxy.ts` performs a lightweight session-cookie presence check on
+portal routes and redirects signed-out visitors to `/login`. Auth endpoints,
+verification/reset pages, OAuth callbacks and static assets are excluded. Cookie
+presence is not proof of authentication: the server session helper still
+validates the session against NestJS before protected rendering/data access.
+Login and registration redirect verified, authenticated users to `/dashboard`
+only after server validation, avoiding redirect loops caused by stale cookies.
+Future protected data access and mutations must check sessions and permissions
+independently of Proxy.
+
 ## OAuth providers
 
 Create a Google OAuth web client and/or GitHub OAuth App, then set the matching
