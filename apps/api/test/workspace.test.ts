@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { createHash, randomUUID } from 'node:crypto';
 import { ApiKeysService } from '../src/modules/platform/api-keys.service.js';
+import { UsageReportService } from '../src/modules/platform/usage-report.service.js';
 import {
   beforeAll,
   afterAll,
@@ -32,6 +33,7 @@ const project = {
 };
 const origin = 'http://localhost:3000';
 const repository: WorkspaceRepository = {
+  readUsageDays: vi.fn(),
   findProject: vi.fn(),
   listApiKeys: vi.fn(),
   createApiKey: vi.fn(),
@@ -71,6 +73,9 @@ describe('session-protected workspace HTTP contract', () => {
       value: repository,
     });
     Object.defineProperty(app.get(ApiKeysService), 'repository', {
+      value: repository,
+    });
+    Object.defineProperty(app.get(UsageReportService), 'repository', {
       value: repository,
     });
     Object.defineProperties(app.get(AccountAuthService), {
@@ -382,15 +387,96 @@ describe('session-protected workspace HTTP contract', () => {
       '/platform/organizations/{organizationId}',
       '/platform/organizations/{organizationId}/projects',
       '/platform/organizations/{organizationId}/projects/{projectId}',
+      '/platform/organizations/{organizationId}/projects/{projectId}/usage',
     ]) {
       expect(document.paths[path]).toBeDefined();
     }
     expect(document.paths['/platform/organizations']?.post?.security).toEqual([
       { accountSession: [] },
     ]);
+    expect(
+      document.paths[
+        '/platform/organizations/{organizationId}/projects/{projectId}/usage'
+      ]?.get?.security,
+    ).toEqual([{ accountSession: [] }]);
   });
 
   const keyPath = `organizations/${organizationId}/projects/${projectId}/api-keys`;
+  const usagePath = `organizations/${organizationId}/projects/${projectId}/usage`;
+  it('reports usage through session-only, no-store, dynamically authorized routes', async () => {
+    vi.mocked(repository.getOrganization).mockResolvedValue({
+      ...organization,
+      permissions: ['usage.read'],
+    });
+    vi.mocked(repository.readUsageDays).mockResolvedValue([
+      {
+        date: '2026-01-02',
+        requestCount: 2n,
+        errorCount: 1n,
+        charactersProcessed: 9n,
+        processingTimeMs: 21n,
+      },
+    ]);
+    const response = await request(
+      'GET',
+      `${usagePath}?from=2026-01-01&to=2026-01-03`,
+    );
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.json()).toMatchObject({
+      projectId,
+      timezone: 'UTC',
+      metering: 'best-effort',
+      totals: {
+        requestCount: '2',
+        errorCount: '1',
+        averageProcessingTimeMs: '10.50',
+      },
+    });
+    expect(response.json().days).toHaveLength(3);
+    expect(repository.readUsageDays).toHaveBeenCalledWith(
+      organizationId,
+      projectId,
+      new Date('2026-01-01T00:00:00Z'),
+      new Date('2026-01-04T00:00:00Z'),
+    );
+    expect(
+      (
+        await request('GET', usagePath, undefined, {
+          cookie: '',
+          authorization: 'Bearer bootstrap-test',
+        })
+      ).statusCode,
+    ).toBe(401);
+    vi.mocked(repository.getOrganization).mockResolvedValue({
+      ...organization,
+      permissions: [],
+    });
+    expect((await request('GET', usagePath)).statusCode).toBe(403);
+    expect(repository.readUsageDays).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects invalid report queries and cross-tenant project selection', async () => {
+    vi.mocked(repository.getOrganization).mockResolvedValue({
+      ...organization,
+      permissions: ['usage.read'],
+    });
+    for (const suffix of [
+      '?from=2026-01-01',
+      '?from=2026-02-30&to=2026-03-01',
+      '?from=2026-01-01&to=2026-05-01',
+      '?limit=999',
+    ]) {
+      expect((await request('GET', usagePath + suffix)).statusCode).toBe(400);
+    }
+    expect(
+      (await request('GET', usagePath.replace(projectId, randomUUID())))
+        .statusCode,
+    ).toBe(404);
+    vi.mocked(repository.getOrganization).mockResolvedValue(null);
+    expect((await request('GET', usagePath)).statusCode).toBe(404);
+    expect(repository.readUsageDays).not.toHaveBeenCalled();
+  });
   const key = {
     id: randomUUID(),
     projectId,

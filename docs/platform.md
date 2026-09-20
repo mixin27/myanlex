@@ -71,7 +71,7 @@ The initial role's display name is Owner. Authorization uses permission rows,
 not that name. The permission catalog is shared by seeding and new-organization
 creation; adding a capability does not retroactively grant it to existing roles.
 This milestone does not expose invitations, role editing, project deletion,
-usage reporting, plans or billing. Those remain separate milestones.
+plans or billing. Those remain separate milestones.
 
 ## Scoped API keys
 
@@ -102,3 +102,39 @@ URLs; changing workspaces clears project selection. Reporting screens do not
 fabricate usage totals. See
 [the API-key decision](decisions/0009-scoped-api-keys.md) for credential
 lifecycle and security details.
+
+## Usage reporting
+
+Open Usage, choose a workspace and project, then choose an inclusive UTC date
+range (maximum 90 days). The default is the last 30 days including today. The
+overview shows today's recorded activity for the selected project, or the first
+project in the selected workspace when none is selected. Its report link
+preserves that context.
+
+The UI displays request/error totals, submitted characters (Unicode code
+points), average handler duration, daily charts and an expandable exact-value
+table. Missing days are zero-filled. Today is partial; apply the range again to
+refresh. Invalid dates produce validation feedback, not fabricated zero totals.
+Workspace and project selectors retain pagination for larger accounts.
+
+GET `/:organizationId/projects/:projectId/usage?from=2026-01-01&to=2026-01-31`
+requires `usage.read` and a verified account session. Both dates are optional
+only as a pair, cannot be in the future, and must be on or after 1970-01-01. The
+console also requires `project.read` for selection. Test this operation in
+Scalar using the portal's session-enabled `/api-reference`.
+
+Reports query recorded events in one parameterized aggregate; they do not modify
+the database or depend on a scheduled rollup. Integer counters are JSON decimal
+strings to avoid precision loss. No migration or additional dependency is
+needed.
+
+Metering is **best-effort**, not billing-grade: bootstrap keys, pre-handler
+rejections (including rate limits), and events lost to persistence failure or
+process exit are not represented. Successful batch responses with individual
+item failures do not increase the HTTP error count. Character totals describe
+submitted text lengths, not guaranteed successful processing. Text is never
+stored in usage events. Historical activity remains after a key is revoked.
+
+See [the reporting decision](decisions/0010-usage-reporting.md) for metric
+definitions and UTC semantics. Durable metering, distributed rate limiting and
+quotas remain separate milestones.

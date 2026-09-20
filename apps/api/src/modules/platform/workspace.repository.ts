@@ -1,3 +1,4 @@
+import type { UsageDayRecord } from './usage-report.schemas.js';
 import type {
   ListQuery,
   OrganizationInput,
@@ -23,6 +24,12 @@ export interface Page<T> {
   nextCursor: string | null;
 }
 export interface WorkspaceRepository {
+  readUsageDays(
+    organizationId: string,
+    projectId: string,
+    start: Date,
+    end: Date,
+  ): Promise<UsageDayRecord[]>;
   findProject(
     organizationId: string,
     projectId: string,

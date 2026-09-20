@@ -1,4 +1,7 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
+import { DashboardUsage } from '@/components/usage/dashboard-usage';
+import type { UsageSelection } from '@/lib/usage-server';
 import {
   ArrowUpRight,
   BookOpen,
@@ -12,7 +15,12 @@ import type { Organization, Page } from '@/lib/platform-types';
 import { CreateResource } from '@/components/workspace/create-resource';
 import { buttonVariants } from '@/components/ui/button';
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<UsageSelection>;
+}) {
+  const selection = await searchParams;
   const organizations = await readPlatform<Page<Organization>>(
     'organizations?limit=6',
   );
@@ -30,6 +38,15 @@ export default async function DashboardPage() {
         </div>
         <CreateResource />
       </header>
+      <Suspense
+        fallback={
+          <p className="text-sm text-muted-foreground">
+            Loading project activity…
+          </p>
+        }
+      >
+        <DashboardUsage selection={selection} />
+      </Suspense>
       <section className="relative overflow-hidden rounded-xl bg-[#132e27] p-6 text-white md:p-8">
         <div className="grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-center">
           <div>

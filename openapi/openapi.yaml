@@ -504,6 +504,76 @@ paths:
           $ref: '#/components/responses/InternalError'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/projects/{projectId}/usage:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: projectId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getProjectUsage
+      summary: Report recorded project usage (usage.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session and current membership/usage.read required; bearer keys
+        are not accepted. Inclusive UTC date range, 1–90 days, no future dates,
+        earliest 1970-01-01. Supply both dates or neither (last 30 days including
+        today). Today's bucket is partial. Missing days are zero-filled.
+        This is best-effort recorded usage, not a billing statement. Bootstrap
+        traffic and rejections before the interceptor, including rate limits,
+        are excluded. Persistence failures can leave gaps. Batch HTTP requests
+        count once; item failures within successful responses are not HTTP errors.
+        Submitted characters are Unicode code points, including failed requests
+        that reached the interceptor. No submitted text is retained or returned.
+        Counter strings preserve exact integer precision. Handler durations exclude
+        network, guards and usage persistence. Totals match the returned buckets.
+      parameters:
+        - name: from
+          in: query
+          description:
+            Inclusive start UTC calendar date; requires the other date.
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: Inclusive end UTC calendar date; requires the other date.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Recorded usage snapshot; private, no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /health:
     get:
       operationId: getHealth
@@ -1128,6 +1198,102 @@ components:
         nextCursor:
           type: [string, 'null']
           format: uuid
+    UsageMetrics:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          requestCount,
+          errorCount,
+          charactersProcessed,
+          processingTimeMs,
+          averageProcessingTimeMs,
+        ]
+      properties:
+        requestCount:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        errorCount:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        charactersProcessed:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        processingTimeMs:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        averageProcessingTimeMs:
+          type: [string, 'null']
+          pattern: '^[0-9]+\.[0-9]{2}$'
+          description:
+            Weighted handler duration, rounded to two decimals; null when no
+            requests are recorded.
+    UsageDay:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          date,
+          requestCount,
+          errorCount,
+          charactersProcessed,
+          processingTimeMs,
+          averageProcessingTimeMs,
+        ]
+      properties:
+        date:
+          type: string
+          format: date
+        requestCount:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        errorCount:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        charactersProcessed:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        processingTimeMs:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        averageProcessingTimeMs:
+          type: [string, 'null']
+          pattern: '^[0-9]+\.[0-9]{2}$'
+          description:
+            Weighted handler duration, rounded to two decimals; null when no
+            requests are recorded.
+    UsageReport:
+      type: object
+      additionalProperties: false
+      required:
+        [projectId, from, to, timezone, generatedAt, metering, totals, days]
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        timezone:
+          type: string
+          const: UTC
+        generatedAt:
+          type: string
+          format: date-time
+        metering:
+          type: string
+          const: best-effort
+        totals:
+          $ref: '#/components/schemas/UsageMetrics'
+        days:
+          type: array
+          minItems: 1
+          maxItems: 90
+          items:
+            $ref: '#/components/schemas/UsageDay'
     HealthResponse:
       type: object
       additionalProperties: false

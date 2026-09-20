@@ -25,3 +25,20 @@ export interface ApiKey {
   expiresAt: string | null;
   revokedAt: string | null;
 }
+export interface UsageMetrics {
+  requestCount: string;
+  errorCount: string;
+  charactersProcessed: string;
+  processingTimeMs: string;
+  averageProcessingTimeMs: string | null;
+}
+export interface UsageReport {
+  projectId: string;
+  from: string;
+  to: string;
+  timezone: 'UTC';
+  generatedAt: string;
+  metering: 'best-effort';
+  totals: UsageMetrics;
+  days: (UsageMetrics & { date: string })[];
+}

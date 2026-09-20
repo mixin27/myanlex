@@ -1,5 +1,5 @@
 'use client';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FolderKanban } from 'lucide-react';
 import type { Project } from '@/lib/platform-types';
 import {
@@ -20,6 +20,8 @@ export function ProjectPicker({
   selected: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   return (
     <Select
       value={selected}
@@ -28,10 +30,17 @@ export function ProjectPicker({
         label: project.name,
       }))}
       onValueChange={(value) => {
-        if (value)
-          router.push(
-            `/api-keys?organization=${organizationId}&project=${value}`,
-          );
+        if (value) {
+          const query = new URLSearchParams({
+            organization: organizationId,
+            project: value,
+          });
+          for (const field of ['from', 'to']) {
+            const date = params.get(field);
+            if (date && pathname === '/usage') query.set(field, date);
+          }
+          router.push(`${pathname}?${query}`);
+        }
       }}
     >
       <SelectTrigger

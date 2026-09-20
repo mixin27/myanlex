@@ -1,4 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
+import type { UsageDayRecord } from '../../modules/platform/usage-report.schemas.js';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import { PrismaClient } from '../../generated/prisma/client.js';
 import type { Prisma } from '../../generated/prisma/client.js';
@@ -209,6 +210,28 @@ export class PrismaWorkspaceRepository
       where: { id: projectId, organizationId },
       select: projectSelect,
     });
+  }
+
+  readUsageDays(
+    organizationId: string,
+    projectId: string,
+    start: Date,
+    end: Date,
+  ) {
+    // Tagged-template values are bound parameters. Aggregate in one snapshot;
+    // keep the timestamp predicate indexable and UTC bucketing explicit.
+    return this.client.$queryRaw<UsageDayRecord[]>`
+      SELECT to_char(u.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+        count(*)::bigint AS "requestCount",
+        count(*) FILTER (WHERE u.status_code >= 400)::bigint AS "errorCount",
+        coalesce(sum(u.characters_processed), 0)::bigint AS "charactersProcessed",
+        coalesce(sum(u.processing_time_ms), 0)::bigint AS "processingTimeMs"
+      FROM api_usage u JOIN projects p ON p.id = u.project_id
+      WHERE p.organization_id = ${organizationId}::uuid AND u.project_id = ${projectId}::uuid
+        AND u.created_at >= ${start.toISOString()}::timestamptz
+        AND u.created_at < ${end.toISOString()}::timestamptz
+      GROUP BY 1 ORDER BY 1
+    `;
   }
 
   async listApiKeys(
