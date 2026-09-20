@@ -1,6 +1,7 @@
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { AccountAuthModule } from './modules/account-auth/account-auth.module.js';
+import { PlatformModule } from './modules/platform/platform.module.js';
 
 import { ApplicationModule } from './common/application/application.module.js';
 import { AuthModule } from './common/auth/auth.module.js';
@@ -34,6 +35,7 @@ export class AppModule {
         RuntimeConfigModule.register(options),
         DatabaseModule,
         AccountAuthModule,
+        PlatformModule,
         ApplicationModule,
         AuthModule,
         RateLimitModule,

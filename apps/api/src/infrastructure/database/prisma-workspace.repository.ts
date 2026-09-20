@@ -1,0 +1,184 @@
+import { PrismaPg } from '@prisma/adapter-pg';
+import type { OnApplicationShutdown } from '@nestjs/common';
+import { PrismaClient } from '../../generated/prisma/client.js';
+import type { Prisma } from '../../generated/prisma/client.js';
+import { permissionCatalog } from '../../modules/platform/permission-catalog.js';
+import type {
+  ListQuery,
+  OrganizationInput,
+  ProjectInput,
+  ProjectUpdateInput,
+} from '../../modules/platform/platform.schemas.js';
+import { WorkspaceConflict } from '../../modules/platform/workspace.repository.js';
+import type {
+  WorkspaceRepository,
+  Page,
+} from '../../modules/platform/workspace.repository.js';
+
+const organizationSelect = { id: true, name: true, slug: true } as const;
+const projectSelect = {
+  ...organizationSelect,
+  organizationId: true,
+  environment: true,
+} as const;
+
+function page<T extends { id: string }>(items: T[], limit: number): Page<T> {
+  const hasMore = items.length > limit;
+  const selected = items.slice(0, limit);
+  return { items: selected, nextCursor: hasMore ? selected.at(-1)!.id : null };
+}
+
+async function uniqueWrite<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'P2002'
+    ) {
+      throw new WorkspaceConflict('This slug is already in use.');
+    }
+    throw error;
+  }
+}
+
+export class PrismaWorkspaceRepository
+  implements WorkspaceRepository, OnApplicationShutdown
+{
+  private readonly client: PrismaClient;
+  constructor(databaseUrl: string) {
+    this.client = new PrismaClient({
+      adapter: new PrismaPg({
+        connectionString: databaseUrl,
+        connectionTimeoutMillis: 5000,
+      }),
+    });
+  }
+
+  createOrganization(userId: string, input: OrganizationInput) {
+    return uniqueWrite(() =>
+      this.client.$transaction(async (tx: Prisma.TransactionClient) => {
+        const organization = await tx.organization.create({
+          data: input,
+          select: organizationSelect,
+        });
+        const role = await tx.role.create({
+          data: {
+            organizationId: organization.id,
+            name: 'Owner',
+            slug: 'owner',
+          },
+        });
+        // Grant an explicit catalog snapshot; never grant arbitrary future rows.
+        await tx.permission.createMany({
+          data: permissionCatalog.map(([key, description]) => ({
+            key,
+            description,
+          })),
+          skipDuplicates: true,
+        });
+        const permissions = await tx.permission.findMany({
+          where: { key: { in: permissionCatalog.map(([key]) => key) } },
+          select: { id: true },
+        });
+        await tx.rolePermission.createMany({
+          data: permissions.map((permission) => ({
+            roleId: role.id,
+            permissionId: permission.id,
+          })),
+        });
+        await tx.organizationMember.create({
+          data: { organizationId: organization.id, userId, roleId: role.id },
+        });
+        return organization;
+      }),
+    );
+  }
+
+  async listOrganizations(userId: string, query: ListQuery) {
+    const items = await this.client.organization.findMany({
+      where: {
+        members: { some: { userId } },
+        ...(query.after ? { id: { gt: query.after } } : {}),
+      },
+      select: organizationSelect,
+      orderBy: { id: 'asc' },
+      take: query.limit + 1,
+    });
+    return page(items, query.limit);
+  }
+
+  async getOrganization(userId: string, organizationId: string) {
+    const member = await this.client.organizationMember.findUnique({
+      where: { organizationId_userId: { organizationId, userId } },
+      select: {
+        organization: { select: organizationSelect },
+        role: {
+          select: {
+            permissions: { select: { permission: { select: { key: true } } } },
+          },
+        },
+      },
+    });
+    return member
+      ? {
+          ...member.organization,
+          permissions: member.role.permissions
+            .map((grant) => grant.permission.key)
+            .sort(),
+        }
+      : null;
+  }
+
+  async listProjects(organizationId: string, query: ListQuery) {
+    return page(
+      await this.client.project.findMany({
+        where: {
+          organizationId,
+          ...(query.after ? { id: { gt: query.after } } : {}),
+        },
+        select: projectSelect,
+        orderBy: { id: 'asc' },
+        take: query.limit + 1,
+      }),
+      query.limit,
+    );
+  }
+
+  createProject(organizationId: string, input: ProjectInput) {
+    return uniqueWrite(() =>
+      this.client.project.create({
+        data: { ...input, organizationId },
+        select: projectSelect,
+      }),
+    );
+  }
+
+  async updateProject(
+    organizationId: string,
+    projectId: string,
+    input: ProjectUpdateInput,
+  ) {
+    // The tenant boundary is part of the write, not only a preceding lookup.
+    const projects = await uniqueWrite(() =>
+      this.client.project.updateManyAndReturn({
+        where: { id: projectId, organizationId },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.slug !== undefined ? { slug: input.slug } : {}),
+          ...(input.environment !== undefined
+            ? { environment: input.environment }
+            : {}),
+        },
+        select: projectSelect,
+      }),
+    );
+    return projects[0] ?? null;
+  }
+
+  async onApplicationShutdown() {
+    await this.client.$disconnect();
+  }
+}

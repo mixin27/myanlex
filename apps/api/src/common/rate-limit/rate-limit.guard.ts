@@ -20,6 +20,9 @@ interface RateLimitedReply {
 
 function trackerFor(request: RateLimitedRequest): string {
   const identity =
+    (request.accountPrincipal
+      ? `account:${request.accountPrincipal.userId}`
+      : undefined) ??
     request.apiKeyPrincipal?.apiKeyId ??
     request.headers.authorization ??
     request.ip;

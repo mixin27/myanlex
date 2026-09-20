@@ -1,32 +1,35 @@
-export default function DashboardPage() {
+import Link from 'next/link';
+import { readPlatform } from '@/lib/platform-server';
+import type { Organization, Page } from '@/lib/platform-types';
+
+export default async function DashboardPage() {
+  const organizations = await readPlatform<Page<Organization>>(
+    'organizations?limit=1',
+  );
+  const hasOrganization = organizations.items.length > 0;
   return (
     <>
       <header className="page-heading">
         <h1>Dashboard</h1>
         <p>Your MyanLex developer workspace at a glance.</p>
       </header>
-      <section className="card-grid" aria-label="Usage overview">
-        <article className="card">
-          <span>Requests today</span>
-          <strong>0</strong>
-        </article>
-        <article className="card">
-          <span>Characters processed</span>
-          <strong>0</strong>
-        </article>
-        <article className="card">
-          <span>Errors</span>
-          <strong>0</strong>
-        </article>
-        <article className="card">
-          <span>Current plan</span>
-          <strong>Free</strong>
-        </article>
+      <section className="panel">
+        <h2>
+          {hasOrganization ? 'Manage your projects' : 'Set up your workspace'}
+        </h2>
+        <p>
+          {hasOrganization
+            ? 'Choose an organization to create and manage its projects.'
+            : 'Create an organization, then add your first development or production project.'}
+        </p>
+        <Link className="underline" href="/projects">
+          {hasOrganization ? 'Open projects' : 'Create your first organization'}
+        </Link>
       </section>
       <section className="panel">
         <h2>API usage</h2>
         <p className="muted">
-          Usage will appear after a project API key makes its first request.
+          API-key management and usage reporting are not yet available.
         </p>
       </section>
     </>

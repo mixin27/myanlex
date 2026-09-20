@@ -50,10 +50,13 @@ Do not use the API or package interfaces as stable production contracts yet.
 
 - Self-hosted email/password sessions and optional Google/GitHub OAuth;
   [setup and verification](docs/authentication.md)
+- Session-protected organization onboarding and project management with dynamic
+  permissions; [workflow and Scalar testing](docs/platform.md)
 
 Planned next:
 
-- Connected project, API-key and organization management workflows
+- API-key issuance/revocation and usage reporting
+- Member invitations and custom-role management UI
 - TypeScript and Dart SDKs
 
 ## Repository layout

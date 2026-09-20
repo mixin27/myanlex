@@ -92,6 +92,13 @@ Auth in NestJS with Prisma persistence and a same-origin Next.js proxy. See ADR
 0007 and docs/authentication.md for the account protocol and deployment setup.
 Control-plane permissions remain separate from authentication and NLP API keys.
 
+`PlatformModule` exposes session-protected `/v1/platform` routes for
+organizations and projects. Its application service resolves current membership
+permissions through a repository port; Prisma implements that port in
+infrastructure. Organization creation is transactional. The portal uses
+authenticated server reads and same-origin mutation rewrites. See ADR 0008 and
+docs/platform.md.
+
 ## Delivery order
 
 1. Linguistic specifications and corpus schemas.

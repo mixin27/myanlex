@@ -5,6 +5,7 @@ import { Reflector } from '@nestjs/core';
 import type { AuthenticatedRequest } from './authenticated-request.js';
 import { ApiKeyAuthenticationService } from './api-key-authentication.service.js';
 import { IS_PUBLIC_ROUTE } from './public.decorator.js';
+import { SESSION_ROUTE } from './session-route.decorator.js';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
@@ -15,6 +16,13 @@ export class ApiKeyGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (
+      this.reflector.getAllAndOverride<boolean>(SESSION_ROUTE, [
+        context.getHandler(),
+        context.getClass(),
+      ])
+    )
+      return true;
     const isPublic = this.reflector.getAllAndOverride<boolean>(
       IS_PUBLIC_ROUTE,
       [context.getHandler(), context.getClass()],

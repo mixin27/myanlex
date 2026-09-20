@@ -117,5 +117,7 @@ MYANLEX_TEST_DATABASE_URL points to a migrated, disposable test database (CI
 provides one). Tests never send real email or contact OAuth providers.
 
 Live Google/GitHub authorization and SMTP delivery must also be checked with
-deployment credentials. Project creation, API-key management and organization
-onboarding are subsequent platform work; signing in does not create a project.
+deployment credentials. Organization onboarding and project management are
+available after signing in; see [platform.md](platform.md). Signing in does not
+automatically create an organization or project. API-key management remains
+subsequent work.

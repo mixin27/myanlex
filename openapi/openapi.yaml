@@ -21,6 +21,9 @@ servers:
 security:
   - bearerApiKey: []
 tags:
+  - name: Platform
+    description:
+      Session-protected organization onboarding and project management
   - name: Health
     description: Service health
   - name: Text
@@ -34,6 +37,293 @@ tags:
   - name: Batch
     description: Ordered multi-item text processing with isolated item failures
 paths:
+  /platform/organizations:
+    get:
+      operationId: listOrganizations
+      summary: List organizations for the current member
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Requires a verified account session; API keys are not accepted.
+        POST and PATCH require Origin to exactly match AUTH_PUBLIC_URL.
+        Non-members receive 404; missing member permissions receive 403.
+      parameters:
+        - name: after
+          in: query
+          description:
+            Exclusive UUID cursor returned as nextCursor by a prior page.
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Maximum results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/WorkspaceConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createOrganization
+      summary: Create organization and initial membership
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Requires a verified account session; API keys are not accepted.
+        POST and PATCH require Origin to exactly match AUTH_PUBLIC_URL.
+        Non-members receive 404; missing member permissions receive 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationInput'
+      responses:
+        '201':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/WorkspaceConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /platform/organizations/{organizationId}:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description:
+          Resource UUID; organization membership is checked independently.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getOrganization
+      summary: Get organization and current member permissions
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Requires a verified account session; API keys are not accepted.
+        POST and PATCH require Origin to exactly match AUTH_PUBLIC_URL.
+        Non-members receive 404; missing member permissions receive 403.
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/WorkspaceConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /platform/organizations/{organizationId}/projects:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description:
+          Resource UUID; organization membership is checked independently.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listProjects
+      summary: List projects (project.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Requires a verified account session; API keys are not accepted.
+        POST and PATCH require Origin to exactly match AUTH_PUBLIC_URL.
+        Non-members receive 404; missing member permissions receive 403.
+      parameters:
+        - name: after
+          in: query
+          description:
+            Exclusive UUID cursor returned as nextCursor by a prior page.
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Maximum results per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/WorkspaceConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createProject
+      summary: Create project (project.create)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Requires a verified account session; API keys are not accepted.
+        POST and PATCH require Origin to exactly match AUTH_PUBLIC_URL.
+        Non-members receive 404; missing member permissions receive 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectInput'
+      responses:
+        '201':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/WorkspaceConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /platform/organizations/{organizationId}/projects/{projectId}:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description:
+          Resource UUID; organization membership is checked independently.
+        schema:
+          type: string
+          format: uuid
+      - name: projectId
+        in: path
+        required: true
+        description:
+          Resource UUID; organization membership is checked independently.
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateProject
+      summary: Update project (project.update)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Requires a verified account session; API keys are not accepted.
+        POST and PATCH require Origin to exactly match AUTH_PUBLIC_URL.
+        Non-members receive 404; missing member permissions receive 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateInput'
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/WorkspaceConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /health:
     get:
       operationId: getHealth
@@ -323,6 +613,14 @@ paths:
           $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
+    accountSession:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: |
+        Better Auth signed HttpOnly session cookie; HTTPS uses the
+        __Secure-better-auth.session_token name. Sign in through /api/auth.
+        Browser clients send cookies automatically; do not paste secrets into docs.
     bearerApiKey:
       type: http
       scheme: bearer
@@ -336,20 +634,41 @@ components:
           schema:
             $ref: '#/components/schemas/TextRequest'
   responses:
+    WorkspaceNotFound:
+      description: The resource does not exist or is not visible to this member.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    WorkspaceConflict:
+      description: The slug is already in use.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PlatformUnavailable:
+      description: Account authentication or persistence is not configured.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     BadRequest:
-      description: The JSON body or Unicode text is invalid.
+      description: The request body, parameters, or Unicode text is invalid.
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     Unauthorized:
-      description: The API key is missing or invalid.
+      description:
+        The required API key or account session is missing or invalid.
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     Forbidden:
-      description: The API key does not grant every required permission.
+      description:
+        Required permissions, email verification, or a trusted Origin are
+        missing.
       content:
         application/problem+json:
           schema:
@@ -363,7 +682,7 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     RateLimited:
-      description: The API key has exceeded its request allowance.
+      description: The authenticated caller has exceeded its request allowance.
       headers:
         RateLimit-Limit:
           description: Maximum requests allowed in the current window.
@@ -396,6 +715,115 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    OrganizationInput:
+      type: object
+      additionalProperties: false
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Whitespace-trimmed display name, including Unicode.
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+    ProjectInput:
+      type: object
+      additionalProperties: false
+      required: [name, slug]
+      properties:
+        name:
+          $ref: '#/components/schemas/OrganizationInput/properties/name'
+        slug:
+          $ref: '#/components/schemas/OrganizationInput/properties/slug'
+        environment:
+          type: string
+          enum: [development, staging, production]
+          default: development
+    ProjectUpdateInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          $ref: '#/components/schemas/OrganizationInput/properties/name'
+        slug:
+          $ref: '#/components/schemas/OrganizationInput/properties/slug'
+        environment:
+          type: string
+          enum: [development, staging, production]
+    Organization:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+    OrganizationAccess:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug, permissions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+    Project:
+      type: object
+      additionalProperties: false
+      required: [id, organizationId, name, slug, environment]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        environment:
+          type: string
+    OrganizationPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'
+        nextCursor:
+          type: [string, 'null']
+          format: uuid
+    ProjectPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        nextCursor:
+          type: [string, 'null']
+          format: uuid
     HealthResponse:
       type: object
       additionalProperties: false
