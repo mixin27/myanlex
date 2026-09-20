@@ -1,4 +1,26 @@
 services:
+  redis:
+    image: redis:8.10.1-alpine
+    profiles: ['redis']
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory',
+        '256mb',
+        '--maxmemory-policy',
+        'noeviction',
+      ]
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - myanlex-redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
   mailpit:
     image: axllent/mailpit:v1.31.1
     profiles: ['auth']
@@ -22,4 +44,5 @@ services:
       - myanlex-postgres:/var/lib/postgresql
 
 volumes:
+  myanlex-redis:
   myanlex-postgres:

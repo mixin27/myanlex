@@ -7,6 +7,7 @@ import { ApplicationModule } from './common/application/application.module.js';
 import { AuthModule } from './common/auth/auth.module.js';
 import { ErrorsModule } from './common/errors/errors.module.js';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
+import { QuotaModule } from './common/quota/quota.module.js';
 import { RuntimeConfigModule } from './common/runtime/runtime-config.module.js';
 import { UsageModule } from './common/usage/usage.module.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
@@ -24,6 +25,9 @@ export interface ApiModuleOptions {
   readonly rateLimitMaxRequests?: number;
   readonly rateLimitWindowMs?: number;
   readonly serviceVersion?: string;
+  readonly redisUrl?: string;
+  readonly redisPrefix?: string;
+  readonly quotasEnabled?: boolean;
 }
 
 @Module({})
@@ -39,6 +43,7 @@ export class AppModule {
         ApplicationModule,
         AuthModule,
         RateLimitModule,
+        QuotaModule,
         UsageModule,
         ErrorsModule,
         BatchModule,

@@ -15,6 +15,9 @@ export interface CreateApiApplicationOptions {
   readonly rateLimitMaxRequests?: number;
   readonly rateLimitWindowMs?: number;
   readonly serviceVersion?: string;
+  readonly redisUrl?: string;
+  readonly redisPrefix?: string;
+  readonly quotasEnabled?: boolean;
 }
 
 export async function createApiApplication(

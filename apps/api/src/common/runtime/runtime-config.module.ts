@@ -12,6 +12,9 @@ import {
   RATE_LIMIT_MAX_REQUESTS,
   RATE_LIMIT_WINDOW_MS,
   SERVICE_VERSION,
+  REDIS_URL,
+  REDIS_PREFIX,
+  QUOTAS_ENABLED,
 } from '../tokens.js';
 
 export interface RuntimeConfigOptions {
@@ -20,6 +23,9 @@ export interface RuntimeConfigOptions {
   readonly rateLimitMaxRequests?: number;
   readonly rateLimitWindowMs?: number;
   readonly serviceVersion?: string;
+  readonly redisUrl?: string;
+  readonly redisPrefix?: string;
+  readonly quotasEnabled?: boolean;
 }
 
 const environmentFile = fileURLToPath(
@@ -38,6 +44,15 @@ const runtimeEnvironmentSchema = z
       )
       .optional(),
     MYANLEX_API_KEY: z.string().trim().min(1).optional(),
+    REDIS_URL: z.url({ protocol: /^rediss?$/ }).optional(),
+    MYANLEX_REDIS_PREFIX: z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]{1,80}$/)
+      .default('myanlex'),
+    MYANLEX_QUOTAS_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
     MYANLEX_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
     MYANLEX_RATE_LIMIT_WINDOW_MS: z.coerce
       .number()
@@ -48,6 +63,13 @@ const runtimeEnvironmentSchema = z
     PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
   })
   .superRefine((environment, context) => {
+    if (environment.MYANLEX_QUOTAS_ENABLED && !environment.DATABASE_URL) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Quota enforcement requires DATABASE_URL.',
+        path: ['MYANLEX_QUOTAS_ENABLED'],
+      });
+    }
     if (
       environment.DATABASE_URL === undefined &&
       environment.MYANLEX_API_KEY === undefined
@@ -68,6 +90,13 @@ function validateEnvironment(
 ): Record<string, unknown> & RuntimeEnvironment {
   const result = runtimeEnvironmentSchema.safeParse({
     ...environment,
+    ...(options.redisUrl === undefined ? {} : { REDIS_URL: options.redisUrl }),
+    ...(options.redisPrefix === undefined
+      ? {}
+      : { MYANLEX_REDIS_PREFIX: options.redisPrefix }),
+    ...(options.quotasEnabled === undefined
+      ? {}
+      : { MYANLEX_QUOTAS_ENABLED: String(options.quotasEnabled) }),
     ...(options.databaseUrl === undefined
       ? {}
       : { DATABASE_URL: options.databaseUrl }),
@@ -104,10 +133,30 @@ export class RuntimeConfigModule {
         ConfigModule.forRoot({
           cache: true,
           envFilePath: environmentFile,
+          // Tests must explicitly supply service URLs, never use local credentials.
+          ignoreEnvFile: process.env.NODE_ENV === 'test',
           validate: (environment) => validateEnvironment(environment, options),
         }),
       ],
       providers: [
+        {
+          provide: REDIS_URL,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): string | undefined =>
+            config.get<string>('REDIS_URL'),
+        },
+        {
+          provide: REDIS_PREFIX,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): string =>
+            config.getOrThrow<string>('MYANLEX_REDIS_PREFIX'),
+        },
+        {
+          provide: QUOTAS_ENABLED,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): boolean =>
+            config.getOrThrow<boolean>('MYANLEX_QUOTAS_ENABLED'),
+        },
         {
           provide: API_KEY,
           inject: [ConfigService],
@@ -146,6 +195,9 @@ export class RuntimeConfigModule {
         },
       ],
       exports: [
+        REDIS_URL,
+        REDIS_PREFIX,
+        QUOTAS_ENABLED,
         API_KEY,
         DATABASE_URL,
         HTTP_PORT,

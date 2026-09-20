@@ -136,5 +136,8 @@ submitted text lengths, not guaranteed successful processing. Text is never
 stored in usage events. Historical activity remains after a key is revoked.
 
 See [the reporting decision](decisions/0010-usage-reporting.md) for metric
-definitions and UTC semantics. Durable metering, distributed rate limiting and
-quotas remain separate milestones.
+definitions and UTC semantics. Monthly quota reservations are separate from
+these best-effort reports: they count admitted requests before handler
+execution, not completed usage events. See [rate limits and quotas](limits.md)
+for configuration, rollout, and operational semantics. Durable billing metering
+remains future work.

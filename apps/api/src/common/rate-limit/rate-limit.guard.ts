@@ -7,7 +7,7 @@ import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_ROUTE } from '../auth/public.decorator.js';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.js';
 import { RateLimitExceededException } from './rate-limit-exceeded.exception.js';
-import { RateLimitService } from './rate-limit.service.js';
+import { RATE_LIMIT_STORE, type RateLimitStore } from './rate-limit.store.js';
 
 interface RateLimitedRequest extends AuthenticatedRequest {
   readonly headers: { readonly authorization?: string };
@@ -33,11 +33,11 @@ function trackerFor(request: RateLimitedRequest): string {
 export class RateLimitGuard implements CanActivate {
   constructor(
     @Inject(Reflector) private readonly reflector: Reflector,
-    @Inject(RateLimitService)
-    private readonly rateLimits: RateLimitService,
+    @Inject(RATE_LIMIT_STORE)
+    private readonly rateLimits: RateLimitStore,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(
       IS_PUBLIC_ROUTE,
       [context.getHandler(), context.getClass()],
@@ -47,7 +47,7 @@ export class RateLimitGuard implements CanActivate {
     const http = context.switchToHttp();
     const request = http.getRequest<RateLimitedRequest>();
     const reply = http.getResponse<RateLimitedReply>();
-    const decision = this.rateLimits.consume(trackerFor(request));
+    const decision = await this.rateLimits.consume(trackerFor(request));
 
     reply.header('RateLimit-Limit', decision.limit);
     reply.header('RateLimit-Remaining', decision.remaining);

@@ -140,6 +140,10 @@ All language operations require `Authorization: Bearer <key>` and follow
 Interactive API documentation is served by the Nest application at
 `http://localhost:3000/docs` (Scalar) and `http://localhost:3000/swagger`.
 
+For multi-instance deployments, configure Redis-backed rate limiting. Monthly
+organization quotas are opt-in and use PostgreSQL. See the
+[limits setup guide](docs/limits.md) before enabling either feature.
+
 ## License
 
 MyanLex source code is available under the [MIT License](LICENSE). Corpus

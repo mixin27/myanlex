@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { countRequestCharacters } from '../src/common/usage/usage.interceptor.js';
+import { countRequestCharacters } from '../src/common/usage/count-request-characters.js';
 
 describe('usage measurement', () => {
   it('counts Unicode code points rather than UTF-16 code units', () => {

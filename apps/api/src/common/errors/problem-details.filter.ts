@@ -3,6 +3,7 @@ import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { Catch, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 
 import { RateLimitExceededException } from '../rate-limit/rate-limit-exceeded.exception.js';
+import { QuotaExceededException } from '../quota/quota-exceeded.exception.js';
 
 interface HttpRequest {
   readonly id: string;
@@ -78,6 +79,11 @@ export class ProblemDetailsFilter implements ExceptionFilter {
         : HttpStatus.BAD_REQUEST;
       code = exception.code;
       detail = exception.message;
+    } else if (exception instanceof QuotaExceededException) {
+      status = HttpStatus.TOO_MANY_REQUESTS;
+      code = 'quota_exceeded';
+      detail = exception.message;
+      reply.header('Retry-After', exception.retryAfterSeconds);
     } else if (exception instanceof RateLimitExceededException) {
       status = HttpStatus.TOO_MANY_REQUESTS;
       code = 'rate_limited';

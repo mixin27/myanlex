@@ -70,11 +70,14 @@ receive the same protection. Individual text-validation failures are returned in
 order without hiding unexpected internal errors. The HTTP adapter also caps the
 parsed body at 1 MiB.
 
-Rate limiting currently uses one fixed-window, in-memory bucket per hashed API
-key and excludes public health checks. This is deliberately a single-instance
-implementation. Before horizontal scaling, the storage must become shared so the
-advertised allowance remains global. Initial benchmarks meet the documented
-targets without caching, so Redis is not part of the current architecture.
+Rate limiting uses fixed-window counters per hashed caller identity. With
+`REDIS_URL`, atomic Redis counters share the allowance across API replicas;
+without it, in-memory counters support single-instance development only. Public
+routes are excluded. Redis failures fail closed, without local fallback.
+Optional monthly quotas use a durable PostgreSQL organization/month ledger,
+shared across all projects and API keys. Redis is not used for NLP result
+caching, sessions, RBAC, or monthly quota authority. See
+[ADR 0011](../decisions/0011-distributed-limits-and-quotas.md).
 
 The developer-platform boundary uses PostgreSQL through Prisma adapters in
 `apps/api/src/infrastructure`. Platform persistence contains users,

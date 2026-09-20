@@ -1,5 +1,9 @@
 # ADR 0005: Start with in-memory API-key rate limits
 
+Shared deployment policy superseded by
+[ADR 0011](0011-distributed-limits-and-quotas.md). In-memory mode remains
+available for single-instance development.
+
 ## Status
 
 Accepted

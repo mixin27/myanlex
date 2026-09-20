@@ -6,3 +6,6 @@ export const PLATFORM_REPOSITORY = Symbol('PLATFORM_REPOSITORY');
 export const RATE_LIMIT_MAX_REQUESTS = Symbol('RATE_LIMIT_MAX_REQUESTS');
 export const RATE_LIMIT_WINDOW_MS = Symbol('RATE_LIMIT_WINDOW_MS');
 export const SERVICE_VERSION = Symbol('SERVICE_VERSION');
+export const REDIS_URL = Symbol('REDIS_URL');
+export const REDIS_PREFIX = Symbol('REDIS_PREFIX');
+export const QUOTAS_ENABLED = Symbol('QUOTAS_ENABLED');

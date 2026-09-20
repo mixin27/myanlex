@@ -10,6 +10,12 @@ info:
 
     Operations are explicit: detection never converts, conversion never
     auto-detects, and normalization uses only the documented safe NFC profile.
+
+    Protected routes enforce short-window rate limits. Optional organization-wide
+    UTC monthly quotas apply to persisted API keys before handler validation.
+    A batch reserves one request and all submitted code points. Rejections use
+    429 rate_limited or quota_exceeded with Retry-After; unavailable enforcement
+    uses 503 service_unavailable. RateLimit headers describe short windows only.
   license:
     name: MIT
     identifier: MIT
@@ -618,6 +624,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /text/normalize:
     post:
       operationId: normalizeText
@@ -646,6 +654,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /text/convert:
     post:
       operationId: convertText
@@ -678,6 +688,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /syllabify:
     post:
       operationId: syllabifyText
@@ -705,6 +717,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /orthography/validate:
     post:
       operationId: validateOrthography
@@ -733,6 +747,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /transliterate:
     post:
       operationId: transliterateText
@@ -765,6 +781,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /tokenize:
     post:
       operationId: tokenizeText
@@ -794,6 +812,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /batch/syllabify:
     post:
       operationId: batchSyllabify
@@ -828,6 +848,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /batch/transliterate:
     post:
       operationId: batchTransliterate
@@ -861,6 +883,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
 components:
   securitySchemes:
     accountSession:
@@ -897,7 +921,9 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     PlatformUnavailable:
-      description: Account authentication or persistence is not configured.
+      description:
+        Account authentication, persistence, or limit enforcement is
+        unavailable.
       content:
         application/problem+json:
           schema:
@@ -932,7 +958,11 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     RateLimited:
-      description: The authenticated caller has exceeded its request allowance.
+      description: |
+        The caller exceeded its short-window allowance (rate_limited), or the
+        organization exhausted a monthly allowance (quota_exceeded, persisted API
+        keys only). Retry-After describes the applicable reset. RateLimit headers
+        always describe the short window, not monthly quotas.
       headers:
         RateLimit-Limit:
           description: Maximum requests allowed in the current window.
@@ -1712,6 +1742,9 @@ components:
             - forbidden
             - not_found
             - rate_limited
+            - quota_exceeded
+            - service_unavailable
+            - conflict
             - internal_error
         detail:
           type: string

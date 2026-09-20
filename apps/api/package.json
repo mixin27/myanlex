@@ -30,6 +30,7 @@
     "better-auth": "^1.7.5",
     "nodemailer": "^10.0.10",
     "pg": "^8.23.0",
+    "redis": "6.2.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "yaml": "^2.9.1",
