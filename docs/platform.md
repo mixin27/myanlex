@@ -1,4 +1,4 @@
-# Organizations and projects
+# Developer console, organizations, projects and API keys
 
 ## Local workflow
 
@@ -15,7 +15,8 @@ organizations, roles, permissions, memberships and projects tables.
 5. Use Edit to change its name, slug or environment. Changing organizations
    changes the project list; the API independently enforces access.
 
-Create another organization from the expandable form on Projects. Organization
+Create another organization using New workspace. The console calls organizations
+workspaces, while API and database names remain unchanged. Organization
 selection is stored in the URL; list pages use explicit next-page links. Empty,
 loading, permission-denied and failure states do not display fabricated usage or
 subscription information.
@@ -69,5 +70,35 @@ Never point it at production. CI supplies its own PostgreSQL service.
 The initial role's display name is Owner. Authorization uses permission rows,
 not that name. The permission catalog is shared by seeding and new-organization
 creation; adding a capability does not retroactively grant it to existing roles.
-This milestone does not expose invitations, role editing, API-key issuance,
-deletion, usage reporting, plans or billing. Those remain separate milestones.
+This milestone does not expose invitations, role editing, project deletion,
+usage reporting, plans or billing. Those remain separate milestones.
+
+## Scoped API keys
+
+Select a project on Projects or use the workspace/project selectors on API keys.
+Create a named key, choose an expiration and save the secret immediately in a
+secret manager. Closing the reveal dialog discards its in-memory plaintext;
+there is no recovery endpoint. Copying places the secret on your system
+clipboard, so clear that clipboard after saving it securely. Do not put keys in
+browser code.
+
+Under `/:organizationId/projects/:projectId/api-keys`, GET lists metadata, POST
+creates a key, and POST `/:keyId/revoke` irreversibly revokes it. The project
+itself can be read with GET `/:organizationId/projects/:projectId`
+(`project.read`). Keys use the same cursor pagination as projects. Revoked and
+expired keys remain visible, and repeat revocations return the original
+timestamp. All operations are documented in the session-enabled Scalar
+reference.
+
+The creating member needs both `api_key.create` and `api.invoke`. Only
+`api.invoke` is currently delegable; workspace administration remains
+session-only. Read and revoke use `api_key.read` and `api_key.revoke`,
+respectively. The console also needs `project.read` for project selection.
+Existing roles without the grants are not automatically elevated.
+
+The console uses the official shadcn Base UI sidebar with icon-collapse, a
+mobile drawer and keyboard navigation. Workspace/project context is carried in
+URLs; changing workspaces clears project selection. Reporting screens do not
+fabricate usage totals. See
+[the API-key decision](decisions/0009-scoped-api-keys.md) for credential
+lifecycle and security details.

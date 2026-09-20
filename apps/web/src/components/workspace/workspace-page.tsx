@@ -11,6 +11,7 @@ import type {
 import { OrganizationPicker } from './organization-picker';
 import { ProjectTable } from './project-table';
 import { ResourceForm } from './resource-form';
+import { CreateResource } from './create-resource';
 
 export default async function WorkspacePage({
   searchParams,
@@ -50,13 +51,18 @@ export default async function WorkspacePage({
 
   return (
     <div className="space-y-6">
-      <header className="page-heading">
-        <h1>Projects</h1>
-        <p>
-          {selected
-            ? `Manage projects in ${selected.name}.`
-            : 'Welcome! Create an organization to start your workspace.'}
-        </p>
+      <header className="page-heading flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1>Projects</h1>
+          <p>
+            {selected
+              ? `Manage projects in ${selected.name}.`
+              : 'Welcome! Create an organization to start your workspace.'}
+          </p>
+        </div>
+        {selected?.permissions.includes('project.create') && (
+          <CreateResource organizationId={selected.id} />
+        )}
       </header>
       {choices.length > 0 && (
         <OrganizationPicker organizations={choices} selected={selected?.id} />
@@ -103,26 +109,10 @@ export default async function WorkspacePage({
           </Link>
         )}
       </nav>
-      {selected?.permissions.includes('project.create') && (
-        <ResourceForm
-          key={`create-${selected.id}`}
-          organizationId={selected.id}
-        />
-      )}
-      {selected ? (
-        <details>
-          <summary className="cursor-pointer">
-            Create another organization
-          </summary>
-          <div className="mt-4">
-            <ResourceForm />
-          </div>
-        </details>
-      ) : (
-        <ResourceForm />
-      )}
+      {selected ? <CreateResource /> : <ResourceForm />}
       <p className="text-sm text-muted-foreground">
-        API-key issuance and usage reporting are coming in the next milestones.
+        Select a project to manage its API keys. Each project has isolated
+        credentials.
       </p>
     </div>
   );

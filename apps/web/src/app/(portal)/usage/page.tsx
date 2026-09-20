@@ -9,9 +9,10 @@ export default function UsagePage() {
         </p>
       </header>
       <section className="panel">
-        <h2>No usage recorded</h2>
+        <h2>Usage reporting is coming next</h2>
         <p className="muted">
-          Select a project after its first authenticated request.
+          Requests are metered by the API, but aggregated reporting is not yet
+          available in this console. This is not an indication of zero usage.
         </p>
       </section>
     </>

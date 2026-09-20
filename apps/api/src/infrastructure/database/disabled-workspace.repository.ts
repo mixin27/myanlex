@@ -7,6 +7,10 @@ function unavailable(): never {
   );
 }
 export const disabledWorkspaceRepository: WorkspaceRepository = {
+  findProject: unavailable,
+  listApiKeys: unavailable,
+  createApiKey: unavailable,
+  revokeApiKey: unavailable,
   createOrganization: unavailable,
   listOrganizations: unavailable,
   getOrganization: unavailable,

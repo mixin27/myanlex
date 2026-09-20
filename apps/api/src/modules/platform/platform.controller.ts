@@ -107,4 +107,17 @@ export class PlatformController {
       body,
     );
   }
+
+  @Get(':organizationId/projects/:projectId')
+  getProject(
+    @Req() request: AuthenticatedRequest,
+    @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+  ) {
+    return this.platform.getProject(
+      request.accountPrincipal!.userId,
+      organizationId,
+      projectId,
+    );
+  }
 }

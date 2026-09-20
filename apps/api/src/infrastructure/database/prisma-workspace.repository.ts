@@ -13,7 +13,29 @@ import { WorkspaceConflict } from '../../modules/platform/workspace.repository.j
 import type {
   WorkspaceRepository,
   Page,
+  ApiKeyRecord,
 } from '../../modules/platform/workspace.repository.js';
+
+// Explicit projection: neither hashes nor plaintext can escape read methods.
+const keySelect = {
+  id: true,
+  projectId: true,
+  name: true,
+  prefix: true,
+  createdAt: true,
+  lastUsedAt: true,
+  expiresAt: true,
+  revokedAt: true,
+  scopes: { select: { permission: { select: { key: true } } } },
+} as const;
+function summarizeKey(
+  key: Prisma.ApiKeyGetPayload<{ select: typeof keySelect }>,
+) {
+  return {
+    ...key,
+    scopes: key.scopes.map((scope) => scope.permission.key).sort(),
+  };
+}
 
 const organizationSelect = { id: true, name: true, slug: true } as const;
 const projectSelect = {
@@ -180,5 +202,66 @@ export class PrismaWorkspaceRepository
 
   async onApplicationShutdown() {
     await this.client.$disconnect();
+  }
+
+  findProject(organizationId: string, projectId: string) {
+    return this.client.project.findFirst({
+      where: { id: projectId, organizationId },
+      select: projectSelect,
+    });
+  }
+
+  async listApiKeys(
+    organizationId: string,
+    projectId: string,
+    query: ListQuery,
+  ) {
+    const keys = await this.client.apiKey.findMany({
+      where: {
+        projectId,
+        project: { organizationId },
+        ...(query.after ? { id: { gt: query.after } } : {}),
+      },
+      select: keySelect,
+      orderBy: { id: 'asc' },
+      take: query.limit + 1,
+    });
+    return page(keys.map(summarizeKey), query.limit);
+  }
+
+  async createApiKey(
+    organizationId: string,
+    projectId: string,
+    input: ApiKeyRecord,
+  ) {
+    const { scopes, ...data } = input;
+    const key = await this.client.apiKey.create({
+      data: {
+        ...data,
+        project: { connect: { id: projectId, organizationId } },
+        scopes: {
+          create: scopes.map((key) => ({ permission: { connect: { key } } })),
+        },
+      },
+      select: keySelect,
+    });
+    return summarizeKey(key);
+  }
+
+  async revokeApiKey(
+    organizationId: string,
+    projectId: string,
+    keyId: string,
+    now: Date,
+  ) {
+    const where = { id: keyId, projectId, project: { organizationId } };
+    return this.client.$transaction(async (tx) => {
+      await tx.apiKey.updateMany({
+        where: { ...where, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      const key = await tx.apiKey.findFirst({ where, select: keySelect });
+      return key ? summarizeKey(key) : null;
+    });
   }
 }

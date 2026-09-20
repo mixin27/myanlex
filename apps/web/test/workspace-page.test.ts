@@ -42,7 +42,6 @@ describe('workspace page composition', () => {
       .map((child) => child.key)
       .filter((key) => key !== null);
     expect(keys).toContain(`projects-${id}`);
-    expect(keys).toContain(`create-${id}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 

@@ -1,37 +1,23 @@
-import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { requireSession } from '@/lib/auth-server';
-
-const navigation = [
-  ['Dashboard', '/dashboard'],
-  ['Projects', '/projects'],
-  ['API keys', '/api-keys'],
-  ['Usage', '/usage'],
-  ['Documentation', '/documentation'],
-  ['Account', '/account'],
-] as const;
+import { DashboardShell } from '@/components/dashboard-shell';
+import { cookies } from 'next/headers';
 
 export default async function PortalLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  await requireSession();
+  const { user } = await requireSession();
+  const sidebarOpen = (await cookies()).get('sidebar_state')?.value !== 'false';
   return (
-    <div className="portal-shell">
-      <aside className="sidebar">
-        <Link className="brand" href="/dashboard">
-          MyanLex
-        </Link>
-        <nav aria-label="Developer portal">
-          {navigation.map(([label, href]) => (
-            <Link href={href} key={href}>
-              {label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-      <main className="portal-content">{children}</main>
-    </div>
+    <Suspense>
+      <DashboardShell
+        user={{ name: user.name, email: user.email }}
+        defaultOpen={sidebarOpen}
+      >
+        {children}
+      </DashboardShell>
+    </Suspense>
   );
 }

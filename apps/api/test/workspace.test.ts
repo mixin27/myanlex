@@ -1,5 +1,6 @@
 import 'reflect-metadata';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { ApiKeysService } from '../src/modules/platform/api-keys.service.js';
 import {
   beforeAll,
   afterAll,
@@ -31,6 +32,10 @@ const project = {
 };
 const origin = 'http://localhost:3000';
 const repository: WorkspaceRepository = {
+  findProject: vi.fn(),
+  listApiKeys: vi.fn(),
+  createApiKey: vi.fn(),
+  revokeApiKey: vi.fn(),
   createOrganization: vi.fn(),
   listOrganizations: vi.fn(),
   getOrganization: vi.fn(),
@@ -65,6 +70,9 @@ describe('session-protected workspace HTTP contract', () => {
     Object.defineProperty(app.get(PlatformService), 'repository', {
       value: repository,
     });
+    Object.defineProperty(app.get(ApiKeysService), 'repository', {
+      value: repository,
+    });
     Object.defineProperties(app.get(AccountAuthService), {
       auth: { value: { api: { getSession } } },
       publicURL: { value: origin },
@@ -86,7 +94,15 @@ describe('session-protected workspace HTTP contract', () => {
         id === organizationId
           ? {
               ...organization,
-              permissions: ['project.read', 'project.create', 'project.update'],
+              permissions: [
+                'project.read',
+                'project.create',
+                'project.update',
+                'api_key.read',
+                'api_key.create',
+                'api_key.revoke',
+                'api.invoke',
+              ],
             }
           : null,
     );
@@ -101,6 +117,9 @@ describe('session-protected workspace HTTP contract', () => {
     });
     vi.mocked(repository.createProject).mockResolvedValue(project);
     vi.mocked(repository.updateProject).mockResolvedValue(project);
+    vi.mocked(repository.findProject).mockImplementation(async (org, id) =>
+      org === organizationId && id === projectId ? project : null,
+    );
   });
 
   it('onboards using the session user, not a client-supplied identity', async () => {
@@ -369,5 +388,160 @@ describe('session-protected workspace HTTP contract', () => {
     expect(document.paths['/platform/organizations']?.post?.security).toEqual([
       { accountSession: [] },
     ]);
+  });
+
+  const keyPath = `organizations/${organizationId}/projects/${projectId}/api-keys`;
+  const key = {
+    id: randomUUID(),
+    projectId,
+    name: 'Server',
+    prefix: 'mylx_display',
+    scopes: ['api.invoke'],
+    createdAt: new Date(),
+    lastUsedAt: null,
+    expiresAt: null,
+    revokedAt: null,
+  };
+  it('creates unpredictable keys once, stores a hash, and disables caching', async () => {
+    vi.mocked(repository.createApiKey).mockResolvedValue(key);
+    const response = await request('POST', keyPath, {
+      name: 'Server',
+      scopes: ['api.invoke'],
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    const { secret } = response.json<{ secret: string }>();
+    expect(secret).toMatch(/^mylx_[A-Za-z0-9_-]{43}$/);
+    expect(repository.createApiKey).toHaveBeenCalledWith(
+      organizationId,
+      projectId,
+      {
+        name: 'Server',
+        prefix: secret.slice(0, 13),
+        keyHash: createHash('sha256').update(secret).digest('hex'),
+        scopes: ['api.invoke'],
+        expiresAt: null,
+      },
+    );
+    const second = await request('POST', keyPath, {
+      name: 'Server',
+      scopes: ['api.invoke'],
+    });
+    expect(second.json().secret).not.toBe(secret);
+    expect(response.json()).not.toHaveProperty('keyHash');
+  });
+
+  it.each(
+    [[], ['*'], ['role.manage'], ['api.invoke', 'api.invoke']].map(
+      (scopes) => ({ scopes }),
+    ),
+  )('rejects invalid or administrative scopes %j', async ({ scopes }) => {
+    expect(
+      (await request('POST', keyPath, { name: 'Key', scopes })).statusCode,
+    ).toBe(400);
+    expect(repository.createApiKey).not.toHaveBeenCalled();
+  });
+
+  it('rejects expired keys, unexpected fields and delegation of absent permissions', async () => {
+    expect(
+      (
+        await request('POST', keyPath, {
+          name: 'Key',
+          scopes: ['api.invoke'],
+          expiresAt: '2020-01-01T00:00:00Z',
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (
+        await request('POST', keyPath, {
+          name: 'Key',
+          scopes: ['api.invoke'],
+          keyHash: 'chosen',
+        })
+      ).statusCode,
+    ).toBe(400);
+    vi.mocked(repository.getOrganization).mockResolvedValue({
+      ...organization,
+      permissions: ['api_key.create'],
+    });
+    expect(
+      (await request('POST', keyPath, { name: 'Key', scopes: ['api.invoke'] }))
+        .statusCode,
+    ).toBe(403);
+    expect(repository.createApiKey).not.toHaveBeenCalled();
+  });
+
+  it('keeps list and revocation within membership and project boundaries', async () => {
+    vi.mocked(repository.listApiKeys).mockResolvedValue({
+      items: [key],
+      nextCursor: null,
+    });
+    expect((await request('GET', keyPath)).json().items[0]).not.toHaveProperty(
+      'secret',
+    );
+    expect(repository.listApiKeys).toHaveBeenCalledWith(
+      organizationId,
+      projectId,
+      { limit: 25 },
+    );
+    vi.mocked(repository.revokeApiKey).mockResolvedValue({
+      ...key,
+      revokedAt: new Date(),
+    });
+    expect(
+      (await request('POST', `${keyPath}/${key.id}/revoke`, {})).statusCode,
+    ).toBe(200);
+    expect(repository.revokeApiKey).toHaveBeenCalledWith(
+      organizationId,
+      projectId,
+      key.id,
+      expect.any(Date),
+    );
+    expect(
+      (await request('GET', keyPath.replace(organizationId, randomUUID())))
+        .statusCode,
+    ).toBe(404);
+    expect(
+      (await request('GET', keyPath.replace(projectId, randomUUID())))
+        .statusCode,
+    ).toBe(404);
+    vi.mocked(repository.getOrganization).mockResolvedValue({
+      ...organization,
+      permissions: [],
+    });
+    expect((await request('GET', keyPath)).statusCode).toBe(403);
+    expect(
+      (await request('POST', `${keyPath}/${key.id}/revoke`, {})).statusCode,
+    ).toBe(403);
+  });
+
+  it('requires a session and trusted origin for key writes', async () => {
+    expect(
+      (
+        await request(
+          'POST',
+          keyPath,
+          { name: 'Key', scopes: ['api.invoke'] },
+          { cookie: '', authorization: 'Bearer bootstrap-test' },
+        )
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await request(
+          'POST',
+          keyPath,
+          { name: 'Key', scopes: ['api.invoke'] },
+          { origin: 'https://attacker.example' },
+        )
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (await request('POST', `${keyPath}/${key.id}/revoke`, {}, { origin: '' }))
+        .statusCode,
+    ).toBe(403);
+    expect(repository.createApiKey).not.toHaveBeenCalled();
+    expect(repository.revokeApiKey).not.toHaveBeenCalled();
   });
 });

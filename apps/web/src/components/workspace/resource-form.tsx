@@ -21,10 +21,12 @@ export function ResourceForm({
   organizationId,
   project,
   onDone,
+  embedded = false,
 }: {
   organizationId?: string;
   project?: Project;
   onDone?: () => void;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const id = useId();
@@ -37,7 +39,7 @@ export function ResourceForm({
     ? 'Edit project'
     : organizationId
       ? 'Create project'
-      : 'Create organization';
+      : 'Create workspace';
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,11 +87,13 @@ export function ResourceForm({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card className={embedded ? 'border-0 p-0 shadow-none ring-0' : undefined}>
+      {!embedded && (
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+      )}
+      <CardContent className={embedded ? 'p-0' : undefined}>
         <form onSubmit={submit} className="space-y-4">
           <label className="grid gap-2">
             Name

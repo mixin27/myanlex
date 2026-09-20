@@ -77,6 +77,16 @@ export class PlatformService {
     );
   }
 
+  async getProject(userId: string, organizationId: string, projectId: string) {
+    await this.authorize(userId, organizationId, 'project.read');
+    const project = await this.repository.findProject(
+      organizationId,
+      projectId,
+    );
+    if (!project) throw new NotFoundException('Project not found.');
+    return project;
+  }
+
   async updateProject(
     userId: string,
     organizationId: string,
