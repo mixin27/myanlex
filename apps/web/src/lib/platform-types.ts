@@ -42,3 +42,21 @@ export interface UsageReport {
   totals: UsageMetrics;
   days: (UsageMetrics & { date: string })[];
 }
+
+export interface QuotaDimension {
+  used: string;
+  limit: string | null;
+  remaining: string | null;
+}
+export interface QuotaReport {
+  organizationId: string;
+  enforcementEnabled: boolean;
+  timezone: 'UTC';
+  generatedAt: string;
+  periodStart: string;
+  resetsAt: string;
+  metering: 'admission-reservations';
+  plan: { name: string; slug: string; source: 'subscription' | 'free' };
+  requests: QuotaDimension;
+  characters: QuotaDimension;
+}

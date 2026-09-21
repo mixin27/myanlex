@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { createHash, randomUUID } from 'node:crypto';
 import { ApiKeysService } from '../src/modules/platform/api-keys.service.js';
 import { UsageReportService } from '../src/modules/platform/usage-report.service.js';
+import { QuotaReportService } from '../src/modules/platform/quota-report.service.js';
 import {
   beforeAll,
   afterAll,
@@ -32,6 +33,7 @@ const project = {
   environment: 'production',
 };
 const origin = 'http://localhost:3000';
+const readQuota = vi.fn();
 const repository: WorkspaceRepository = {
   readUsageDays: vi.fn(),
   findProject: vi.fn(),
@@ -78,10 +80,72 @@ describe('session-protected workspace HTTP contract', () => {
     Object.defineProperty(app.get(UsageReportService), 'repository', {
       value: repository,
     });
+    Object.defineProperties(app.get(QuotaReportService), {
+      workspace: { value: repository },
+      quotas: { value: { read: readQuota } },
+    });
     Object.defineProperties(app.get(AccountAuthService), {
       auth: { value: { api: { getSession } } },
       publicURL: { value: origin },
     });
+  });
+  it('reports organization quotas with session-only authorization and no-store headers', async () => {
+    const path = `organizations/${organizationId}/quota`;
+    vi.mocked(repository.getOrganization).mockResolvedValue({
+      ...organization,
+      permissions: ['usage.read'],
+    });
+    readQuota.mockResolvedValue({
+      now: new Date('2026-09-21T00:00:00Z'),
+      monthStart: new Date('2026-09-01T00:00:00Z'),
+      resetsAt: new Date('2026-10-01T00:00:00Z'),
+      plan: {
+        name: 'Free',
+        slug: 'free',
+        source: 'free',
+        monthlyRequestLimit: 10n,
+        monthlyCharacterLimit: null,
+      },
+      requestCount: 12n,
+      characterCount: 9007199254740993n,
+    });
+    const result = await request('GET', path);
+    expect(result.statusCode).toBe(200);
+    expect(result.headers['cache-control']).toBe('private, no-store');
+    expect(result.json()).toMatchObject({
+      organizationId,
+      enforcementEnabled: false,
+      requests: { used: '12', limit: '10', remaining: '0' },
+      characters: { used: '9007199254740993', limit: null, remaining: null },
+      resetsAt: '2026-10-01T00:00:00.000Z',
+    });
+    expect(
+      (
+        await request('GET', path, undefined, {
+          cookie: '',
+          authorization: 'Bearer bootstrap-test',
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (await request('GET', 'organizations/not-a-uuid/quota')).statusCode,
+    ).toBe(400);
+    vi.mocked(repository.getOrganization).mockResolvedValue({
+      ...organization,
+      permissions: [],
+    });
+    expect((await request('GET', path)).statusCode).toBe(403);
+    vi.mocked(repository.getOrganization).mockResolvedValue(null);
+    expect((await request('GET', path)).statusCode).toBe(404);
+    expect(readQuota).toHaveBeenCalledTimes(1);
+    vi.mocked(repository.getOrganization).mockResolvedValue({
+      ...organization,
+      permissions: ['usage.read'],
+    });
+    readQuota.mockRejectedValue(new Error('private database details'));
+    const failed = await request('GET', path);
+    expect(failed.statusCode).toBe(503);
+    expect(failed.body).not.toContain('private database');
   });
   afterAll(async () => {
     await app?.close();

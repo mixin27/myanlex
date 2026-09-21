@@ -43,6 +43,49 @@ tags:
   - name: Batch
     description: Ordered multi-item text processing with isolated item failures
 paths:
+  /platform/organizations/{organizationId}/quota:
+    get:
+      operationId: getOrganizationQuota
+      summary:
+        Read the current organization plan and monthly allowance (usage.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Requires a verified member session and the dynamic usage.read permission.
+        No project.read permission or project is required. Non-members receive 404.
+        Read-only database snapshot; never creates or consumes a reservation.
+        Counts span all organization projects and keys. Disabled enforcement shows
+        retained reservations, not uncounted traffic. Null limits/remaining mean
+        unlimited. Remaining is clamped to zero after a plan downgrade. Values are
+        decimal strings, not floating-point numbers. This is not billing metering.
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Current UTC calendar-month quota snapshot.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: 'private, no-store' }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotaReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /platform/organizations:
     get:
       operationId: listOrganizations
@@ -995,6 +1038,50 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    QuotaDimension:
+      type: object
+      additionalProperties: false
+      required: [used, limit, remaining]
+      properties:
+        used: { type: string, pattern: '^(0|[1-9][0-9]*)$' }
+        limit: { type: [string, 'null'], pattern: '^(0|[1-9][0-9]*)$' }
+        remaining: { type: [string, 'null'], pattern: '^(0|[1-9][0-9]*)$' }
+    QuotaReport:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          organizationId,
+          enforcementEnabled,
+          timezone,
+          generatedAt,
+          periodStart,
+          resetsAt,
+          metering,
+          plan,
+          requests,
+          characters,
+        ]
+      properties:
+        organizationId: { type: string, format: uuid }
+        enforcementEnabled: { type: boolean }
+        timezone: { type: string, const: UTC }
+        generatedAt: { type: string, format: date-time }
+        periodStart: { type: string, format: date-time }
+        resetsAt: { type: string, format: date-time }
+        metering: { type: string, const: admission-reservations }
+        plan:
+          type: object
+          additionalProperties: false
+          required: [name, slug, source]
+          properties:
+            name: { type: string }
+            slug: { type: string }
+            source: { type: string, enum: [subscription, free] }
+        requests:
+          $ref: '#/components/schemas/QuotaDimension'
+        characters:
+          $ref: '#/components/schemas/QuotaDimension'
     OrganizationInput:
       type: object
       additionalProperties: false

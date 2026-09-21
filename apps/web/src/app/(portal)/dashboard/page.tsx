@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardUsage } from '@/components/usage/dashboard-usage';
+import { DashboardQuota } from '@/components/usage/dashboard-quota';
 import type { UsageSelection } from '@/lib/usage-server';
 import {
   ArrowUpRight,
@@ -38,6 +39,18 @@ export default async function DashboardPage({
         </div>
         <CreateResource />
       </header>
+      <Suspense
+        fallback={
+          <p className="text-sm text-muted-foreground">
+            Loading monthly allowance…
+          </p>
+        }
+      >
+        <DashboardQuota
+          organizationId={selection.organization ?? organizations.items[0]?.id}
+          organizations={organizations.items}
+        />
+      </Suspense>
       <Suspense
         fallback={
           <p className="text-sm text-muted-foreground">

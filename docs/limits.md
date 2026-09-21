@@ -84,6 +84,29 @@ headers always describe the short window, not monthly quotas.
 should retry with backoff. A network timeout can leave a reservation committed
 even if the caller received no success; there is no automatic replay/refund.
 
+## Dashboard and read-only reporting
+
+The dashboard's Monthly allowance panel shows the selected workspace's plan,
+current UTC period, reserved requests/code points, remaining allowance, and
+reset date. Workspace selection uses the dashboard URL; quota visibility
+requires `usage.read`, not `project.read`. No project is required. Loading,
+no-workspace, permission-denied, and unavailable states do not fabricate
+allowance values.
+
+`GET /v1/platform/organizations/:organizationId/quota` requires a verified
+member session and `usage.read`. API keys are not accepted. Non-members receive
+404; members without permission receive 403. Responses use `private, no-store`.
+The PostgreSQL repeatable-read snapshot shares enforcement's database clock and
+plan resolver and never inserts, resets, or consumes a quota row. Large counts
+remain decimal strings. Null limits/remaining mean unlimited; remaining is
+clamped to zero when reservations exceed a newly reduced limit.
+
+When enforcement is off, the panel explicitly labels retained reservations and
+does not imply ongoing usage is counted. Reads still work while enforcement is
+disabled. The enforcement flag describes the serving API instance; configuration
+must remain consistent across replicas. Reload to refresh the snapshot. This is
+not a subscription editor, payment flow, or billing statement.
+
 ## Tests
 
 Use disposable services; never point integration tests at a production database.

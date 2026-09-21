@@ -85,6 +85,16 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
   it('atomically shares both dimensions across projects and instances, without crossing tenants', async () => {
     const f = await fixture(5n, 10n);
     try {
+      expect(await f.repositories[0]!.read(f.organization.id)).toMatchObject({
+        requestCount: 0n,
+        characterCount: 0n,
+        plan: { source: 'subscription', monthlyRequestLimit: 5n },
+      });
+      expect(
+        await f.client.organizationQuota.count({
+          where: { organizationId: f.organization.id },
+        }),
+      ).toBe(0);
       const results = await Promise.all(
         Array.from({ length: 24 }, (_, index) =>
           f.repositories[index % 2]!.consume(f.projects[index % 2]!.id, 2),
@@ -96,6 +106,21 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
       });
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({ requestCount: 5n, characterCount: 10n });
+      const snapshot = await f.repositories[1]!.read(f.organization.id);
+      expect(Math.abs(Date.now() - snapshot.now.getTime())).toBeLessThan(
+        10_000,
+      );
+      expect(snapshot).toMatchObject({ requestCount: 5n, characterCount: 10n });
+      expect(snapshot.monthStart).toEqual(rows[0]!.monthStart);
+      expect(snapshot.resetsAt.getTime()).toBeGreaterThan(
+        snapshot.now.getTime(),
+      );
+      expect((await f.repositories[1]!.read(f.other.id)).requestCount).toBe(0n);
+      expect(
+        await f.client.organizationQuota.findMany({
+          where: { organizationId: f.organization.id },
+        }),
+      ).toEqual(rows);
       expect(rows[0]!.monthStart.toISOString()).toMatch(/-01T00:00:00.000Z$/);
       expect(
         (await f.repositories[0]!.consume(f.projects[2]!.id, 2)).allowed,
@@ -109,6 +134,45 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
       } finally {
         await restarted.onApplicationShutdown();
       }
+    } finally {
+      await f.cleanup();
+    }
+  });
+
+  it('uses UTC subscription boundaries in non-UTC database sessions', async () => {
+    const f = await fixture(0n, 0n);
+    try {
+      const now = (await f.repositories[0]!.read(f.organization.id)).now;
+      await f.client.subscription.updateMany({
+        where: { organizationId: f.organization.id },
+        data: { startsAt: new Date(now.getTime() + 3_600_000) },
+      });
+      expect(
+        (await f.repositories[1]!.read(f.organization.id)).plan.source,
+      ).toBe('free');
+      expect(
+        (await f.repositories[1]!.consume(f.projects[0]!.id, 1)).allowed,
+      ).toBe(true);
+      await f.client.subscription.updateMany({
+        where: { organizationId: f.organization.id },
+        data: {
+          startsAt: new Date(now.getTime() - 3_600_000),
+          endsAt: new Date(now.getTime() + 3_600_000),
+        },
+      });
+      expect(
+        (await f.repositories[1]!.read(f.organization.id)).plan.source,
+      ).toBe('subscription');
+      expect(
+        (await f.repositories[1]!.consume(f.projects[0]!.id, 0)).allowed,
+      ).toBe(false);
+      await f.client.subscription.updateMany({
+        where: { organizationId: f.organization.id },
+        data: { endsAt: new Date(now.getTime() - 1) },
+      });
+      expect(
+        (await f.repositories[1]!.read(f.organization.id)).plan.source,
+      ).toBe('free');
     } finally {
       await f.cleanup();
     }

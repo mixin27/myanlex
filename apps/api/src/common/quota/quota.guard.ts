@@ -16,7 +16,8 @@ import { QuotaExceededException } from './quota-exceeded.exception.js';
 export class QuotaGuard implements CanActivate {
   constructor(
     @Inject(QUOTAS_ENABLED) private readonly enabled: boolean,
-    @Inject(QUOTA_REPOSITORY) private readonly repository: QuotaRepository,
+    @Inject(QUOTA_REPOSITORY)
+    private readonly repository: Pick<QuotaRepository, 'consume'>,
     @Inject(Reflector) private readonly reflector: Reflector,
   ) {}
 

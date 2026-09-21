@@ -23,6 +23,13 @@ subscription information.
 
 ## API
 
+Organization allowance reporting is available at
+`GET /v1/platform/organizations/:organizationId/quota` for verified member
+sessions with `usage.read`. It powers the dashboard's Monthly allowance panel,
+separate from project activity analytics. See
+[quota reporting](decisions/0012-quota-reporting.md) and
+[quota semantics](limits.md).
+
 The checked-in `openapi/openapi.yaml` is authoritative. Routes are under
 `/v1/platform/organizations`:
 
