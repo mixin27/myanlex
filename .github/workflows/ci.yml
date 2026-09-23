@@ -60,3 +60,5 @@ jobs:
         run: pnpm db:seed
       - name: Run checks (including account persistence)
         run: pnpm check
+      - name: Verify SDK against the NestJS API
+        run: pnpm sdk:smoke

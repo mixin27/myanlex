@@ -11,6 +11,7 @@
   },
   "scripts": {
     "benchmark": "pnpm build && node --expose-gc benchmarks/application.mjs",
+    "sdk:smoke": "pnpm --filter @myanlex/sdk... --filter @myanlex/api... build && node scripts/sdk-smoke.mjs",
     "build": "pnpm --recursive --if-present build",
     "check": "pnpm format:check && pnpm lint && pnpm openapi:lint && pnpm typecheck && pnpm test",
     "db:generate": "prisma generate",

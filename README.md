@@ -66,6 +66,7 @@ packages/
   core/              Framework-independent language engine
   application/       Framework-independent use cases and input policy
   types/             Shared public domain types
+  sdk/               Typed native-fetch HTTP client
 apps/
   api/               NestJS/Fastify HTTP adapter
   web/               Next.js developer portal
@@ -143,6 +144,14 @@ Interactive API documentation is served by the Nest application at
 For multi-instance deployments, configure Redis-backed rate limiting. Monthly
 organization quotas are opt-in and use PostgreSQL. See the
 [limits setup guide](docs/limits.md) before enabling either feature.
+
+## TypeScript SDK
+
+The workspace includes [`@myanlex/sdk`](packages/sdk/README.md), a thin
+native-fetch client for language and batch operations, with typed errors,
+timeouts, and caller cancellation. Keep API keys on your server. The package is
+not yet published; run `pnpm sdk:smoke` to verify it against a local ephemeral
+Nest API.
 
 ## License
 
