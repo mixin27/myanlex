@@ -1,0 +1,39 @@
+---
+title: Unicode offsets
+description: Slice spans by code points, not native string indexes.
+---
+
+All spans are zero-based and half-open: `start` is included, `end` is excluded.
+They count Unicode code points, not UTF-8 bytes, UTF-16 units or grapheme
+clusters. For `က😀`, the emoji spans `[1, 2)` although JavaScript and Dart use
+two UTF-16 units to represent it.
+
+<Tabs items={['JavaScript', 'Dart', 'Python']}>
+<Tab value="JavaScript">
+
+```js
+const span = Array.from(result.input).slice(start, end).join('');
+```
+
+</Tab>
+<Tab value="Dart">
+
+```dart
+final span = String.fromCharCodes(
+  result.input.runes.skip(start).take(end - start),
+);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+span = result["input"][start:end]
+```
+
+</Tab>
+</Tabs>
+
+Use the input attached to the response. Normalization/conversion can change
+length or ordering and do not provide an offset map. Transliteration spans
+reference input, not Latin output.

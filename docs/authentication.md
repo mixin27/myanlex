@@ -119,5 +119,6 @@ provides one). Tests never send real email or contact OAuth providers.
 Live Google/GitHub authorization and SMTP delivery must also be checked with
 deployment credentials. Organization onboarding and project management are
 available after signing in; see [platform.md](platform.md). Signing in does not
-automatically create an organization or project. API-key management remains
-subsequent work.
+automatically create an organization or project. Create and revoke scoped keys
+from API keys; follow the [developer guide](developer-guide.md) for a first
+request.

@@ -1,0 +1,13 @@
+{
+  "title": "Language guides",
+  "pages": [
+    "index",
+    "normalization",
+    "encoding",
+    "syllabification",
+    "orthography",
+    "transliteration",
+    "tokenization",
+    "offsets"
+  ]
+}

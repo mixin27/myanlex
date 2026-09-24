@@ -1,0 +1,77 @@
+---
+title: Quick start
+description: Make your first API request without a repository checkout.
+---
+
+You need an available MyanLex deployment, its console URL, and its API base URL
+including `/v1`. Your deployment operator supplies these URLs.
+
+<PreviewOnly>
+  The hosted service is not launched. Use an existing self-hosted deployment, or
+  follow [Self-hosting](/docs/self-hosting) to run one. The five-minute
+  first-request goal assumes a running deployment, not infrastructure
+  installation.
+</PreviewOnly>
+
+<Steps>
+<Step>
+## Create your account
+
+Register in your deployment's developer console. Follow the email verification
+link and sign in. If necessary, use **Resend verification** on Login.
+
+</Step>
+<Step>
+## Create a workspace and project
+
+Open **Projects**, create a workspace, then create a project. The API calls a
+workspace an **organization**. Joining an existing workspace requires the
+appropriate permissions; signing in alone does not grant access to its data.
+
+</Step>
+<Step>
+## Create an API key
+
+Open **API keys**, select your project and create a key with `api.invoke`. Save
+its secret immediately in a secret manager: it is displayed only once. Creation
+requires `api_key.create` and `api.invoke`.
+
+</Step>
+<Step>
+## Send a request from your server
+
+Set `MYANLEX_API_KEY` securely in your terminal or server environment. Set
+`MYANLEX_API_URL` to your deployment's API URL, including `/v1`, not its console
+URL. Use HTTPS outside loopback. Do not enable shell tracing with real secrets.
+
+```sh title="First request"
+printf 'Authorization: Bearer %s\n' "$MYANLEX_API_KEY" |
+  curl --silent --show-error --fail-with-body --max-time 30 \
+  --header @- --header 'Content-Type: application/json' \
+  --data '{"text":"က😀"}' "$MYANLEX_API_URL/syllabify"
+```
+
+Expected HTTP `200`:
+
+```json title="Response"
+{
+  "input": "က😀",
+  "profile": "burmese-orthographic-v1",
+  "segments": [
+    { "text": "က", "start": 0, "end": 1, "kind": "burmese_syllable" },
+    { "text": "😀", "start": 1, "end": 2, "kind": "non_myanmar" }
+  ]
+}
+```
+
+</Step>
+</Steps>
+
+<Callout type="warn" title="Keep keys server-side">
+  Do not embed long-lived keys in browser bundles, mobile binaries,
+  `NEXT_PUBLIC_*` variables, source control or screenshots. Browser and Flutter
+  apps should call your authenticated backend.
+</Callout>
+
+Next: [HTTP examples](/docs/sdks/http), [language operations](/docs/language),
+or [errors and quotas](/docs/errors).

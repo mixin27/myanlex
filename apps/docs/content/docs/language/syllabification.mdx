@@ -1,0 +1,19 @@
+---
+title: Syllabification
+description: Lossless written Burmese syllables with code-point spans.
+---
+
+`POST /v1/syllabify` returns `burmese-orthographic-v1` segments.
+
+```json
+{ "text": "က😀" }
+```
+
+Kinds are `burmese_syllable`, `separator`, `non_myanmar`, and
+`unsupported_myanmar`. Joining every segment's `text` reconstructs the input.
+Spans use [code-point offsets](/docs/language/offsets).
+
+Written units are not dictionary words or guaranteed phonological syllables. The
+operation does not normalize, repair, or infer behavior for Shan, Mon, Karen and
+other languages outside the Burmese profile. Unsupported status is not a
+declaration that the text is invalid in every Myanmar-script language.

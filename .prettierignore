@@ -3,6 +3,9 @@ dist/
 coverage/
 apps/web/.next/
 apps/web/next-env.d.ts
+apps/docs/.next/
+apps/docs/.source/
+apps/docs/next-env.d.ts
 local/
 pnpm-lock.yaml
 packages/myanlex_dart/.dart_tool/

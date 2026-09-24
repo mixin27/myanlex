@@ -1,0 +1,20 @@
+---
+title: Orthography validation
+description: Diagnose encoded structure without changing text.
+---
+
+`POST /v1/orthography/validate` returns `valid` and diagnostics with code-point
+spans under `burmese-orthography-v1`.
+
+```json
+{ "text": "က" }
+```
+
+`valid: true` means no supported structural rule was violated, not correct
+spelling or meaningful Burmese. Non-Myanmar text and separators are allowed.
+
+Diagnostics include `component_order`, `duplicate_component`, `orphan_mark`,
+`dangling_virama`, `unsupported_stack_target`, `invalid_syllable_start`, and
+`unsupported_myanmar`. Diagnostics do not automatically delete, reorder or
+replace text. Do not interpret unsupported characters as errors in every
+language that uses Myanmar script.

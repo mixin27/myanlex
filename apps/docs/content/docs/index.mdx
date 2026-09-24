@@ -1,0 +1,46 @@
+---
+title: Introduction
+description: Myanmar-language processing with explicit, stable boundaries.
+---
+
+MyanLex provides HTTP operations for Myanmar text. You can call an available
+deployment from any language: you do not need the platform repository, NestJS,
+Prisma or a local database to use its API.
+
+<Cards>
+  <Card
+    title="First request"
+    href="/docs/quick-start"
+    description="Create a key and process your first text."
+  />
+  <Card
+    title="Language operations"
+    href="/docs/language"
+    description="Choose the right operation and understand its limits."
+  />
+  <Card
+    title="SDKs"
+    href="/docs/sdks/typescript"
+    description="Typed TypeScript and Dart clients."
+  />
+  <Card
+    title="API reference"
+    href="/docs/reference"
+    description="Request and response schemas from OpenAPI."
+  />
+</Cards>
+
+## Choose your path
+
+- **API consumer:** start with [Quick start](/docs/quick-start).
+- **Deployment operator:** follow [Self-hosting](/docs/self-hosting).
+- **Contributor:** read [Contributing](/docs/contributing).
+
+## Explicit processing
+
+Detection does not convert. Conversion does not silently normalize.
+Syllabification is not dictionary word segmentation, and transliteration is not
+translation. Each operation reports a versioned profile and preserves or
+diagnoses unsupported input rather than guessing its meaning.
+
+All spans use [Unicode code-point offsets](/docs/language/offsets).

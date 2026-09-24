@@ -1,0 +1,20 @@
+---
+title: Safe normalization
+description: Canonical equivalence, not automatic repair.
+---
+
+`POST /v1/text/normalize` applies NFC to the complete input and returns `input`,
+`output`, `changed` and profile `unicode-nfc`.
+
+```json
+{ "text": "က" }
+```
+
+The operation is deterministic and idempotent for the supported repertoire. It
+does not apply compatibility normalization, repair spelling or orthographic
+order, strip whitespace or controls, or convert Zawgyi. There are no `strict` or
+`search` profiles in this API.
+
+NFC can change code-point count and ordering. Compute subsequent offsets from
+the normalized output; no input-to-output offset map is returned. Canonically
+normalized text is not necessarily valid Burmese.

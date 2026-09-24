@@ -162,6 +162,16 @@ official Dart CLI package template; currently available as a local path
 dependency only. Run `pnpm dart:sdk:smoke` for real API contract verification.
 Keep keys server-side.
 
+## Developer guide
+
+Run `pnpm --filter @myanlex/docs dev` and open http://localhost:3002 for the
+dedicated MDX documentation site. Dashboard → Documentation links to it.
+API-consumer guides are separate from self-hosting and contributor instructions.
+See the [repository guide](docs/developer-guide.md) for configuration and
+verification. `pnpm docs:smoke` checks API examples; `pnpm docs:site:smoke`
+checks the production documentation site without browser automation. See
+[release status](CHANGELOG.md) for what is available and what remains.
+
 ## License
 
 MyanLex source code is available under the [MIT License](LICENSE). Corpus

@@ -1,0 +1,19 @@
+---
+title: Transliteration
+description: Deterministic ALA-LC mapping, not pronunciation or translation.
+---
+
+`POST /v1/transliterate` requires the scheme `ala-lc-2011`.
+
+```json
+{ "text": "မြန်မာ", "scheme": "ala-lc-2011" }
+```
+
+The output is `mranʻmā`, using profile `ala-lc-2011-mapping-v1`. This is an
+orthographic mapping, not an English spelling or a pronunciation guide. It
+preserves spacing and does not infer cataloging word divisions or contextual
+capitalization. Other schemes and reverse transliteration are not implemented.
+
+Segments are `transliterated`, `preserved`, or `unsupported`. Unsupported spans
+are retained and make `complete` false. Segment offsets refer to the original
+input, not the Latin output. Explicitly convert known Zawgyi input first.

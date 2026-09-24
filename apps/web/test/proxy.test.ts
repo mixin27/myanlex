@@ -25,6 +25,7 @@ describe('portal proxy', () => {
 
   it.each([
     '/login',
+    '/docs',
     '/register',
     '/verify-email',
     '/forgot-password',

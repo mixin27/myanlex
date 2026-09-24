@@ -1,0 +1,37 @@
+---
+title: Detection and conversion
+description: Keep uncertain detection separate from explicit conversion.
+---
+
+## Detect
+
+`POST /v1/text/detect` returns encoding evidence without changing text.
+
+```json
+{ "text": "မြန်မာစာ" }
+```
+
+Possible encodings are `unicode`, `zawgyi`, `mixed`, `unknown`, and
+`non_myanmar`. `unknown` is a legitimate answer for ambiguous shared sequences.
+`mixed` means separate Myanmar runs have opposing evidence; a switch within one
+uninterrupted run cannot be reliably located. Detection does not identify the
+language or establish orthographic validity.
+
+## Convert
+
+`POST /v1/text/convert` requires both `from` and `to` to be `unicode` or
+`zawgyi`.
+
+```json
+{ "text": "မဂၤလာပါ", "from": "zawgyi", "to": "unicode" }
+```
+
+The output is `မင်္ဂလာပါ`. Equal directions produce an exact no-op. Do not pass
+`unknown` or `mixed` as a known source encoding. Preserve original text and the
+chosen direction. Unicode should be your canonical storage format.
+
+<Callout type="warn">
+  Unicode-to-Zawgyi is a compatibility operation, not a lossless representation
+  of all Myanmar-script languages. Exact round trips are not promised.
+  Conversion does not additionally apply the separate NFC operation.
+</Callout>

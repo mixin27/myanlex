@@ -1,0 +1,73 @@
+---
+title: HTTP examples
+description: Call MyanLex with curl, JavaScript or Python. No SDK required.
+---
+
+Set `MYANLEX_API_KEY` and `MYANLEX_API_URL` in your server environment. The base
+URL must include `/v1` and use HTTPS outside local development. These examples
+do not follow redirects or retry automatically. They print only their own sample
+text; do not turn this into automatic logging of private submissions.
+
+<Tabs items={['curl', 'JavaScript', 'Python']}>
+<Tab value="curl">
+
+```sh
+printf 'Authorization: Bearer %s\n' "$MYANLEX_API_KEY" |
+  curl --silent --show-error --fail-with-body --max-time 30 \
+  --header @- --header 'Content-Type: application/json' \
+  --data '{"text":"က😀"}' "$MYANLEX_API_URL/syllabify"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```js title="request.mjs"
+const response = await fetch(`${process.env.MYANLEX_API_URL}/syllabify`, {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.MYANLEX_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ text: 'က😀' }),
+  redirect: 'error',
+  credentials: 'omit',
+  signal: AbortSignal.timeout(30_000),
+});
+if (!response.ok) throw new Error(`MyanLex HTTP ${response.status}`);
+console.log(await response.json());
+```
+
+Run with Node.js: `node request.mjs`. Keep this on your server, not in a
+browser.
+
+</Tab>
+<Tab value="Python">
+
+```python title="request.py"
+import json
+import os
+import urllib.request
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+request = urllib.request.Request(
+    os.environ['MYANLEX_API_URL'].rstrip('/') + '/syllabify',
+    data=json.dumps({'text': 'က😀'}).encode('utf-8'),
+    headers={
+        'Authorization': 'Bearer ' + os.environ['MYANLEX_API_KEY'],
+        'Content-Type': 'application/json',
+    },
+    method='POST',
+)
+with urllib.request.build_opener(NoRedirect()).open(request, timeout=30) as response:
+    print(json.load(response))
+```
+
+Run with Python 3: `python3 request.py`. Only the standard library is needed.
+This timeout applies to socket operations, not a total response deadline. There
+is no Python SDK yet.
+
+</Tab>
+</Tabs>

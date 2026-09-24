@@ -1,0 +1,75 @@
+---
+title: Dart SDK
+description: Typed HTTP operations, cancellation and explicit client ownership.
+---
+
+## Installation
+
+<PreviewOnly>
+  The pub.dev command below is planned and does not work yet. For preview use,
+  add a local path dependency to your checkout's `packages/myanlex_dart`, then
+  run `dart pub get`. This temporary setup is the only part requiring a
+  checkout.
+</PreviewOnly>
+
+```sh title="Registry installation"
+dart pub add myanlex_dart
+```
+
+<PreviewOnly>
+
+```yaml title="pubspec.yaml — preview alternative"
+dependencies:
+  myanlex_dart:
+    path: ../myanlex/packages/myanlex_dart
+```
+
+</PreviewOnly>
+
+## First request
+
+Requires Dart 3.13.1 or newer within Dart 3. No Flutter dependency.
+
+```dart title="server.dart"
+import 'dart:io';
+import 'package:myanlex_dart/myanlex_dart.dart';
+
+Future<void> main() async {
+  final client = MyanLex(
+    apiKey: Platform.environment['MYANLEX_API_KEY']!,
+    baseUrl: Platform.environment['MYANLEX_API_URL']!,
+    timeout: const Duration(seconds: 30),
+  );
+  try {
+    final result = await client.syllabify(text: 'က😀');
+    for (final span in result.segments) {
+      print('${span.start}..${span.end}: ${span.text}');
+    }
+  } on MyanLexApiException catch (error) {
+    stderr.writeln('HTTP ${error.status}: ${error.code}');
+  } finally {
+    client.close();
+  }
+}
+```
+
+## Lifecycle and safety
+
+All nine language operations plus `health()` have typed results. Batch items use
+`BatchItem` inputs and sealed `BatchSuccess<T>` / `BatchFailure<T>` outputs.
+HTTP success does not mean every batch item succeeded.
+
+Pass `cancellation: token` with a `CancellationToken` and call `token.cancel()`
+to abort. Deadlines cover headers and body reading. `close()` cancels pending
+calls and rejects future calls. Internally created HTTP clients are closed;
+injected clients remain caller-owned and must honor abort and redirect options.
+
+`MyanLexApiException` preserves HTTP status, optional problem fields and retry
+information. `MyanLexRequestException.kind` is `aborted`, `timeout`,
+`transport_failure`, `invalid_response`, or `closed`. No automatic retries.
+
+This is a server-side HTTP SDK, not an offline Dart NLP engine. Do not embed
+long-lived keys in distributed Flutter apps. Have the app call your
+authenticated backend. The tested runtime is the Dart VM; browser behavior is
+not claimed as verified. Use runes when
+[slicing offsets](/docs/language/offsets).

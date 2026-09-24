@@ -1,0 +1,75 @@
+---
+title: Self-hosting
+description: Operator setup, separate from API-consumer integration.
+---
+
+This section is for deployment operators. API consumers using an existing
+deployment do not need these steps.
+
+## Local development deployment
+
+Clone the repository, use its `.nvmrc` Node version and pinned pnpm version,
+then run `pnpm install`. Copy the checked-in API and web `.env.example`
+templates to their local environment files and set `DATABASE_URL` to your local
+PostgreSQL database. Do not commit secrets.
+
+```sh
+docker compose --profile auth up -d
+pnpm db:deploy
+pnpm db:seed
+```
+
+Configure `apps/api/.env`:
+
+```dotenv
+PORT=3001
+AUTH_ENABLED=true
+AUTH_PUBLIC_URL=http://localhost:3000
+# Generate AUTH_SECRET using: openssl rand -base64 48
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_SECURE=false
+SMTP_FROM=auth@myanlex.local
+```
+
+Set `AUTH_SECRET` to the generated secret. In `apps/web/.env.local`, set
+`API_INTERNAL_URL=http://localhost:3001`,
+`NEXT_PUBLIC_API_DOCS_URL=http://localhost:3001/docs`, and
+`NEXT_PUBLIC_DOCS_URL=http://localhost:3002`.
+
+Run each application in its own terminal:
+
+```sh
+pnpm --filter @myanlex/api start:dev
+pnpm --filter @myanlex/web dev
+pnpm --filter @myanlex/docs dev
+```
+
+The console is at localhost:3000, the API at localhost:3001, this documentation
+site at localhost:3002, and Mailpit at localhost:8025. Register and follow the
+verification link in Mailpit. Do not manually modify verification database
+fields.
+
+## Distributed limits and quotas
+
+Start Redis with `docker compose --profile redis up -d` and set `REDIS_URL`. Use
+one prefix and consistent limit settings across replicas. Redis failures fail
+closed rather than granting a fresh local allowance.
+
+Monthly quotas are opt-in: set `MYANLEX_QUOTAS_ENABLED=true` consistently across
+replicas after migrations and seeding. Enforcement uses PostgreSQL, not Redis.
+Bootstrap keys and sessions bypass monthly quotas; remove a bootstrap key in
+production if that bypass is inappropriate. Historical traffic is not backfilled
+on enablement, and disabling enforcement stops counting.
+
+## Production checklist
+
+Local Compose is not a complete production deployment. Before launch, configure
+HTTPS, private database/Redis access, secret management, real SMTP, backups,
+monitoring and recovery procedures. Configure optional Google/GitHub OAuth
+callbacks on the console origin. Never store submitted text in usage logs.
+
+Set the docs app's `NEXT_PUBLIC_CONSOLE_URL` and the console's
+`NEXT_PUBLIC_DOCS_URL` to their deployed origins, then rebuild. The docs app
+requires no database or authentication secrets. Build it with the repository
+root available so it can read the single OpenAPI contract.

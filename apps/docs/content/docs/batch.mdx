@@ -1,0 +1,41 @@
+---
+title: Batch operations
+description: Process ordered items and handle partial failures explicitly.
+---
+
+Use `POST /v1/batch/syllabify` or `POST /v1/batch/transliterate`.
+Transliteration also requires the top-level `scheme: "ala-lc-2011"`.
+
+```json title="Syllabification request"
+{
+  "items": [
+    { "id": "first", "text": "က" },
+    { "id": "invalid", "text": "\ud800" }
+  ]
+}
+```
+
+The escaped lone surrogate deliberately demonstrates `invalid_unicode`. The
+response is HTTP 200 with the first item successful and the second failed.
+Always inspect each item's `success`, `result` or `error`. Results retain input
+order and IDs. Do not retry successful items when a batch partially fails.
+
+## Limits
+
+| Limit              | Default                                 |
+| ------------------ | --------------------------------------- |
+| Text length        | 100,000 Unicode code points per item    |
+| Batch size         | 1–1,000 items                           |
+| Combined text size | 1,000,000 UTF-8 bytes                   |
+| HTTP body          | 1 MiB, including JSON keys and escaping |
+
+Any limit can reject a request. IDs must be unique, non-empty strings. Invalid
+envelopes fail the whole request; per-item text validation failures in a valid
+envelope are data. Unexpected internal failures are not disguised as successful
+item results.
+
+## Quotas
+
+A batch reserves one request and the sum of submitted code points. Reservations
+occur before validation/processing, so later errors are not refunded. See
+[Errors and quotas](/docs/errors) before designing retries.

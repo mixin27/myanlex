@@ -18,6 +18,7 @@ async function main() {
         code: error.code,
         retryAfterSeconds: error.retryAfterSeconds,
       });
+      process.exitCode = 1;
       return;
     }
     throw error;

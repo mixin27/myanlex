@@ -1,0 +1,16 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "quick-start",
+    "authentication",
+    "language",
+    "batch",
+    "errors",
+    "sdks",
+    "reference",
+    "self-hosting",
+    "contributing",
+    "changelog"
+  ]
+}

@@ -1,0 +1,21 @@
+---
+title: Tokenization
+description:
+  Lossless script and lexical boundaries, not dictionary segmentation.
+---
+
+`POST /v1/tokenize` returns tokens under `myanmar-script-tokens-v1`.
+
+```json
+{ "text": "က😀" }
+```
+
+Tokens distinguish supported Burmese syllables, ASCII Latin words, numbers,
+punctuation, whitespace, recognized emoji, unsupported Myanmar and other text.
+Joining their `text` reconstructs the exact input. No normalization, detection
+or conversion occurs implicitly.
+
+Latin recognition is ASCII-only. `mixedScript` describes recognized Myanmar and
+Latin scripts, not every possible script mixture. Emoji grouping does not claim
+full grapheme segmentation. Burmese units are written syllables, not dictionary
+words.

@@ -1,0 +1,26 @@
+---
+title: Language operations
+description: Choose an operation without hidden transformations.
+---
+
+All paths below are relative to `/v1`, use POST, and accept JSON.
+
+| Operation                                         | Path                    | Meaning                          |
+| ------------------------------------------------- | ----------------------- | -------------------------------- |
+| [Detection](/docs/language/encoding)              | `/text/detect`          | Advisory Unicode/Zawgyi evidence |
+| [Normalization](/docs/language/normalization)     | `/text/normalize`       | Safe NFC only                    |
+| [Conversion](/docs/language/encoding)             | `/text/convert`         | Explicit encoding direction      |
+| [Syllabification](/docs/language/syllabification) | `/syllabify`            | Written Burmese units            |
+| [Orthography](/docs/language/orthography)         | `/orthography/validate` | Structural diagnostics           |
+| [Transliteration](/docs/language/transliteration) | `/transliterate`        | Explicit Latin mapping scheme    |
+| [Tokenization](/docs/language/tokenization)       | `/tokenize`             | Lossless script/lexical tokens   |
+
+[Batch operations](/docs/batch) support syllabification and transliteration. The
+[API reference](/docs/reference) provides exact schemas and response fields.
+
+## Quality boundaries
+
+Burmese processing does not imply support for every language written in Myanmar
+script. Unsupported text is retained or diagnosed rather than silently guessed.
+Source-verified fixtures are not independent linguistic review, and a passing
+regression suite is not a measured real-world accuracy percentage.

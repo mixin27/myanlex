@@ -8,6 +8,7 @@ export default tseslint.config(
       '**/coverage/**',
       '**/.dart_tool/**',
       'apps/web/**',
+      'apps/docs/**',
       'local/**',
     ],
   },

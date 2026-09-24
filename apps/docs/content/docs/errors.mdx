@@ -1,0 +1,47 @@
+---
+title: Errors, rate limits and quotas
+description: Handle HTTP failures without accidental replays.
+---
+
+## Errors
+
+The `/v1` API uses problem details where possible: HTTP status, `code`, `detail`
+and `requestId`. Proxies can return non-JSON errors. Treat server text as
+untrusted and never blindly log bodies or authorization headers. Account
+`/api/auth` errors follow a separate protocol.
+
+| HTTP status          | Action                                                                                  |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| 400                  | Check request shape, required fields and Unicode validity                               |
+| 401                  | Check the key, expiry and revocation                                                    |
+| 403                  | Check the caller's permissions                                                          |
+| 413                  | Reduce text, batch or JSON body size                                                    |
+| 429 `rate_limited`   | Wait for the short-window allowance                                                     |
+| 429 `quota_exceeded` | Wait for the organization monthly reset or contact the operator                         |
+| 503                  | Service could not safely complete the operation; enforcement storage may be unavailable |
+
+## Burst limits
+
+The default is 60 requests per 60 seconds per caller identity, configurable by
+the deployment operator. `RateLimit-*` headers describe only this short window.
+`Retry-After` indicates when an exhausted allowance resets. Public health and
+documentation routes are excluded; account authentication has separate limits.
+
+## Monthly organization allowance
+
+When enabled, an organization shares its request and character allowance across
+all projects and persisted keys. Replacing a key does not reset consumption. The
+period is a UTC calendar month. The seeded Free plan provides 10,000 requests
+and 1,000,000 code points; an active plan can differ.
+
+The console's **Monthly allowance** panel shows the current plan, enforcement
+state and reset date. It requires `usage.read`. Usage charts are best-effort
+completed-event reports, not the quota ledger or a billing statement.
+
+## Retry deliberately
+
+Neither SDK retries automatically. A timeout or disconnect can occur after a
+quota reservation commits. Validation and later processing failures are not
+refunded. Retrying can spend another request. Honor `Retry-After` and use
+bounded backoff only under an explicit application policy. No idempotency
+guarantee is provided for quota accounting.

@@ -88,3 +88,7 @@ jobs:
         run: pnpm check
       - name: Verify SDK against the NestJS API
         run: pnpm sdk:smoke
+      - name: Verify developer documentation examples
+        run: pnpm docs:smoke
+      - name: Verify public documentation site
+        run: pnpm docs:site:smoke

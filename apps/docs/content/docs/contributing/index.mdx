@@ -1,0 +1,38 @@
+---
+title: Contributing
+description: Preserve linguistic correctness and public contracts.
+---
+
+## Development
+
+Use the repository's Node and pnpm versions. Install dependencies, then run
+`pnpm check`. Dart additionally uses `dart analyze --fatal-infos` and
+`dart test` from its package directory. Database/Redis integration tests require
+disposable services; never point them at production.
+
+## Sources of truth
+
+1. Linguistic specifications under `docs/linguistic`.
+2. Provenance-recorded corpus fixtures.
+3. Passing tests.
+4. Architecture decisions.
+
+Planning drafts under `local/` are not authoritative and are not published. Work
+in this order for NLP changes: specification, corpus, tests, implementation,
+then regression suite. Do not invent behavior to satisfy an example.
+
+The core must remain independent of HTTP, databases, authentication, environment
+variables and framework code. Public offsets count code points. Never add corpus
+material without recording provenance and redistribution rights.
+
+## Documentation contributions
+
+Author trusted MDX in `apps/docs/content/docs`. Use code fences with language
+labels, callouts, tabs and steps. Do not compile user-submitted MDX: it is code.
+API schemas come from `openapi/openapi.yaml`, not a copied schema in the docs
+app.
+
+Run `pnpm docs:smoke` for executable API examples and the docs site's
+tests/build for content, links and rendering. Keep API-user guides independent
+of repository setup. Put operator setup here or under Self-hosting, not in the
+first-request flow.

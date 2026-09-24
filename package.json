@@ -10,6 +10,8 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
+    "docs:smoke": "pnpm --filter @myanlex/api... build && tsx scripts/docs-smoke.mjs",
+    "docs:site:smoke": "pnpm --filter @myanlex/docs build && node scripts/docs-site-smoke.mjs",
     "benchmark": "pnpm build && node --expose-gc benchmarks/application.mjs",
     "sdk:smoke": "pnpm --filter @myanlex/sdk... --filter @myanlex/api... build && node scripts/sdk-smoke.mjs",
     "dart:sdk:smoke": "pnpm --filter @myanlex/api... build && node scripts/dart-sdk-smoke.mjs",
@@ -22,7 +24,7 @@
     "db:studio": "prisma studio",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint . && pnpm --filter @myanlex/web lint",
+    "lint": "eslint . && pnpm --filter @myanlex/web lint && pnpm --filter @myanlex/docs lint",
     "openapi:lint": "redocly lint openapi/openapi.yaml --config redocly.yaml",
     "postinstall": "prisma generate",
     "pretypecheck": "pnpm db:generate",
