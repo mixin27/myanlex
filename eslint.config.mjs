@@ -3,7 +3,13 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', 'apps/web/**', 'local/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/.dart_tool/**',
+      'apps/web/**',
+      'local/**',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,

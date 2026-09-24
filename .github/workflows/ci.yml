@@ -9,6 +9,32 @@ permissions:
   contents: read
 
 jobs:
+  dart-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.13.1'
+      - name: Install Dart dependencies
+        run: dart pub get
+        working-directory: packages/myanlex_dart
+      - name: Verify Dart package
+        working-directory: packages/myanlex_dart
+        run: |
+          dart format --output=none --set-exit-if-changed lib test example tool
+          dart analyze --fatal-infos
+          dart test
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dart:sdk:smoke
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 10

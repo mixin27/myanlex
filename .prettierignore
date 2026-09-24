@@ -5,3 +5,5 @@ apps/web/.next/
 apps/web/next-env.d.ts
 local/
 pnpm-lock.yaml
+packages/myanlex_dart/.dart_tool/
+packages/myanlex_dart/pubspec.lock

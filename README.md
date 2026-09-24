@@ -67,6 +67,7 @@ packages/
   application/       Framework-independent use cases and input policy
   types/             Shared public domain types
   sdk/               Typed native-fetch HTTP client
+  myanlex_dart/       Pure Dart HTTP SDK (official package scaffold)
 apps/
   api/               NestJS/Fastify HTTP adapter
   web/               Next.js developer portal
@@ -152,6 +153,14 @@ native-fetch client for language and batch operations, with typed errors,
 timeouts, and caller cancellation. Keep API keys on your server. The package is
 not yet published; run `pnpm sdk:smoke` to verify it against a local ephemeral
 Nest API.
+
+## Dart SDK
+
+[`myanlex_dart`](packages/myanlex_dart/README.md) provides typed language and
+batch methods, cancellation, deadlines, and quota-aware errors. Created with the
+official Dart CLI package template; currently available as a local path
+dependency only. Run `pnpm dart:sdk:smoke` for real API contract verification.
+Keep keys server-side.
 
 ## License
 
