@@ -91,6 +91,15 @@ export class RedisRateLimitStore
     }
   }
 
+  async checkReady(): Promise<boolean> {
+    if (!this.client.isReady) return false;
+    try {
+      return (await this.client.ping()) === 'PONG';
+    } catch {
+      return false;
+    }
+  }
+
   onApplicationShutdown(): void {
     if (this.client.isOpen) this.client.destroy();
   }

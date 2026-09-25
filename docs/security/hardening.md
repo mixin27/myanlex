@@ -55,8 +55,8 @@ An empty audit reports only known advisories, not proof of security.
 
 ## Remaining production release gates
 
-- Dependency-aware readiness separate from the public liveness contract.
-- Bounded-cardinality metrics, monitoring, alerting and log retention policy.
+- Deploy monitoring, alerts and log retention around the implemented
+  [readiness probes and bounded-cardinality metrics](../operations.md).
 - Staging load tests, graceful shutdown and dependency outage exercises.
 - TLS/HSTS, explicit proxy trust topology, backups and tested restoration.
 - Real SMTP and Google/GitHub OAuth deployment verification and secret rotation.

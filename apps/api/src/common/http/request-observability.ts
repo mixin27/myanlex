@@ -16,6 +16,7 @@ export type RequestLogSink = (record: RequestLogRecord) => void;
 export function configureRequestObservability(
   application: NestFastifyApplication,
   sink: RequestLogSink = (record) => new Logger('HttpRequest').log(record),
+  observer?: RequestLogSink,
 ): void {
   const server = application.getHttpAdapter().getInstance();
   const starts = new WeakMap<object, number>();
@@ -53,20 +54,21 @@ export function configureRequestObservability(
       started === undefined
         ? 0
         : Math.max(0, Math.round(performance.now() - started));
-    try {
-      sink({
-        event:
-          statusCode === null
-            ? 'http_request_aborted'
-            : 'http_request_completed',
-        requestId: request.id,
-        method: methods.has(request.method) ? request.method : 'OTHER',
-        route: request.routeOptions?.url ?? 'unmatched',
-        statusCode,
-        durationMs,
-      });
-    } catch {
-      // A log exporter must never fail the request or trigger logging recursion.
+    const entry: RequestLogRecord = {
+      event:
+        statusCode === null ? 'http_request_aborted' : 'http_request_completed',
+      requestId: request.id,
+      method: methods.has(request.method) ? request.method : 'OTHER',
+      route: request.routeOptions?.url ?? 'unmatched',
+      statusCode,
+      durationMs,
+    };
+    for (const consumer of [observer, sink]) {
+      try {
+        consumer?.(entry);
+      } catch {
+        // Exporters are independent and must never fail the request.
+      }
     }
   };
 

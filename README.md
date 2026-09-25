@@ -136,6 +136,8 @@ pnpm --filter @myanlex/api start:prod
 Deployment environment variables override values loaded from the local file.
 
 The unauthenticated health endpoint is `GET http://localhost:3000/v1/health`.
+For dependency readiness, use `/v1/health/ready`. Optional operator-protected
+Prometheus metrics are documented in the [operations guide](docs/operations.md).
 All language operations require `Authorization: Bearer <key>` and follow
 [`openapi/openapi.yaml`](openapi/openapi.yaml).
 

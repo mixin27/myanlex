@@ -15,9 +15,11 @@ import {
   REDIS_URL,
   REDIS_PREFIX,
   QUOTAS_ENABLED,
+  METRICS_TOKEN,
 } from '../tokens.js';
 
 export interface RuntimeConfigOptions {
+  readonly metricsToken?: string;
   readonly apiKey?: string;
   readonly databaseUrl?: string;
   readonly rateLimitMaxRequests?: number;
@@ -34,6 +36,10 @@ const environmentFile = fileURLToPath(
 
 const runtimeEnvironmentSchema = z
   .object({
+    MYANLEX_METRICS_TOKEN: z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]{32,256}$/)
+      .optional(),
     DATABASE_URL: z
       .string()
       .trim()
@@ -90,6 +96,9 @@ function validateEnvironment(
 ): Record<string, unknown> & RuntimeEnvironment {
   const result = runtimeEnvironmentSchema.safeParse({
     ...environment,
+    ...(options.metricsToken === undefined
+      ? {}
+      : { MYANLEX_METRICS_TOKEN: options.metricsToken }),
     ...(options.redisUrl === undefined ? {} : { REDIS_URL: options.redisUrl }),
     ...(options.redisPrefix === undefined
       ? {}
@@ -139,6 +148,12 @@ export class RuntimeConfigModule {
         }),
       ],
       providers: [
+        {
+          provide: METRICS_TOKEN,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): string | undefined =>
+            config.get<string>('MYANLEX_METRICS_TOKEN'),
+        },
         {
           provide: REDIS_URL,
           inject: [ConfigService],
@@ -195,6 +210,7 @@ export class RuntimeConfigModule {
         },
       ],
       exports: [
+        METRICS_TOKEN,
         REDIS_URL,
         REDIS_PREFIX,
         QUOTAS_ENABLED,

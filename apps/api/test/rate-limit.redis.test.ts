@@ -40,6 +40,7 @@ describe.skipIf(!url)('Redis rate limiting', () => {
       );
       expect(results.filter((result) => result.allowed)).toHaveLength(5);
       expect(await inspector.get(`${prefix}:rate:v1:shared`)).toBe('5');
+      expect(await first.checkReady()).toBe(true);
       const before = await inspector.pTTL(`${prefix}:rate:v1:shared`);
       expect((await first.consume('shared')).allowed).toBe(false);
       expect(
@@ -85,6 +86,14 @@ describe.skipIf(!url)('Redis rate limiting', () => {
     try {
       // 503 before connection readiness spends no allowance.
       await expect
+        .poll(
+          async () =>
+            (await first.inject({ method: 'GET', url: '/v1/health/ready' }))
+              .statusCode,
+          { timeout: 5_000 },
+        )
+        .toBe(200);
+      await expect
         .poll(async () => (await first.inject(request)).statusCode)
         .toBe(200);
       await expect
@@ -109,6 +118,12 @@ it('fails closed without Redis and leaves public health available', async () => 
     quotasEnabled: false,
   });
   try {
+    const readiness = await app.inject({
+      method: 'GET',
+      url: '/v1/health/ready',
+    });
+    expect(readiness.statusCode).toBe(503);
+    expect(readiness.json()).toEqual({ status: 'not_ready' });
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const response = await app.inject({
         method: 'POST',

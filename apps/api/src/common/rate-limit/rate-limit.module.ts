@@ -34,5 +34,6 @@ import { RedisRateLimitStore } from '../../infrastructure/redis/redis-rate-limit
     },
     { provide: APP_GUARD, useClass: RateLimitGuard },
   ],
+  exports: [RATE_LIMIT_STORE],
 })
 export class RateLimitModule {}

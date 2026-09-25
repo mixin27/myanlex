@@ -623,6 +623,39 @@ paths:
           $ref: '#/components/responses/InternalError'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /health/ready:
+    get:
+      operationId: getReadiness
+      summary: Check readiness to receive traffic
+      description: |
+        Checks configured PostgreSQL connectivity and the active Redis limiter
+        connection without consuming quota or rate-limit allowance. Unconfigured
+        dependencies are skipped. Results are cached for one second. This is not
+        a schema, permission, SMTP, OAuth or linguistic-correctness check.
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Configured dependencies are reachable.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, const: ready }
+        '503':
+          description:
+            Starting, shutting down, or a configured dependency is unavailable.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, const: not_ready }
   /health:
     get:
       operationId: getHealth

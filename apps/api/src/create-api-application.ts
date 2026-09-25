@@ -12,8 +12,11 @@ import { configureApiDocumentation } from './common/docs/api-documentation.js';
 import { configureHttpSecurity } from './common/http/http-security.js';
 import { configureRequestObservability } from './common/http/request-observability.js';
 import type { RequestLogSink } from './common/http/request-observability.js';
+import { MetricsService } from './modules/operations/metrics.service.js';
+import { configureMetricsRoute } from './modules/operations/metrics.routes.js';
 
 export interface CreateApiApplicationOptions {
+  readonly metricsToken?: string;
   readonly apiKey?: string;
   readonly databaseUrl?: string;
   readonly logger?: false;
@@ -46,11 +49,14 @@ export async function createApiApplication(
   );
 
   application.setGlobalPrefix('v1');
+  const metrics = application.get(MetricsService);
   configureRequestObservability(
     application,
     options.requestLogSink ?? (options.logger === false ? () => {} : undefined),
+    (record) => metrics.observe(record),
   );
   await configureHttpSecurity(application);
+  configureMetricsRoute(application);
   configureAccountAuth(application);
   configureApiDocumentation(application);
   application.enableShutdownHooks();

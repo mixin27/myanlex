@@ -1,5 +1,6 @@
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
+import { MetricsModule } from './modules/operations/metrics.module.js';
 import { AccountAuthModule } from './modules/account-auth/account-auth.module.js';
 import { PlatformModule } from './modules/platform/platform.module.js';
 
@@ -20,6 +21,7 @@ import { TokenizeModule } from './modules/tokenize/tokenize.module.js';
 import { TransliterateModule } from './modules/transliterate/transliterate.module.js';
 
 export interface ApiModuleOptions {
+  readonly metricsToken?: string;
   readonly apiKey?: string;
   readonly databaseUrl?: string;
   readonly rateLimitMaxRequests?: number;
@@ -48,6 +50,7 @@ export class AppModule {
         ErrorsModule,
         BatchModule,
         HealthModule,
+        MetricsModule,
         TextModule,
         SyllabifyModule,
         OrthographyModule,
