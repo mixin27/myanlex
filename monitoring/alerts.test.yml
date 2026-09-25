@@ -1,0 +1,93 @@
+rule_files: [alerts.yml]
+evaluation_interval: 1m
+tests:
+  - name: outages fire after hold and resolve on recovery
+    interval: 1m
+    input_series:
+      - series: 'up{job="myanlex-api",instance="api"}'
+        values: '0x4 1x5'
+      - series: 'up{job="myanlex-readiness",instance="ready"}'
+        values: '1x10'
+      - series: 'probe_success{job="myanlex-readiness",instance="ready"}'
+        values: '0x4 1x5'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: MyanLexMetricsUnavailable
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: MyanLexMetricsUnavailable
+        exp_alerts:
+          - exp_labels: { job: myanlex-api, instance: api, severity: critical }
+            exp_annotations: { summary: API metrics cannot be scraped }
+      - eval_time: 3m
+        alertname: MyanLexNotReady
+        exp_alerts:
+          - exp_labels:
+              { job: myanlex-readiness, instance: ready, severity: critical }
+            exp_annotations:
+              { summary: API readiness probe is failing or unavailable }
+      - eval_time: 6m
+        alertname: MyanLexNotReady
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: MyanLexMetricsUnavailable
+        exp_alerts: []
+  - name: missing targets are not healthy
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: MyanLexMetricsUnavailable
+        exp_alerts:
+          - exp_labels: { job: myanlex-api, severity: critical }
+            exp_annotations: { summary: API metrics cannot be scraped }
+      - eval_time: 3m
+        alertname: MyanLexNotReady
+        exp_alerts:
+          - exp_labels: { job: myanlex-readiness, severity: critical }
+            exp_annotations:
+              { summary: API readiness probe is failing or unavailable }
+  - name: sustained errors and latency
+    interval: 1m
+    input_series:
+      - series: 'myanlex_http_requests_total{job="myanlex-api",status_code="500"}'
+        values: '0+60x20'
+      - series: 'myanlex_http_requests_total{job="myanlex-api",status_code="200"}'
+        values: '0+540x20'
+      - series: 'myanlex_http_request_duration_seconds_bucket{job="myanlex-api",le="1"}'
+        values: '0x20'
+      - series: 'myanlex_http_request_duration_seconds_bucket{job="myanlex-api",le="5"}'
+        values: '0+600x20'
+      - series: 'myanlex_http_request_duration_seconds_bucket{job="myanlex-api",le="+Inf"}'
+        values: '0+600x20'
+      - series: 'myanlex_http_request_duration_seconds_count{job="myanlex-api"}'
+        values: '0+600x20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: MyanLexHighServerErrors
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MyanLexHighServerErrors
+        exp_alerts:
+          - exp_labels: { job: myanlex-api, severity: warning }
+            exp_annotations:
+              {
+                summary:
+                  API server errors exceed five percent at sustained traffic,
+              }
+      - eval_time: 15m
+        alertname: MyanLexHighLatency
+        exp_alerts:
+          - exp_labels: { job: myanlex-api, severity: warning }
+            exp_annotations:
+              {
+                summary:
+                  API p95 latency exceeds one second at sustained traffic,
+              }
+  - name: low volume does not page for ratios
+    interval: 1m
+    input_series:
+      - series: 'myanlex_http_requests_total{job="myanlex-api",status_code="500"}'
+        values: '0+1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MyanLexHighServerErrors
+        exp_alerts: []

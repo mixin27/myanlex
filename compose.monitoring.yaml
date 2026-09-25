@@ -1,0 +1,40 @@
+name: myanlex-monitoring
+services:
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    command:
+      [
+        '--config.file=/etc/prometheus/prometheus.yml',
+        '--storage.tsdb.retention.time=7d',
+        '--storage.tsdb.retention.size=1GB',
+      ]
+    ports: ['127.0.0.1:9090:9090']
+    extra_hosts: ['host.docker.internal:host-gateway']
+    volumes:
+      - ./monitoring:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    secrets: [metrics_token]
+  blackbox:
+    image: prom/blackbox-exporter:v0.28.0
+    command: ['--config.file=/etc/blackbox/config.yml']
+    extra_hosts: ['host.docker.internal:host-gateway']
+    volumes: ['./monitoring/blackbox.yml:/etc/blackbox/config.yml:ro']
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    command:
+      [
+        '--config.file=/etc/alertmanager/alertmanager.yml',
+        '--cluster.listen-address=',
+      ]
+    ports: ['127.0.0.1:9093:9093']
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+secrets:
+  metrics_token:
+    file:
+      ${MYANLEX_METRICS_TOKEN_FILE:?Set the absolute path to a file containing
+      only the operator token}
+volumes:
+  prometheus-data:
+  alertmanager-data:

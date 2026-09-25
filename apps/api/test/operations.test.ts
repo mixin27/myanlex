@@ -1,12 +1,18 @@
 import 'reflect-metadata';
 import { performance } from 'node:perf_hooks';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiApplication } from '../src/create-api-application.js';
 import { ReadinessService } from '../src/modules/health/readiness.service.js';
 import { DatabaseReadinessProbe } from '../src/infrastructure/database/database-readiness.probe.js';
 import { MetricsService } from '../src/modules/operations/metrics.service.js';
 
 const token = 'test-operator-token-0123456789-abcdefghijklmnopqrstuvwxyz';
+beforeEach(() => {
+  vi.stubEnv('DATABASE_URL', process.env.MYANLEX_TEST_DATABASE_URL);
+  vi.stubEnv('REDIS_URL', undefined);
+  vi.stubEnv('MYANLEX_METRICS_TOKEN', undefined);
+});
+afterEach(() => vi.unstubAllEnvs());
 
 describe('dependency readiness', () => {
   it('gates startup/shutdown and shares, caches, and recovers probe runs', async () => {

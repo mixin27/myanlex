@@ -14,11 +14,14 @@ limits. Protect probe traffic at your deployment edge as appropriate.
 Readiness checks run concurrently, share a single in-flight run, and cache both
 success and failure for one second. PostgreSQL uses a dedicated
 single-connection pool with one-second connection/query timeouts and a server
-statement timeout. Redis uses PING on the actual limiter client and its existing
-two-second command timeout. No limiter counter or usage record is written by a
-probe. Dependencies without configuration are skipped, so NLP-only deployments
-remain supported. Readiness is false before application bootstrap and once
-shutdown begins.
+statement timeout. Redis uses PING on the actual limiter client with a
+two-second response deadline in addition to its queue timeout. An expired
+response closes the connection, rejects pending work and reconnects for future
+requests only; timed-out writes are not retried because their outcome is
+unknown. A failed request can therefore have consumed a short-window allowance.
+No limiter counter or usage record is written by a probe. Dependencies without
+configuration are skipped, so NLP-only deployments remain supported. Readiness
+is false before application bootstrap and once shutdown begins.
 
 These checks establish connectivity, not schema migrations, application-pool
 capacity, database permissions, Redis script permissions, SMTP or OAuth health.
@@ -81,10 +84,10 @@ sum(rate(myanlex_http_requests_total{status_code=~"5.."}[5m]))
 clamp_min(sum(rate(myanlex_http_requests_total[5m])), 0.001)
 ```
 
-Prometheus/Grafana deployment, alert thresholds, retention, on-call routing and
-staging load/outage exercises remain release work. Choose thresholds from
-measured traffic and latency targets; this milestone does not install a
-monitoring stack.
+See [monitoring and staging validation](staging-validation.md) for the optional
+local monitoring stack, tested provisional alert rules, isolated outage
+rehearsal and explicitly authorized staging load runner. Actual notification
+delivery, staging capacity evidence and on-call routing remain release gates.
 
 Implementation references:
 [Prometheus Node.js client](https://github.com/prometheus/client_js),

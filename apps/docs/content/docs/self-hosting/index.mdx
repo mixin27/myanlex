@@ -86,6 +86,20 @@ operator.
 
 ## Production checklist
 
+The repository includes an optional local monitoring stack:
+`compose.monitoring.yaml`. Set `MYANLEX_METRICS_TOKEN_FILE` to an absolute path
+containing only the operator token, then run
+`docker compose -f compose.monitoring.yaml up -d`. Prometheus is on
+localhost:9090 and Alertmanager on localhost:9093. The default receiver is
+UI-only: no email, chat or paging notifications are sent until you configure a
+destination.
+
+Run `pnpm monitoring:check` to validate configuration and alert rules, and
+`pnpm operations:rehearsal` for a disposable local load/outage exercise. The
+rehearsal never targets existing services. Follow `docs/staging-validation.md`
+for target configuration, approved staging load, notification verification and
+release evidence. Local rehearsal timings are not production capacity results.
+
 Local Compose is not a complete production deployment. Before launch, configure
 HTTPS, private database/Redis access, secret management, real SMTP, backups,
 monitoring and recovery procedures. Configure optional Google/GitHub OAuth

@@ -1,0 +1,10 @@
+modules:
+  readiness:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200]
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+      fail_if_body_not_matches_regexp: ['"status"\s*:\s*"ready"']

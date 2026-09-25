@@ -1,6 +1,7 @@
 import type { OnModuleInit, OnApplicationShutdown } from '@nestjs/common';
 import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { createClient } from 'redis';
+import { withRedisDeadline } from './redis-command-deadline.js';
 
 import type { RateLimitStore } from '../../common/rate-limit/rate-limit.store.js';
 import type { RateLimitDecision } from '../../common/rate-limit/rate-limit.service.js';
@@ -23,6 +24,7 @@ export class RedisRateLimitStore
   private readonly client;
   private readonly logger = new Logger(RedisRateLimitStore.name);
   private unavailableLogged = false;
+  private shuttingDown = false;
 
   constructor(
     url: string,
@@ -61,10 +63,12 @@ export class RedisRateLimitStore
   async consume(tracker: string): Promise<RateLimitDecision> {
     try {
       if (!this.client.isReady) throw new Error('Not ready');
-      const result = await this.client.eval(consumeScript, {
-        keys: [`${this.prefix}:rate:v1:${tracker}`],
-        arguments: [String(this.limit), String(this.windowMs)],
-      });
+      const result = await this.execute(
+        this.client.eval(consumeScript, {
+          keys: [`${this.prefix}:rate:v1:${tracker}`],
+          arguments: [String(this.limit), String(this.windowMs)],
+        }),
+      );
       if (
         !Array.isArray(result) ||
         result.length !== 3 ||
@@ -94,13 +98,23 @@ export class RedisRateLimitStore
   async checkReady(): Promise<boolean> {
     if (!this.client.isReady) return false;
     try {
-      return (await this.client.ping()) === 'PONG';
+      return (await this.execute(this.client.ping())) === 'PONG';
     } catch {
       return false;
     }
   }
 
   onApplicationShutdown(): void {
+    this.shuttingDown = true;
     if (this.client.isOpen) this.client.destroy();
+  }
+
+  private execute<T>(operation: Promise<T>): Promise<T> {
+    return withRedisDeadline(operation, () => {
+      if (this.client.isOpen) this.client.destroy();
+      // Never retry the timed-out operation: its write outcome is unknown.
+      // A new connection only serves future requests after it becomes ready.
+      if (!this.shuttingDown) this.onModuleInit();
+    });
   }
 }

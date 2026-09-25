@@ -10,6 +10,10 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
+    "monitoring:check": "node scripts/monitoring-check.mjs",
+    "staging:load": "node scripts/staging-load.mjs",
+    "operations:test": "node --test scripts/staging-load.test.mjs",
+    "operations:rehearsal": "pnpm --filter @myanlex/api... build && node scripts/operations-rehearsal.mjs",
     "security:audit": "pnpm audit --prod --audit-level=high",
     "docs:smoke": "pnpm --filter @myanlex/api... build && tsx scripts/docs-smoke.mjs",
     "docs:site:smoke": "pnpm --filter @myanlex/docs build && node scripts/docs-site-smoke.mjs",
@@ -17,7 +21,7 @@
     "sdk:smoke": "pnpm --filter @myanlex/sdk... --filter @myanlex/api... build && node scripts/sdk-smoke.mjs",
     "dart:sdk:smoke": "pnpm --filter @myanlex/api... build && node scripts/dart-sdk-smoke.mjs",
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm format:check && pnpm lint && pnpm openapi:lint && pnpm typecheck && pnpm test",
+    "check": "pnpm format:check && pnpm lint && pnpm openapi:lint && pnpm typecheck && pnpm test && pnpm operations:test",
     "db:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",
