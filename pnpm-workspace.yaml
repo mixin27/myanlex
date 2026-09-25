@@ -6,3 +6,9 @@ catalog:
   '@types/node': ^24.13.5
   typescript: ^6.0.3
   vitest: ^5.0.1
+
+# Temporary audited security pins; see docs/security/hardening.md.
+overrides:
+  'undici@>=7.0.0 <7.29.1': 7.29.1
+  'mysql2@<3.24.4': 3.24.4
+  '@prisma/config>deepmerge-ts': 8.0.2

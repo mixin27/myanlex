@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import type { BetterAuthOptions } from 'better-auth';
+import { Logger } from '@nestjs/common';
 
 import type { AccountAuthConfig } from './account-auth.config.js';
 
@@ -16,6 +17,16 @@ export function createAccountAuth(
   sendMail: SendAuthMail,
 ) {
   return betterAuth({
+    // Auth errors can include addresses, OAuth tokens or database URLs.
+    // Preserve severity only; request correlation comes from the HTTP boundary.
+    logger: {
+      log(level) {
+        const logger = new Logger('AccountAuth');
+        if (level === 'error') logger.error({ event: 'account_auth_error' });
+        else if (level === 'warn')
+          logger.warn({ event: 'account_auth_warning' });
+      },
+    },
     appName: 'MyanLex',
     baseURL: config.AUTH_PUBLIC_URL,
     basePath: '/api/auth',

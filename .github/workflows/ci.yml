@@ -80,6 +80,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Audit production dependencies
+        run: pnpm security:audit
       - name: Apply database migrations
         run: pnpm db:deploy
       - name: Seed baseline permissions and Free plan

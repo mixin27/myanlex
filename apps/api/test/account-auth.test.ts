@@ -1,9 +1,11 @@
 import 'reflect-metadata';
 
 import { memoryAdapter } from 'better-auth/adapters/memory';
+import type { BetterAuthOptions } from 'better-auth';
 import type { MemoryDB } from 'better-auth/adapters/memory';
 import { verifyPassword } from 'better-auth/crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { Logger } from '@nestjs/common';
 import { createApiApplication } from '../src/create-api-application.js';
 import { AccountAuthService } from '../src/modules/account-auth/account-auth.service.js';
 
@@ -75,6 +77,33 @@ function linkOf(mail: AuthMail) {
 }
 
 describe('self-hosted account authentication', () => {
+  it('does not forward sensitive auth diagnostics to the logger', () => {
+    const error = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+    const warn = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => {});
+    try {
+      const { auth } = setup();
+      const logger: BetterAuthOptions['logger'] = auth.options.logger;
+      logger?.log?.(
+        'error',
+        'private-token',
+        new Error('private-database-url'),
+      );
+      logger?.log?.('warn', 'private-password');
+      expect(error).toHaveBeenCalledExactlyOnceWith({
+        event: 'account_auth_error',
+      });
+      expect(warn).toHaveBeenCalledExactlyOnceWith({
+        event: 'account_auth_warning',
+      });
+    } finally {
+      error.mockRestore();
+      warn.mockRestore();
+    }
+  });
   it('starts configured OAuth with state and rejects unsolicited callbacks', async () => {
     const { request, database } = setup({
       GOOGLE_CLIENT_ID: 'test-client',

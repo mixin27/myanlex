@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import type { ServerResponse } from 'node:http';
 
 import { apiReference } from '@scalar/nestjs-api-reference';
 import type { OpenAPIObject } from '@nestjs/swagger';
@@ -35,18 +36,29 @@ export function configureApiDocumentation(
     yamlDocumentUrl: 'openapi.yaml',
   });
 
-  application.use(
-    '/docs',
-    apiReference({
-      url: '/openapi.json',
-      withFastify: true,
-      theme: 'default',
-      telemetry: false,
-      authentication: { preferredSecurityScheme: 'bearerApiKey' },
-      metaData: {
-        title: 'MyanLex API Reference',
-        description: 'Interactive documentation for the MyanLex API.',
-      },
-    }),
-  );
+  const scalar = apiReference({
+    url: '/openapi.json',
+    withFastify: true,
+    theme: 'default',
+    telemetry: false,
+    authentication: { preferredSecurityScheme: 'bearerApiKey' },
+    metaData: {
+      title: 'MyanLex API Reference',
+      description: 'Interactive documentation for the MyanLex API.',
+    },
+  }) as (
+    request: Parameters<ReturnType<typeof apiReference>>[0],
+    response: ServerResponse,
+  ) => void;
+  // A native route runs the security/logging hooks before Scalar writes HTML.
+  application
+    .getHttpAdapter()
+    .getInstance()
+    .get('/docs', (request, reply) => {
+      for (const [name, value] of Object.entries(reply.getHeaders())) {
+        if (value !== undefined) reply.raw.setHeader(name, value);
+      }
+      reply.hijack();
+      scalar(request, reply.raw);
+    });
 }

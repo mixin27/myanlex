@@ -1,4 +1,6 @@
 import { NestFactory } from '@nestjs/core';
+import { randomUUID } from 'node:crypto';
+import { ConsoleLogger } from '@nestjs/common';
 import {
   FastifyAdapter,
   type NestFastifyApplication,
@@ -7,11 +9,15 @@ import {
 import { AppModule } from './app.module.js';
 import { configureAccountAuth } from './modules/account-auth/account-auth.routes.js';
 import { configureApiDocumentation } from './common/docs/api-documentation.js';
+import { configureHttpSecurity } from './common/http/http-security.js';
+import { configureRequestObservability } from './common/http/request-observability.js';
+import type { RequestLogSink } from './common/http/request-observability.js';
 
 export interface CreateApiApplicationOptions {
   readonly apiKey?: string;
   readonly databaseUrl?: string;
   readonly logger?: false;
+  readonly requestLogSink?: RequestLogSink;
   readonly rateLimitMaxRequests?: number;
   readonly rateLimitWindowMs?: number;
   readonly serviceVersion?: string;
@@ -25,11 +31,26 @@ export async function createApiApplication(
 ): Promise<NestFastifyApplication> {
   const application = await NestFactory.create<NestFastifyApplication>(
     AppModule.register(options),
-    new FastifyAdapter({ bodyLimit: 1_048_576 }),
-    options.logger === false ? { logger: false } : {},
+    new FastifyAdapter({
+      bodyLimit: 1_048_576,
+      requestIdHeader: false,
+      genReqId: () => randomUUID(),
+      logger: false,
+      trustProxy: false,
+      requestTimeout: 30_000,
+    }),
+    {
+      logger:
+        options.logger === false ? false : new ConsoleLogger({ json: true }),
+    },
   );
 
   application.setGlobalPrefix('v1');
+  configureRequestObservability(
+    application,
+    options.requestLogSink ?? (options.logger === false ? () => {} : undefined),
+  );
+  await configureHttpSecurity(application);
   configureAccountAuth(application);
   configureApiDocumentation(application);
   application.enableShutdownHooks();

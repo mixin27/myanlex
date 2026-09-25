@@ -1,5 +1,9 @@
 # Security policy
 
+See the
+[API hardening baseline and remaining release gates](docs/security/hardening.md)
+for operational protections and deployment requirements.
+
 MyanLex is in early development and does not yet have supported release
 branches.
 

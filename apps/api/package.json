@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fastify/helmet": "13.1.1",
     "@fastify/static": "^10.1.4",
     "@myanlex/application": "workspace:*",
     "@myanlex/types": "workspace:*",

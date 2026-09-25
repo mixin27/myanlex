@@ -56,7 +56,7 @@ export class UsageInterceptor implements NestInterceptor {
 
     const startedAt = performance.now();
     const charactersProcessed = countRequestCharacters(request.body);
-    const endpoint = request.routeOptions?.url ?? request.url;
+    const endpoint = request.routeOptions?.url ?? 'unmatched';
 
     const record = (statusCode: number): void => {
       const processingTimeMs = Math.max(
@@ -74,8 +74,8 @@ export class UsageInterceptor implements NestInterceptor {
           charactersProcessed,
           processingTimeMs,
         })
-        .catch((error: unknown) => {
-          this.logger.error('Failed to record API usage.', error);
+        .catch(() => {
+          this.logger.error({ event: 'usage_persistence_failed' });
         });
     };
 
