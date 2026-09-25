@@ -12,6 +12,19 @@ const json = (value: unknown, status = 200, headers = {}) =>
   });
 
 describe('MyanLex SDK transport', () => {
+  it('forwards the opt-in source validation flag', async () => {
+    const fetch = vi.fn().mockResolvedValue(json({ output: 'မင်္ဂလာပါ' }));
+    const client = new MyanLex({ apiKey: key, fetch });
+    await client.convert({
+      text: 'မဂၤလာပါ',
+      from: 'zawgyi',
+      to: 'unicode',
+      validateSource: true,
+    });
+    expect(JSON.parse(fetch.mock.calls[0]![1].body)).toMatchObject({
+      validateSource: true,
+    });
+  });
   it('sends explicit operations as JSON without modifying Unicode text', async () => {
     const fetch = vi.fn().mockResolvedValue(
       json({

@@ -50,7 +50,10 @@ and redirect options and must not add cookies, retries, or secret-bearing logs.
 - `health()` — no API-key header sent.
 - `detect(text: ...)`, `normalize(text: ...)`, `syllabify(text: ...)`,
   `validateOrthography(text: ...)`, `tokenize(text: ...)`.
-- `convert(text: ..., from: 'zawgyi', to: 'unicode')` — explicit direction.
+- `convert(text: ..., from: 'zawgyi', to: 'unicode', validateSource: true)` —
+  explicit direction with optional conservative source validation. This rejects
+  detected mixed, mismatched or uncertain sources; it does not repair them. Omit
+  the flag for backward-compatible unchecked conversion.
 - `transliterate(text: ..., scheme: 'ala-lc-2011')` — explicit scheme.
 - `batchSyllabify(items: [BatchItem(id: 'a', text: 'က')])`.
 - `batchTransliterate(items: [...], scheme: 'ala-lc-2011')`.

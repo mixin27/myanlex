@@ -15,6 +15,7 @@ export interface TextRequest {
 }
 
 export interface ConvertTextRequest extends TextRequest {
+  readonly validateSource?: boolean;
   readonly from: MyanmarConversionEncoding;
   readonly to: MyanmarConversionEncoding;
 }
@@ -85,6 +86,9 @@ export interface MyanLexApplication {
 }
 
 export type ApplicationInputErrorCode =
+  | 'encoding_mixed'
+  | 'encoding_mismatch'
+  | 'encoding_uncertain'
   | 'batch_empty'
   | 'batch_too_large'
   | 'batch_too_many_items'

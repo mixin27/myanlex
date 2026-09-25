@@ -149,6 +149,71 @@ describe('MyanLex HTTP API', () => {
     });
   });
 
+  // Strong/ambiguous samples from corpus/encoding/detection-v1.json.
+  it.each([
+    {
+      text: 'အပြည်ပြည်ဆိုင်ရာ / ေၾကညာစာတမ္း',
+      from: 'unicode',
+      to: 'zawgyi',
+      code: 'encoding_mixed',
+    },
+    {
+      text: 'အပြည်ပြည်ဆိုင်ရာ / ေၾကညာစာတမ္း',
+      from: 'zawgyi',
+      to: 'unicode',
+      code: 'encoding_mixed',
+    },
+    {
+      text: 'အပြည်ပြည်ဆိုင်ရာ',
+      from: 'zawgyi',
+      to: 'unicode',
+      code: 'encoding_mismatch',
+    },
+    {
+      text: 'ေၾကညာစာတမ္း',
+      from: 'unicode',
+      to: 'zawgyi',
+      code: 'encoding_mismatch',
+    },
+    { text: '၊။', from: 'zawgyi', to: 'unicode', code: 'encoding_uncertain' },
+  ])(
+    'rejects guarded conversion with $code ($from)',
+    async ({ code, ...input }) => {
+      const response = await application.inject({
+        method: 'POST',
+        url: '/v1/text/convert',
+        headers: { authorization: `Bearer ${API_KEY}` },
+        payload: { ...input, validateSource: true },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.headers['content-type']).toContain(
+        'application/problem+json',
+      );
+      expect(response.json()).toMatchObject({ code, status: 400 });
+      expect(response.json()).not.toHaveProperty('output');
+      expect(response.json()).not.toHaveProperty('input');
+    },
+  );
+
+  it('accepts matching evidence and rejects non-boolean validation flags', async () => {
+    for (const validateSource of [true, 'true']) {
+      const response = await application.inject({
+        method: 'POST',
+        url: '/v1/text/convert',
+        headers: { authorization: `Bearer ${API_KEY}` },
+        payload: {
+          text: 'ေၾကညာစာတမ္း',
+          from: 'zawgyi',
+          to: 'unicode',
+          validateSource,
+        },
+      });
+      expect(response.statusCode).toBe(validateSource === true ? 200 : 400);
+      if (validateSource === true)
+        expect(response.json().output).toBe('ကြေညာစာတမ်း');
+    }
+  });
+
   it('maps malformed JSON to a bad-request problem', async () => {
     const response = await application.inject({
       method: 'POST',

@@ -81,10 +81,11 @@ final class MyanLex {
     required String text,
     required String from,
     required String to,
+    bool? validateSource,
     CancellationToken? cancellation,
   }) => _request(
     'text/convert',
-    {'text': text, 'from': from, 'to': to},
+    {'text': text, 'from': from, 'to': to, 'validateSource': ?validateSource},
     ConversionResult.fromJson,
     cancellation,
   );

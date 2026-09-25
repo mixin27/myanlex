@@ -32,6 +32,33 @@ and record the direction they chose.
 
 ## Result contract
 
+### Optional application-level source validation
+
+The application and HTTP conversion request accepts `validateSource: true`. This
+is a preflight policy around the existing detector and converter, not a change
+to either core algorithm. Omission or `false` preserves explicit conversion
+behavior. Callers handling pasted text should enable it.
+
+After normal input validation, and before a direction-changing conversion:
+
+1. Reject opposing evidence across runs (`mixed`) with `encoding_mixed`.
+2. Reject strong evidence contrary to `from` with `encoding_mismatch`.
+3. Reject any `unknown` Myanmar segment with `encoding_uncertain`, even when the
+   overall detector result reflects another strongly classified segment.
+4. Otherwise allow conversion. Empty/non-Myanmar-only input passes unchanged.
+
+These errors are HTTP 400 application problems, contain no converted output, and
+direct the caller to the separate detection endpoint for evidence and code-point
+spans. No segment is silently converted, removed or corrected. Equal `from`/`to`
+values remain exact no-ops and bypass this preflight.
+
+This policy uses the existing detection corpus and thresholds. Detection remains
+probabilistic; a switch within a single Myanmar run may be missed. Passing the
+preflight is not a guarantee of valid Burmese, safe conversion for other Myanmar
+languages, spelling correctness, or preservation of meaning. Unknown
+common-subset text may be rejected even when visually unambiguous to a human.
+Keep originals; review the source before deliberately opting out.
+
 The converter returns the original `input`, converted `output`, explicit `from`
 and `to` values, a `changed` flag, and the profile identifier. When `from`
 equals `to`, conversion is an exact no-op. Non-Myanmar characters that do not

@@ -49,18 +49,18 @@ otherwise.
 All methods return promises of typed JSON results and accept an optional second
 argument `{ signal }` for caller cancellation.
 
-| Method                                  | Input                                   |
-| --------------------------------------- | --------------------------------------- |
-| `health()`                              | None; no API key is sent                |
-| `detect({ text })`                      | Detect only; never converts             |
-| `normalize({ text })`                   | Documented safe NFC normalization       |
-| `convert({ text, from, to })`           | Explicit `unicode` / `zawgyi` direction |
-| `syllabify({ text })`                   | Orthographic syllable spans             |
-| `validateOrthography({ text })`         | Diagnostics, not automatic repairs      |
-| `transliterate({ text, scheme })`       | Explicit `ala-lc-2011` scheme           |
-| `tokenize({ text })`                    | Lossless lexical/script spans           |
-| `batchSyllabify({ items })`             | Ordered `{ id, text }` items            |
-| `batchTransliterate({ items, scheme })` | Ordered items and explicit scheme       |
+| Method                                              | Input                                                           |
+| --------------------------------------------------- | --------------------------------------------------------------- |
+| `health()`                                          | None; no API key is sent                                        |
+| `detect({ text })`                                  | Detect only; never converts                                     |
+| `normalize({ text })`                               | Documented safe NFC normalization                               |
+| `convert({ text, from, to, validateSource: true })` | Explicit direction with optional conservative source validation |
+| `syllabify({ text })`                               | Orthographic syllable spans                                     |
+| `validateOrthography({ text })`                     | Diagnostics, not automatic repairs                              |
+| `transliterate({ text, scheme })`                   | Explicit `ala-lc-2011` scheme                                   |
+| `tokenize({ text })`                                | Lossless lexical/script spans                                   |
+| `batchSyllabify({ items })`                         | Ordered `{ id, text }` items                                    |
+| `batchTransliterate({ items, scheme })`             | Ordered items and explicit scheme                               |
 
 Text is serialized as supplied, without normalization, segmentation, or other
 local linguistic processing. All returned offsets are **Unicode code points**,

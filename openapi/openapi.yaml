@@ -736,8 +736,14 @@ paths:
     post:
       operationId: convertText
       summary: Convert explicitly between Unicode and Zawgyi
-      description:
-        The source encoding must be supplied; this operation never auto-detects.
+      description: |
+        The source encoding must be supplied; the direction is never chosen automatically.
+        Set validateSource=true for a conservative preflight. Direction-changing
+        requests return 400 encoding_mixed for mixed evidence, encoding_mismatch
+        for evidence contrary to from, or encoding_uncertain for any unknown
+        Myanmar segment. No partial output is returned. Equal directions remain
+        exact no-ops. Detection can miss encoding switches inside a run and does
+        not prove linguistic correctness. Omission/false preserves unchecked conversion.
       tags: [Text]
       requestBody:
         required: true
@@ -1470,6 +1476,14 @@ components:
       additionalProperties: false
       required: [text, from, to]
       properties:
+        validateSource:
+          type: boolean
+          default: false
+          examples: [true]
+          description:
+            Reject detected mixed, mismatched or uncertain sources before
+            direction-changing conversion. Recommended for pasted text; not an
+            automatic repair or correctness guarantee.
         text:
           type: string
           maxLength: 100000
@@ -1853,6 +1867,9 @@ components:
           enum:
             - invalid_request
             - invalid_unicode
+            - encoding_mixed
+            - encoding_mismatch
+            - encoding_uncertain
             - text_too_long
             - batch_empty
             - batch_too_large

@@ -50,6 +50,38 @@ final class PendingClient extends http.BaseClient {
 }
 
 void main() {
+  test('conversion forwards source validation only when supplied', () async {
+    final bodies = <Map<String, dynamic>>[];
+    final client = MyanLex(
+      apiKey: 'test',
+      client: MockClient((request) async {
+        bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+        return json({
+          'input': 'က',
+          'output': 'က',
+          'changed': false,
+          'profile': 'cldr-zawgyi-v1',
+          'from': 'zawgyi',
+          'to': 'unicode',
+        });
+      }),
+    );
+    try {
+      for (final flag in [null, false, true]) {
+        await client.convert(
+          text: 'က',
+          from: 'zawgyi',
+          to: 'unicode',
+          validateSource: flag,
+        );
+      }
+      expect(bodies[0].containsKey('validateSource'), isFalse);
+      expect(bodies[1]['validateSource'], isFalse);
+      expect(bodies[2]['validateSource'], isTrue);
+    } finally {
+      client.close();
+    }
+  });
   test(
     'preserves Unicode, prefix, auth, redirect policy, and response types',
     () async {

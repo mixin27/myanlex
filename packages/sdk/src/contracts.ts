@@ -8,6 +8,7 @@ export interface TextRequest {
   readonly text: string;
 }
 export interface ConvertRequest extends TextRequest {
+  readonly validateSource?: boolean;
   readonly from: MyanmarConversionEncoding;
   readonly to: MyanmarConversionEncoding;
 }

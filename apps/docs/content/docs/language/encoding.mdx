@@ -30,6 +30,31 @@ The output is `မင်္ဂလာပါ`. Equal directions produce an exact n
 `unknown` or `mixed` as a known source encoding. Preserve original text and the
 chosen direction. Unicode should be your canonical storage format.
 
+### Guard against mixed or mislabelled input
+
+For pasted text, enable `validateSource` explicitly:
+
+```json
+{
+  "text": "ေၾကညာစာတမ္း",
+  "from": "zawgyi",
+  "to": "unicode",
+  "validateSource": true
+}
+```
+
+Before a direction-changing conversion, this rejects mixed evidence
+(`encoding_mixed`), evidence conflicting with `from` (`encoding_mismatch`), or
+any uncertain Myanmar segment (`encoding_uncertain`). These are HTTP 400
+problems, with no partial converted output. Use `/v1/text/detect` to inspect the
+original text and segment offsets; do not repeatedly try both directions.
+
+Omitting the flag or setting it to `false` keeps the original unchecked
+behavior. Equal directions still return the input unchanged. The flag is a
+conservative guard, not automatic mixed-text repair: detection can miss switches
+inside one Myanmar run and cannot guarantee spelling or linguistic correctness.
+Preserve the original and review uncertain input before deliberately opting out.
+
 <Callout type="warn">
   Unicode-to-Zawgyi is a compatibility operation, not a lossless representation
   of all Myanmar-script languages. Exact round trips are not promised.

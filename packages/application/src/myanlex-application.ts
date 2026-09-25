@@ -36,6 +36,7 @@ import {
   DEFAULT_MAX_BATCH_UTF8_BYTES,
   DEFAULT_MAX_TEXT_CODE_POINTS,
 } from './input-validation.js';
+import { validateConversionSource } from './validate-conversion-source.js';
 
 export interface MyanLexApplicationOptions {
   readonly maximumBatchItems?: number;
@@ -85,8 +86,10 @@ export class DefaultMyanLexApplication implements MyanLexApplication {
     text,
     from,
     to,
+    validateSource = false,
   }: ConvertTextRequest): MyanmarEncodingConversionResult {
     this.#assertText(text);
+    if (validateSource && from !== to) validateConversionSource(text, from);
     return convertMyanmarEncoding(text, { from, to });
   }
 
