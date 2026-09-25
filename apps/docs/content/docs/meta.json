@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "quick-start",
+    "beta-limitations",
     "authentication",
     "language",
     "batch",

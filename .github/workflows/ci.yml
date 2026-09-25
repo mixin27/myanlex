@@ -106,6 +106,17 @@ jobs:
         run: pnpm check
       - name: Verify SDK against the NestJS API
         run: pnpm sdk:smoke
+      - name: Generate NLP quality evidence
+        run: pnpm quality:report
+      - name: Retain NLP quality evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nlp-quality-${{ github.sha }}
+          path: .cache/nlp-quality/run-*/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30
       - name: Verify developer documentation examples
         run: pnpm docs:smoke
       - name: Verify public documentation site

@@ -9,7 +9,7 @@
     "source": "https://github.com/google/myanmar-tools/tree/v1.2.0/clients/js"
   },
   "description": "Explicit whole-string conversion between standard Myanmar Unicode and Zawgyi-One.",
-  "license": "MIT; Rabbit-derived cases retain WTFPL",
+  "license": "MIT; Google-derived cases retain Apache-2.0; Rabbit-derived cases retain WTFPL",
   "sources": [
     "https://github.com/google/myanmar-tools/tree/v1.2.0/clients/js",
     "https://github.com/Rabbit-Converter/Rabbit/blob/081d464a91ab4dde14b799a54d1e89dde55b438e/source/res/sample.json"

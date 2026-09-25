@@ -10,6 +10,8 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
+    "quality:report": "node scripts/nlp-quality.mjs",
+    "quality:test": "node --test scripts/nlp-quality.test.mjs",
     "monitoring:check": "node scripts/monitoring-check.mjs",
     "staging:load": "node scripts/staging-load.mjs",
     "operations:test": "node --test scripts/staging-load.test.mjs",
@@ -21,7 +23,7 @@
     "sdk:smoke": "pnpm --filter @myanlex/sdk... --filter @myanlex/api... build && node scripts/sdk-smoke.mjs",
     "dart:sdk:smoke": "pnpm --filter @myanlex/api... build && node scripts/dart-sdk-smoke.mjs",
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm format:check && pnpm lint && pnpm openapi:lint && pnpm typecheck && pnpm test && pnpm operations:test",
+    "check": "pnpm format:check && pnpm lint && pnpm openapi:lint && pnpm typecheck && pnpm test && pnpm operations:test && pnpm quality:test",
     "db:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",

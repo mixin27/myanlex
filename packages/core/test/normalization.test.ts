@@ -35,18 +35,21 @@ describe('normalizeUnicode', () => {
     expect(SAFE_NORMALIZATION_PROFILE).toBe(corpus.profile);
   });
 
-  it.each(corpus.cases)('$id', ({ input, expected, changed }) => {
-    const result = normalizeUnicode(input);
+  // Explicit titles preserve long corpus IDs in machine-readable reports.
+  for (const { id, input, expected, changed } of corpus.cases) {
+    it(id, () => {
+      const result = normalizeUnicode(input);
 
-    expect(result).toEqual({
-      input,
-      output: expected,
-      changed,
-      profile: 'unicode-nfc',
+      expect(result).toEqual({
+        input,
+        output: expected,
+        changed,
+        profile: 'unicode-nfc',
+      });
+      expect(isNormalizedUnicode(input)).toBe(!changed);
+      expect(normalizeUnicode(result.output).output).toBe(result.output);
     });
-    expect(isNormalizedUnicode(input)).toBe(!changed);
-    expect(normalizeUnicode(result.output).output).toBe(result.output);
-  });
+  }
 
   it('preserves an unpaired surrogate without throwing', () => {
     const malformed = '\ud800';

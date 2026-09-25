@@ -1,0 +1,41 @@
+---
+title: Beta limitations
+description: What the current language profiles guarantee—and what they do not.
+---
+
+MyanLex is in pre-release development. This page describes current boundaries;
+it is not an announcement that a hosted beta or stable package is available.
+
+## Regression tests are not an accuracy measurement
+
+The current corpus is source-verified, not independently linguistically
+reviewed. Passing every regression case means the implementation matches those
+expected results. It does not establish real-world accuracy, complete language
+coverage, or preservation of meaning for arbitrary input. Independent review and
+broader evaluation remain outstanding.
+
+| Operation       | Current guarantee / scope                                                                                                            | Important limitation                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Detection       | Advisory evidence for Unicode, Zawgyi, mixed, unknown or non-Myanmar input                                                           | Shared-subset text is ambiguous. Encoding switches inside a Myanmar run may be missed; this is not language identification.                       |
+| Conversion      | Explicit source and target; optional `validateSource: true` rejects detected mixed, mismatched or uncertain direction-changing input | No automatic mixed-text repair. Passing the guard does not prove correctness. Unicode-to-Zawgyi is not lossless for all Myanmar-script languages. |
+| Normalization   | Separate NFC operation, idempotent for supported input/runtime                                                                       | Not spelling repair, encoding conversion or an input-to-output offset map.                                                                        |
+| Syllabification | Lossless supported Burmese written-syllable segmentation                                                                             | Not dictionary words or guaranteed phonological syllables; other Myanmar-script languages are not silently treated as Burmese.                    |
+| Orthography     | Non-mutating structural diagnostics                                                                                                  | `valid: true` does not mean correct spelling or meaningful Burmese.                                                                               |
+| Transliteration | Mechanical ALA-LC 2011 mapping; unsupported text preserved and reported                                                              | Not pronunciation, translation, lexical word division or contextual capitalization.                                                               |
+| Tokenization    | Lossless supported script/lexical groups with code-point spans                                                                       | Burmese tokens are written syllables, not words. Script reporting and emoji grouping are scoped, not comprehensive language/grapheme detection.   |
+
+## Safe integration
+
+Preserve original input. Choose conversion direction explicitly and enable
+source validation for pasted text. When it is rejected, inspect detection
+results and review the source; do not repeatedly convert in both directions.
+`from: "auto"` is not supported.
+
+Offsets are zero-based, half-open Unicode code-point positions, not JavaScript
+UTF-16 indexes, byte positions or grapheme indexes. Normalization and conversion
+can change text length and ordering; recalculate downstream spans on their
+actual input.
+
+See [language operations](/docs/language) for per-feature details. Production
+readiness also requires security, deployment and operational verification;
+linguistic regression results cannot establish those guarantees.

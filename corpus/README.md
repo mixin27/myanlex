@@ -1,8 +1,14 @@
 # MyanLex corpus
 
-This directory contains reviewed regression cases that define expected
+This directory contains source-verified regression cases that define expected
 linguistic behavior. Corpus data is a first-class project artifact, not
 incidental test fixture data.
+
+Source verification is not independent linguistic review. Run
+`pnpm quality:report` for per-feature results, provenance declarations and the
+pending review queue. See the [quality workflow](../docs/quality/README.md) and
+[coverage-gap review](../docs/quality/coverage-gaps.md). The report never
+upgrades review status or certifies linguistic accuracy.
 
 ## Areas
 

@@ -28,6 +28,11 @@ Next.js developer portal shell.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
+NLP quality validation and RC1 preparation are documented in
+[the quality workflow](docs/quality/README.md). Run `pnpm quality:report` to
+generate corpus results and the independent-review queue. Passing regression
+tests is not a measured linguistic accuracy score or release approval.
+
 ## Capabilities
 
 - Myanmar Unicode and Zawgyi detection
