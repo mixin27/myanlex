@@ -40,3 +40,7 @@ evidence tooling and review material; it does not create an RC tag or deploy.
 The next implementation milestone is deployment packaging. It can proceed while
 review is coordinated, but implementation completion must not be confused with
 permission to launch.
+
+See the [deployment runbook](../deployment.md) for image targets, staging setup
+and the isolated migration/restore smoke check. Record actual evidence before
+checking the release gates above.

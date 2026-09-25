@@ -5,6 +5,9 @@
   "description": "MyanLex NestJS HTTP API adapter",
   "license": "MIT",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prebuild": "pnpm --workspace-root db:generate",
     "build": "nest build",

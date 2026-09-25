@@ -28,6 +28,9 @@ Next.js developer portal shell.
 
 Do not use the API or package interfaces as stable production contracts yet.
 
+For controlled self-hosted staging, see the
+[deployment runbook](docs/deployment.md).
+
 NLP quality validation and RC1 preparation are documented in
 [the quality workflow](docs/quality/README.md). Run `pnpm quality:report` to
 generate corpus results and the independent-review queue. Passing regression

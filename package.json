@@ -10,6 +10,7 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
+    "deployment:smoke": "node scripts/deployment-smoke.mjs",
     "quality:report": "node scripts/nlp-quality.mjs",
     "quality:test": "node --test scripts/nlp-quality.test.mjs",
     "monitoring:check": "node scripts/monitoring-check.mjs",
@@ -39,6 +40,7 @@
     "typecheck": "pnpm --filter @myanlex/types build && pnpm --recursive --if-present typecheck"
   },
   "devDependencies": {
+    "@prisma/adapter-pg": "7.10.0",
     "@eslint/js": "^10.0.1",
     "@redocly/cli": "^2.53.3",
     "@types/node": "^24.13.5",
