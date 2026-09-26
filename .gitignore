@@ -6,6 +6,11 @@ apps/api/src/generated/prisma/
 local/
 .turbo/
 .cache/
+__pycache__/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.venv/
 
 .env
 .env.*

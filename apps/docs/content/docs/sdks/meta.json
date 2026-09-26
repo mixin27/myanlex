@@ -1,1 +1,4 @@
-{ "title": "SDKs and examples", "pages": ["http", "typescript", "dart"] }
+{
+  "title": "SDKs and examples",
+  "pages": ["http", "typescript", "dart", "python"]
+}

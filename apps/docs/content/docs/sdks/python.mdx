@@ -1,0 +1,82 @@
+---
+title: Python SDK
+description: Typed synchronous and asynchronous MyanLex API clients.
+---
+
+<PreviewOnly>
+  The Python package is an unpublished preview. There is no official PyPI
+  release or launched hosted service yet. Install a supplied preview wheel, or
+  install `packages/myanlex_python` from a repository checkout. The proposed
+  distribution name is not reserved.
+</PreviewOnly>
+
+Requires Python 3.10+. Install a supplied artifact without cloning the
+repository:
+
+```sh
+python -m pip install ./myanlex_python-0.0.0-py3-none-any.whl
+```
+
+Set `MYANLEX_API_KEY` and `MYANLEX_API_URL` on your backend. The URL includes
+`/v1` and must use HTTPS except for loopback development.
+
+```python
+import os
+from myanlex import MyanLex, MyanLexApiError
+
+with MyanLex(api_key=os.environ['MYANLEX_API_KEY'],
+             base_url=os.environ['MYANLEX_API_URL']) as client:
+    try:
+        result = client.convert(text='မြန်မာ', from_encoding='unicode',
+                                to_encoding='zawgyi', validate_source=True)
+    except MyanLexApiError as error:
+        # Inspect status/code; never log private submissions or raw responses.
+        if error.code in {'encoding_mixed', 'encoding_mismatch', 'encoding_uncertain'}:
+            raise ValueError('Source text needs human review') from None
+        raise
+```
+
+For an asynchronous application use `async with AsyncMyanLex(...) as client` and
+`await client.convert(...)`. Reuse clients across service requests, then close
+them at shutdown. Task cancellation propagates normally.
+
+## Available methods
+
+`health`, `detect`, `normalize`, `convert`, `syllabify`, `validate_orthography`,
+`transliterate`, `tokenize`, `batch_syllabify` and `batch_transliterate`. Text
+methods accept `text=...`. Conversion uses `from_encoding`, `to_encoding` and
+optional `validate_source`. Transliteration accepts `scheme='ala-lc-2011'`.
+
+```python
+from myanlex import BatchItem
+
+def process_batch(client):
+    result = client.batch_syllabify(items=[BatchItem(id='entry-1', text='က😀')])
+    for item in result.results:
+        if item.success:
+            assert item.result.segments[-1].end == 2
+        else:
+            # An HTTP 200 batch can contain failed items.
+            handle_item_failure(item.id, item.error.code)
+```
+
+`handle_item_failure` is your application's review/error handler. Results are
+frozen typed models; arrays are tuples. Attribute names are snake_case and full
+types live in `myanlex.models`. Offsets use Unicode code points, not graphemes.
+
+## Failures and limits
+
+`MyanLexApiError` exposes HTTP `status`, optional `code`, `request_id`, and
+`retry_after_seconds`. `MyanLexRequestError.kind` distinguishes `timeout`,
+`transport_failure`, `invalid_response` and `closed`.
+
+There are no automatic retries, redirects or cookie replay. The default
+30-second timeout applies to HTTPX connect/read/write/pool inactivity, **not** a
+total operation deadline. Use `asyncio.wait_for` for an async total deadline;
+cancelled requests may already have consumed quota. See
+[HTTPX timeout documentation](https://www.python-httpx.org/advanced/timeouts/).
+
+This client does not implement local NLP or automatic mixed-encoding repair.
+Keep original text and review ambiguous conversion input. Structural validation
+is not spelling or meaning validation. See
+[beta limitations](/docs/beta-limitations).

@@ -7,6 +7,11 @@
 **/.dart_tool
 **/*.tsbuildinfo
 .cache
+**/__pycache__
+**/.venv
+**/.mypy_cache
+**/.ruff_cache
+**/*.egg-info
 .pnpm-store
 local
 **/.env

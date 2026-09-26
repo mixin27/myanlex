@@ -65,7 +65,7 @@ Planned next:
 
 - API-key issuance/revocation and usage reporting
 - Member invitations and custom-role management UI
-- TypeScript and Dart SDKs
+- TypeScript, Dart and Python SDKs (unpublished previews)
 
 ## Repository layout
 
@@ -76,6 +76,7 @@ packages/
   types/             Shared public domain types
   sdk/               Typed native-fetch HTTP client
   myanlex_dart/       Pure Dart HTTP SDK (official package scaffold)
+  myanlex_python/     Typed synchronous/asynchronous Python HTTP SDK
 apps/
   api/               NestJS/Fastify HTTP adapter
   web/               Next.js developer portal
