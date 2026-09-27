@@ -1,5 +1,7 @@
 # MyanLex
 
+[![CI](https://github.com/mixin27/myanlex/actions/workflows/ci.yml/badge.svg)](https://github.com/mixin27/myanlex/actions/workflows/ci.yml)
+
 MyanLex is an open-source, developer-focused toolkit for processing
 Myanmar-language text.
 
