@@ -221,7 +221,7 @@ export class PrismaWorkspaceRepository
     // Tagged-template values are bound parameters. Aggregate in one snapshot;
     // keep the timestamp predicate indexable and UTC bucketing explicit.
     return this.client.$queryRaw<UsageDayRecord[]>`
-      SELECT to_char(u.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+      SELECT to_char(u.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date, u.source AS source,
         count(*)::bigint AS "requestCount",
         count(*) FILTER (WHERE u.status_code >= 400)::bigint AS "errorCount",
         coalesce(sum(u.characters_processed), 0)::bigint AS "charactersProcessed",
@@ -230,7 +230,7 @@ export class PrismaWorkspaceRepository
       WHERE p.organization_id = ${organizationId}::uuid AND u.project_id = ${projectId}::uuid
         AND u.created_at >= ${start.toISOString()}::timestamptz
         AND u.created_at < ${end.toISOString()}::timestamptz
-      GROUP BY 1 ORDER BY 1
+      GROUP BY 1, u.source ORDER BY 1, u.source
     `;
   }
 

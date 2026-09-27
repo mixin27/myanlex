@@ -16,9 +16,12 @@ COPY apps/docs/package.json apps/docs/package.json
 COPY packages/types/package.json packages/types/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/application/package.json packages/application/package.json
+COPY packages/playground/package.json packages/playground/package.json
 COPY packages/sdk/package.json packages/sdk/package.json
 RUN --mount=type=cache,id=myanlex-pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts --store-dir=/pnpm/store
 COPY . .
+ARG MYANLEX_BUILD_ID=development
+ENV MYANLEX_BUILD_ID=$MYANLEX_BUILD_ID
 RUN pnpm db:generate
 
 FROM dependencies AS api-build
@@ -53,7 +56,7 @@ ENV API_INTERNAL_URL=$API_INTERNAL_URL
 ENV NEXT_PUBLIC_DOCS_URL=$NEXT_PUBLIC_DOCS_URL
 ENV NEXT_PUBLIC_API_DOCS_URL=$NEXT_PUBLIC_API_DOCS_URL
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm --filter @myanlex/web build
+RUN pnpm --filter @myanlex/web... build
 
 FROM ${NODE_IMAGE} AS web
 WORKDIR /app

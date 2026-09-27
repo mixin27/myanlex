@@ -6,6 +6,7 @@ apps/api/src/generated/prisma/
 local/
 .turbo/
 .cache/
+packages/playground/src/build-identity.generated.ts
 __pycache__/
 *.egg-info/
 .mypy_cache/

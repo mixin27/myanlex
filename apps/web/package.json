@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@myanlex/application": "workspace:*",
+    "@myanlex/playground": "workspace:*",
     "@tanstack/react-table": "^9.2.4",
     "better-auth": "^1.7.5",
     "class-variance-authority": "^0.7.1",
@@ -30,11 +32,13 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/jsdom": "30.0.0",
     "@types/node": "catalog:",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.5",
+    "jsdom": "30.1.1",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
     "typescript": "catalog:"

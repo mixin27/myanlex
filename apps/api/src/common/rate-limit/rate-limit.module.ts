@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
 import { RateLimitGuard } from './rate-limit.guard.js';
@@ -12,6 +12,7 @@ import {
 } from '../tokens.js';
 import { RedisRateLimitStore } from '../../infrastructure/redis/redis-rate-limit.store.js';
 
+@Global()
 @Module({
   providers: [
     {

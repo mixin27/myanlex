@@ -5,6 +5,9 @@ export function baseOptions(): BaseLayoutProps {
   return {
     nav: { title: appName },
     githubUrl: repositoryUrl,
-    links: [{ text: 'Developer console', url: consoleUrl, external: true }],
+    links: [
+      { text: 'Developer console', url: consoleUrl, external: true },
+      { text: 'Playground', url: `${consoleUrl}/playground`, external: true },
+    ],
   };
 }

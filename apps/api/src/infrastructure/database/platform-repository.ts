@@ -6,7 +6,8 @@ export interface ApiKeyPrincipal {
 }
 
 export interface UsageRecord {
-  readonly apiKeyId: string;
+  readonly apiKeyId: string | null;
+  readonly source?: 'api_key' | 'playground';
   readonly projectId: string;
   readonly endpoint: string;
   readonly statusCode: number;

@@ -8,6 +8,7 @@ import { IS_PUBLIC_ROUTE } from '../auth/public.decorator.js';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.js';
 import { RateLimitExceededException } from './rate-limit-exceeded.exception.js';
 import { RATE_LIMIT_STORE, type RateLimitStore } from './rate-limit.store.js';
+export const DEFER_RATE_LIMIT = 'defer-rate-limit-until-project-authorization';
 
 interface RateLimitedRequest extends AuthenticatedRequest {
   readonly headers: { readonly authorization?: string };
@@ -38,6 +39,13 @@ export class RateLimitGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (
+      this.reflector.getAllAndOverride<boolean>(DEFER_RATE_LIMIT, [
+        context.getHandler(),
+        context.getClass(),
+      ])
+    )
+      return true;
     const isPublic = this.reflector.getAllAndOverride<boolean>(
       IS_PUBLIC_ROUTE,
       [context.getHandler(), context.getClass()],

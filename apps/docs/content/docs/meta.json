@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "quick-start",
+    "playground",
     "beta-limitations",
     "authentication",
     "language",

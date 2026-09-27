@@ -36,6 +36,7 @@ const navigation = [
   { title: 'Projects', href: '/projects', icon: FolderKanban },
   { title: 'API keys', href: '/api-keys', icon: KeyRound },
   { title: 'Usage', href: '/usage', icon: ChartNoAxesCombined },
+  { title: 'Playground', href: '/playground', icon: Sparkles },
 ];
 
 function Navigation() {

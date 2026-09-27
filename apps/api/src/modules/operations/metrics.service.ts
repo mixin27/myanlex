@@ -15,6 +15,40 @@ const digest = (value: string): Buffer =>
 @Injectable()
 export class MetricsService {
   readonly registry = new Registry();
+  private readonly playgroundRequests = new Counter({
+    name: 'myanlex_playground_requests_total',
+    help: 'Admitted API playground executions.',
+    labelNames: ['operation', 'source', 'status_code'],
+    registers: [this.registry],
+  });
+  private readonly playgroundDuration = new Histogram({
+    name: 'myanlex_playground_duration_seconds',
+    help: 'API playground execution time.',
+    labelNames: ['operation', 'source', 'status_code'],
+    buckets: [0.005, 0.01, 0.05, 0.1, 0.5, 1, 5],
+    registers: [this.registry],
+  });
+  observePlayground(operation: string, status: number, elapsedMs: number) {
+    if (!this.enabled) return;
+    const allowed = new Set([
+      'detect',
+      'normalize',
+      'convert',
+      'syllabify',
+      'orthography',
+      'transliterate',
+      'tokenize',
+      'batch_syllabify',
+      'batch_transliterate',
+    ]);
+    const labels = {
+      operation: allowed.has(operation) ? operation : 'invalid',
+      source: 'playground',
+      status_code: String(status),
+    };
+    this.playgroundRequests.inc(labels);
+    this.playgroundDuration.observe(labels, elapsedMs / 1000);
+  }
   private readonly tokenHash: Buffer | undefined;
   private readonly requests = new Counter({
     name: 'myanlex_http_requests_total',

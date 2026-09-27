@@ -15,6 +15,15 @@ export function UsageDetails({ report }: { report: UsageReport }) {
       <summary className="cursor-pointer p-5 text-sm font-semibold">
         Daily breakdown · {report.days.length} days
       </summary>
+      {report.sources && (
+        <p className="px-5 pb-3 text-sm text-muted-foreground">
+          Recorded API-key requests:{' '}
+          {formatUsageCount(report.sources.api_key.requestCount)} · Playground
+          API requests:{' '}
+          {formatUsageCount(report.sources.playground.requestCount)}. Local runs
+          are not reported.
+        </p>
+      )}
       <Table>
         <caption className="sr-only">
           Daily recorded usage in UTC. Today, if included, is partial.

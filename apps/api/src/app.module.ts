@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { MetricsModule } from './modules/operations/metrics.module.js';
 import { AccountAuthModule } from './modules/account-auth/account-auth.module.js';
 import { PlatformModule } from './modules/platform/platform.module.js';
+import { PlaygroundModule } from './modules/playground/playground.module.js';
 
 import { ApplicationModule } from './common/application/application.module.js';
 import { AuthModule } from './common/auth/auth.module.js';
@@ -42,6 +43,7 @@ export class AppModule {
         DatabaseModule,
         AccountAuthModule,
         PlatformModule,
+        PlaygroundModule,
         ApplicationModule,
         AuthModule,
         RateLimitModule,

@@ -12,10 +12,27 @@ import {
   type QuotaRepository,
 } from '../../common/quota/quota.repository.js';
 import { PrismaQuotaRepository } from './prisma-quota.repository.js';
+import { PLAYGROUND_REPOSITORY } from '../../modules/playground/playground.repository.js';
+import { PrismaPlaygroundRepository } from './prisma-playground.repository.js';
 
 @Global()
 @Module({
   providers: [
+    {
+      provide: PLAYGROUND_REPOSITORY,
+      inject: [DATABASE_URL],
+      useFactory: (url: string | undefined) =>
+        url
+          ? new PrismaPlaygroundRepository(url)
+          : Object.fromEntries(
+              ['save', 'list', 'get', 'rename', 'delete', 'cleanup'].map(
+                (method) => [
+                  method,
+                  () => Promise.reject(new Error('Database unavailable.')),
+                ],
+              ),
+            ),
+    },
     {
       provide: QUOTA_REPOSITORY,
       inject: [DATABASE_URL],
@@ -42,6 +59,11 @@ import { PrismaQuotaRepository } from './prisma-quota.repository.js';
           : new PrismaPlatformRepository(databaseUrl),
     },
   ],
-  exports: [PLATFORM_REPOSITORY, WORKSPACE_REPOSITORY, QUOTA_REPOSITORY],
+  exports: [
+    PLATFORM_REPOSITORY,
+    WORKSPACE_REPOSITORY,
+    QUOTA_REPOSITORY,
+    PLAYGROUND_REPOSITORY,
+  ],
 })
 export class DatabaseModule {}

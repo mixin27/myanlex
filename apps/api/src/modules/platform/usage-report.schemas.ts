@@ -15,6 +15,7 @@ export const usageQuery = z
   );
 export type UsageQuery = z.infer<typeof usageQuery>;
 export interface UsageDayRecord {
+  source?: 'api_key' | 'playground';
   date: string;
   requestCount: bigint;
   errorCount: bigint;

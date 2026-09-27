@@ -61,7 +61,24 @@ export function summarizeUsage(
   records: UsageDayRecord[],
   range: ReturnType<typeof resolveUsageRange>,
 ) {
-  const byDate = new Map(records.map((record) => [record.date, record]));
+  const byDate = new Map<string, UsageDayRecord>();
+  for (const record of records) {
+    const previous = byDate.get(record.date);
+    byDate.set(
+      record.date,
+      previous
+        ? {
+            date: record.date,
+            requestCount: previous.requestCount + record.requestCount,
+            errorCount: previous.errorCount + record.errorCount,
+            charactersProcessed:
+              previous.charactersProcessed + record.charactersProcessed,
+            processingTimeMs:
+              previous.processingTimeMs + record.processingTimeMs,
+          }
+        : record,
+    );
+  }
   const totals = {
     requestCount: 0n,
     errorCount: 0n,
@@ -129,6 +146,16 @@ export class UsageReportService {
       generatedAt: now.toISOString(),
       metering: 'best-effort' as const,
       ...summarizeUsage(records, range),
+      sources: {
+        api_key: summarizeUsage(
+          records.filter((row) => (row.source ?? 'api_key') === 'api_key'),
+          range,
+        ).totals,
+        playground: summarizeUsage(
+          records.filter((row) => row.source === 'playground'),
+          range,
+        ).totals,
+      },
     };
   }
 }

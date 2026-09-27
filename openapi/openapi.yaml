@@ -623,6 +623,246 @@ paths:
           $ref: '#/components/responses/InternalError'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/projects/{projectId}/playground/execute:
+    post:
+      tags: [Platform]
+      operationId: executePlayground
+      summary: Execute an allowlisted language operation
+      description:
+        Current verified session, membership and project permissions are
+        rechecked. Snapshots are user-submitted artifacts, not server
+        attestations.
+      security:
+        - accountSession: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlaygroundExecution' }
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaygroundRun' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/WorkspaceNotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/PlatformUnavailable' }
+  /platform/organizations/{organizationId}/projects/{projectId}/playground/runs:
+    post:
+      tags: [Platform]
+      operationId: savePlaygroundRun
+      summary: Explicitly save a private snapshot
+      description:
+        Current verified session, membership and project permissions are
+        rechecked. Snapshots are user-submitted artifacts, not server
+        attestations.
+      security:
+        - accountSession: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlaygroundSave' }
+      responses:
+        '201':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaygroundSavedRun' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/WorkspaceNotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/PlatformUnavailable' }
+        '409':
+          description:
+            Save identifier conflict or active saved-run limit exceeded
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    get:
+      tags: [Platform]
+      operationId: listPlaygroundRuns
+      summary: List owned unexpired saved runs
+      description:
+        Current verified session, membership and project permissions are
+        rechecked. Snapshots are user-submitted artifacts, not server
+        attestations.
+      security:
+        - accountSession: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+        - name: after
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaygroundRunPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/WorkspaceNotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/PlatformUnavailable' }
+  /platform/organizations/{organizationId}/projects/{projectId}/playground/runs/{id}:
+    get:
+      tags: [Platform]
+      operationId: getPlaygroundRun
+      summary: Retrieve an owned snapshot without execution
+      description:
+        Current verified session, membership and project permissions are
+        rechecked. Snapshots are user-submitted artifacts, not server
+        attestations.
+      security:
+        - accountSession: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaygroundSavedRun' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/WorkspaceNotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/PlatformUnavailable' }
+    patch:
+      tags: [Platform]
+      operationId: renamePlaygroundRun
+      summary: Rename an owned snapshot
+      description:
+        Current verified session, membership and project permissions are
+        rechecked. Snapshots are user-submitted artifacts, not server
+        attestations.
+      security:
+        - accountSession: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlaygroundRename' }
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaygroundRunMetadata' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/WorkspaceNotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/PlatformUnavailable' }
+    delete:
+      tags: [Platform]
+      operationId: deletePlaygroundRun
+      summary: Delete an owned snapshot
+      description:
+        Current verified session, membership and project permissions are
+        rechecked. Snapshots are user-submitted artifacts, not server
+        attestations.
+      security:
+        - accountSession: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaygroundDeleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/WorkspaceNotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/PlatformUnavailable' }
   /health/ready:
     get:
       operationId: getReadiness
@@ -1442,6 +1682,13 @@ components:
         metering:
           type: string
           const: best-effort
+        sources:
+          type: object
+          additionalProperties: false
+          required: [api_key, playground]
+          properties:
+            api_key: { $ref: '#/components/schemas/UsageMetrics' }
+            playground: { $ref: '#/components/schemas/UsageMetrics' }
         totals:
           $ref: '#/components/schemas/UsageMetrics'
         days:
@@ -1450,6 +1697,161 @@ components:
           maxItems: 90
           items:
             $ref: '#/components/schemas/UsageDay'
+    PlaygroundExecution:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: detect }
+            payload: { $ref: '#/components/schemas/TextRequest' }
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: normalize }
+            payload: { $ref: '#/components/schemas/TextRequest' }
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: convert }
+            payload: { $ref: '#/components/schemas/ConvertTextRequest' }
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: syllabify }
+            payload: { $ref: '#/components/schemas/TextRequest' }
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: orthography }
+            payload: { $ref: '#/components/schemas/TextRequest' }
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: transliterate }
+            payload: { $ref: '#/components/schemas/TransliterateTextRequest' }
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: tokenize }
+            payload: { $ref: '#/components/schemas/TextRequest' }
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: batch_syllabify }
+            payload: { $ref: '#/components/schemas/BatchSyllabifyRequest' }
+        - type: object
+          additionalProperties: false
+          required: [operation, payload]
+          properties:
+            operation: { type: string, const: batch_transliterate }
+            payload: { $ref: '#/components/schemas/BatchTransliterateRequest' }
+    PlaygroundRun:
+      type: object
+      additionalProperties: false
+      required: [request, mode, build, elapsedMs, profiles]
+      description:
+        Local runs have no HTTP metadata. Build identifies the source revision;
+        development builds are explicit.
+      oneOf:
+        - required: [result]
+          not: { required: [error], properties: { error: {} } }
+        - required: [error]
+          not: { required: [result], properties: { result: {} } }
+      properties:
+        request: { $ref: '#/components/schemas/PlaygroundExecution' }
+        mode: { type: string, enum: [local, api] }
+        build: { type: string, minLength: 1, maxLength: 120 }
+        elapsedMs: { type: number, minimum: 0 }
+        profiles:
+          type: array
+          maxItems: 1000
+          items: { type: string, minLength: 1, maxLength: 120 }
+        httpStatus: { type: integer, minimum: 100, maximum: 599 }
+        requestId: { type: string, maxLength: 120 }
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: { type: string, maxLength: 120 }
+            message: { type: string, maxLength: 1000 }
+        result:
+          anyOf:
+            - { $ref: '#/components/schemas/EncodingDetectionResult' }
+            - { $ref: '#/components/schemas/NormalizationResult' }
+            - { $ref: '#/components/schemas/EncodingConversionResult' }
+            - { $ref: '#/components/schemas/SyllabificationResult' }
+            - { $ref: '#/components/schemas/OrthographyValidationResult' }
+            - { $ref: '#/components/schemas/TransliterationResult' }
+            - { $ref: '#/components/schemas/TokenizationResult' }
+            - { $ref: '#/components/schemas/BatchSyllabifyResult' }
+            - { $ref: '#/components/schemas/BatchTransliterateResult' }
+    PlaygroundSave:
+      type: object
+      additionalProperties: false
+      required: [id, title, snapshot]
+      description:
+        Complete request maximum 1 MiB. Client UUID permits identical retries.
+        Limit 50 unexpired runs per user across projects; expiry 30 days from
+        database creation time.
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        snapshot: { $ref: '#/components/schemas/PlaygroundRun' }
+    PlaygroundRename:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+    PlaygroundRunMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, title, projectId, createdAt, expiresAt, payloadSize]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        projectId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        payloadSize: { type: integer, minimum: 1, maximum: 1048576 }
+    PlaygroundSavedRun:
+      type: object
+      additionalProperties: false
+      required:
+        [id, title, projectId, createdAt, expiresAt, payloadSize, snapshot]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        projectId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        payloadSize: { type: integer, minimum: 1, maximum: 1048576 }
+        snapshot: { $ref: '#/components/schemas/PlaygroundRun' }
+    PlaygroundRunPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/PlaygroundRunMetadata' }
+        nextCursor: { type: [string, 'null'], format: uuid }
+    PlaygroundDeleted:
+      type: object
+      additionalProperties: false
+      required: [deleted]
+      properties:
+        deleted: { type: boolean, const: true }
     HealthResponse:
       type: object
       additionalProperties: false

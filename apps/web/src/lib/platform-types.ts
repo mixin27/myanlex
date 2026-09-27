@@ -33,6 +33,7 @@ export interface UsageMetrics {
   averageProcessingTimeMs: string | null;
 }
 export interface UsageReport {
+  sources?: { api_key: UsageMetrics; playground: UsageMetrics };
   projectId: string;
   from: string;
   to: string;

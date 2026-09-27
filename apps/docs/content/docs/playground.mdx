@@ -1,0 +1,52 @@
+---
+title: Playground
+description: Inspect language operations locally or reproduce API requests.
+---
+
+The MyanLex playground is a developer workbench with a local browser engine and
+an explicit API mode. Open **Playground** from the developer console navigation.
+
+## Local mode
+
+Local is the default and requires no sign-in. Processing stays in the browser
+and consumes no API quota. There is no automatic upload, storage, or fallback to
+API processing. The page must first load online; there is no offline reload
+guarantee or installable PWA.
+
+Select an operation, enter text and press Run or Ctrl/Cmd+Enter. Cancel stops
+local execution. Input and options changes label earlier results stale. Applying
+output back to the editor is an explicit action. Detection shows uncertainty;
+tokenization means syllable/script segmentation, not dictionary words.
+
+## API mode
+
+Run sends text to the server only after selecting API mode and explicitly
+running. A verified account, selected project and current `project.read` and
+`api.invoke` permissions are required. Organization quotas and account burst
+limits apply. Mode changes alone do not send processing requests.
+
+## Inspect and reproduce
+
+Inspect readable results, Unicode code points, JSON and comparisons. Batch items
+retain their identifiers and individual success/failure results. Downloads
+contain complete results even when on-screen inspection is paginated.
+
+Generated curl, TypeScript, Python sync/async and Dart examples target the
+public API and use environment placeholders, never your credentials. HTTP SDK
+examples require API access even when generated from a local result.
+Reproduction JSON omits original text/results unless you explicitly select them.
+
+## Private saved runs
+
+Ordinary runs stay in memory. Saving requires sign-in, a project and explicit
+upload confirmation. This also uploads local text and output. Only the creator
+with current project access can retrieve saved artifacts. Saved snapshots are
+user-submitted, not server-attested evidence; opening one does not execute it.
+
+Runs expire after 30 days. Maximums are 50 unexpired saves per user across
+projects and 1 MiB per save request. Oversized runs can still be downloaded.
+Deletion removes the primary database copy; backups follow the operator's
+backup-retention policy. There is no public sharing or offline save queue.
+
+Language behavior remains subject to the
+[beta limitations](/docs/beta-limitations).
