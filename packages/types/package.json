@@ -1,6 +1,6 @@
 {
   "name": "@myanlex/types",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Shared domain types for MyanLex",
   "license": "MIT",
   "type": "module",

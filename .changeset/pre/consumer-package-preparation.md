@@ -1,8 +1,8 @@
 ---
-'@myanlex/types': patch
-'@myanlex/core': patch
-'@myanlex/application': patch
-'@myanlex/sdk': patch
+'@myanlex/types': minor
+'@myanlex/core': minor
+'@myanlex/application': minor
+'@myanlex/sdk': minor
 ---
 
 Prepare consumer package metadata, standalone documentation and redistribution

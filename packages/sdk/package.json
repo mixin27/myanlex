@@ -1,6 +1,6 @@
 {
   "name": "@myanlex/sdk",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Typed HTTP client for the MyanLex language API",
   "license": "MIT",
   "type": "module",

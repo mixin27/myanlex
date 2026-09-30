@@ -1,6 +1,6 @@
 {
   "name": "@myanlex/core",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Framework-independent Myanmar language processing core",
   "license": "MIT",
   "type": "module",
