@@ -1,20 +1,28 @@
 # myanlex_dart
 
-Typed MyanLex HTTP SDK, scaffolded with the official
-`dart create --template=package --no-pub packages/myanlex_dart` command.
-Requires Dart 3.13.1 or newer within Dart 3. No Flutter dependency or local NLP
-engine. Uses `package:http` and `http_parser`. This package is unpublished;
-`publish_to: none` prevents accidental publication.
+Typed HTTP SDK for MyanLex language processing. Requires Dart 3.13.1 or newer
+within Dart 3, with no Flutter dependency. Uses `package:http` and
+`http_parser`.
 
-## Local use
+This is a beta: public contracts may change before a stable release. Passing SDK
+tests does not establish linguistic accuracy or independent linguistic review.
+The SDK requires a reachable MyanLex API and does not bundle a local NLP engine
+or silently fall back to offline processing. Package publication does not imply
+that a hosted MyanLex API is available; configure your server's URL explicitly.
 
-Add a path dependency pointing at this directory:
+## Installation
+
+Use an explicit beta dependency once the version is available on pub.dev:
 
 ```yaml
 dependencies:
-  myanlex_dart:
-    path: ../myanlex/packages/myanlex_dart
+  myanlex_dart: 0.1.0-beta.0
 ```
+
+Run `dart pub get` to install it. See the Development section for using an
+unpublished local checkout instead.
+
+## Usage
 
 ```dart
 import 'package:myanlex_dart/myanlex_dart.dart';
@@ -101,6 +109,16 @@ OpenAPI, not a promise of hosted availability; configure your self-hosted URL
 explicitly.
 
 ## Development
+
+The package was scaffolded with the official Dart package template. To consume
+an unpublished checkout, use a path dependency adjusted to your directory
+layout:
+
+```yaml
+dependencies:
+  myanlex_dart:
+    path: ../myanlex/packages/myanlex_dart
+```
 
 From this package directory:
 

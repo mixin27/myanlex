@@ -2,8 +2,10 @@ name: myanlex_dart
 description:
   Typed HTTP client for MyanLex language processing, with cancellation and
   explicit quota-aware error handling.
-version: 0.0.0
-publish_to: none
+version: 0.1.0-beta.0
+repository: https://github.com/mixin27/myanlex
+homepage: https://github.com/mixin27/myanlex/tree/main/packages/myanlex_dart
+issue_tracker: https://github.com/mixin27/myanlex/issues
 
 environment:
   sdk: ^3.13.1

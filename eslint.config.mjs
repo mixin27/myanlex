@@ -10,7 +10,7 @@ export default tseslint.config(
       'apps/web/**',
       'apps/docs/**',
       'local/**',
-      '.cache/**',
+      '**/.cache/**',
     ],
   },
   eslint.configs.recommended,
