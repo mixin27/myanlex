@@ -47,9 +47,11 @@ try {
   const redis = service('redis:7-alpine', 6379);
   let ready = false;
   for (let attempt = 0; attempt < 60; attempt++) {
+    // The image's temporary initialization server accepts sockets before its
+    // restart; only the final server listens on TCP.
     const result = spawnSync(
       'docker',
-      ['exec', database.id, 'pg_isready', '-U', 'postgres'],
+      ['exec', database.id, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'],
       { timeout: 5000 },
     );
     if (result.status === 0) {

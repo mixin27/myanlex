@@ -25,8 +25,9 @@ Node.js 22 or newer and pnpm 10 are required.
 
 - Keep each change focused.
 - Add or update tests for behavioral changes.
-- Use a changeset once packages begin publishing; package publishing is not
-  configured yet.
+- Use `pnpm changeset` for consumer-visible JavaScript package changes. See the
+  [publishing guide](docs/publishing.md) for coordinated engine versions and
+  independent SDK releases. Versioning preparation does not publish packages.
 - Update architecture documentation when package boundaries change.
 - Do not introduce framework, database, or environment dependencies into
   `@myanlex/core`.

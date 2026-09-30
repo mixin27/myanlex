@@ -159,6 +159,19 @@ For multi-instance deployments, configure Redis-backed rate limiting. Monthly
 organization quotas are opt-in and use PostgreSQL. See the
 [limits setup guide](docs/limits.md) before enabling either feature.
 
+## Local packages and publishing
+
+`@myanlex/application` and `@myanlex/core` process text locally without an API,
+account or network once installed/bundled. HTTP SDKs are separate clients, not
+offline engines. Browser consumers should run the local engine in a worker;
+offline page loading is the consuming application's responsibility.
+
+Run `pnpm packages:verify` to build archives and test an isolated consumer with
+network-disabled browser processing. See
+[package distribution and publishing](docs/publishing.md) for setup,
+compatibility evidence, Changesets, and the separate npm/pub.dev/PyPI release
+procedures. Nothing is published by these preparation commands.
+
 ## TypeScript SDK
 
 The workspace includes [`@myanlex/sdk`](packages/sdk/README.md), a thin

@@ -6,7 +6,9 @@
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -26,5 +28,20 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "vitest": "catalog:"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mixin27/myanlex.git",
+    "directory": "packages/application"
+  },
+  "bugs": {
+    "url": "https://github.com/mixin27/myanlex/issues"
+  },
+  "homepage": "https://github.com/mixin27/myanlex/tree/main/packages/application#readme",
+  "engines": {
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

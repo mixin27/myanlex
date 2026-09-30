@@ -9,7 +9,8 @@ engine, and CLDR-derived generated rules from
 Copyright 2017 Google LLC.
 
 Licensed under the Apache License, Version 2.0. You may obtain a copy of the
-license at <https://www.apache.org/licenses/LICENSE-2.0>.
+license at <https://www.apache.org/licenses/LICENSE-2.0>. The full text is
+bundled in `licenses/Apache-2.0.txt`.
 
 ## Unicode Character Database
 
@@ -17,4 +18,7 @@ The compiled package includes a range table derived from Unicode 17.0.0
 `emoji-data.txt`, published by Unicode, Inc.
 
 Copyright © 1991-2025 Unicode, Inc. All rights reserved. Distributed under the
-[Unicode License v3](https://www.unicode.org/license.txt).
+[Unicode License v3](https://www.unicode.org/license.txt). The full license text
+retrieved from that official URL on 2026-09-30 is bundled in
+`licenses/Unicode-3.0.txt`; the data's original copyright notice above is
+retained.

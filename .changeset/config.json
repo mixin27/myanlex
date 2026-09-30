@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
+  "changelog": ["@changesets/cli/changelog", null],
+  "commit": false,
+  "fixed": [["@myanlex/types", "@myanlex/core", "@myanlex/application"]],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "bumpVersionsWithWorkspaceProtocolOnly": true,
+  "privatePackages": { "version": false, "tag": false },
+  "ignore": []
+}

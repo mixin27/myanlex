@@ -10,6 +10,12 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
+    "changeset": "changeset",
+    "release:status": "changeset status",
+    "packages:build": "pnpm --filter @myanlex/application... --filter @myanlex/sdk... build",
+    "packages:pack": "pnpm packages:build && node scripts/package-release.mjs",
+    "packages:verify": "pnpm packages:build && node scripts/package-compatibility.mjs",
+    "packages:test": "node --test scripts/package-release.test.mjs",
     "deployment:smoke": "node scripts/deployment-smoke.mjs",
     "quality:report": "node scripts/nlp-quality.mjs",
     "quality:test": "node --test scripts/nlp-quality.test.mjs",
@@ -25,7 +31,7 @@
     "dart:sdk:smoke": "pnpm --filter @myanlex/api... build && node scripts/dart-sdk-smoke.mjs",
     "python:sdk:smoke": "pnpm --filter @myanlex/api... build && node scripts/python-sdk-smoke.mjs",
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm format:check && pnpm lint && pnpm openapi:lint && pnpm typecheck && pnpm test && pnpm operations:test && pnpm quality:test",
+    "check": "pnpm format:check && pnpm lint && pnpm openapi:lint && pnpm typecheck && pnpm test && pnpm operations:test && pnpm quality:test && pnpm packages:test",
     "db:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",
@@ -44,12 +50,15 @@
     "typecheck": "pnpm --filter @myanlex/playground... build && pnpm --recursive --if-present typecheck"
   },
   "devDependencies": {
-    "@prisma/adapter-pg": "7.10.0",
+    "@changesets/cli": "3.0.3",
     "@eslint/js": "^10.0.1",
+    "@prisma/adapter-pg": "7.10.0",
     "@redocly/cli": "^2.53.3",
     "@types/node": "^24.13.5",
     "@types/pg": "^8.23.1",
+    "esbuild": "0.28.2",
     "eslint": "^10.10.0",
+    "playwright": "1.63.0",
     "prettier": "^3.9.7",
     "prisma": "^7.10.0",
     "tsx": "^4.23.13",
