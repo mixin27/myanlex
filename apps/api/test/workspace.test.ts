@@ -452,8 +452,25 @@ describe('session-protected workspace HTTP contract', () => {
       '/platform/organizations/{organizationId}/projects',
       '/platform/organizations/{organizationId}/projects/{projectId}',
       '/platform/organizations/{organizationId}/projects/{projectId}/usage',
+      '/platform/organizations/{organizationId}/members',
+      '/platform/organizations/{organizationId}/members/{userId}',
+      '/platform/organizations/{organizationId}/permissions',
+      '/platform/organizations/{organizationId}/roles',
+      '/platform/organizations/{organizationId}/roles/{roleId}',
+      '/platform/organizations/{organizationId}/invitations',
+      '/platform/organizations/{organizationId}/invitations/{invitationId}/resend',
+      '/platform/organizations/{organizationId}/invitations/{invitationId}/revoke',
+      '/platform/invitations',
+      '/platform/invitations/accept',
     ]) {
       expect(document.paths[path]).toBeDefined();
+      for (const operation of Object.values(document.paths[path] ?? {}))
+        if (
+          typeof operation === 'object' &&
+          operation !== null &&
+          'security' in operation
+        )
+          expect(operation.security).toEqual([{ accountSession: [] }]);
     }
     expect(document.paths['/platform/organizations']?.post?.security).toEqual([
       { accountSession: [] },

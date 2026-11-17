@@ -50,7 +50,10 @@ export class SessionGuard implements CanActivate {
       throw new UnauthorizedException('A valid account session is required.');
     if (!session.user.emailVerified)
       throw new ForbiddenException('Email verification is required.');
-    request.accountPrincipal = { userId: session.user.id };
+    request.accountPrincipal = {
+      userId: session.user.id,
+      email: session.user.email,
+    };
     return true;
   }
 }

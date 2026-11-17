@@ -28,6 +28,26 @@ async function main(): Promise<void> {
       });
     }
 
+    // System roles (Owner) always hold the full catalog, including permissions
+    // added after the organization was created.
+    const permissions = await client.permission.findMany({
+      where: { key: { in: permissionCatalog.map(([key]) => key) } },
+      select: { id: true },
+    });
+    const systemRoles = await client.role.findMany({
+      where: { system: true },
+      select: { id: true },
+    });
+    await client.rolePermission.createMany({
+      data: systemRoles.flatMap((role) =>
+        permissions.map((permission) => ({
+          roleId: role.id,
+          permissionId: permission.id,
+        })),
+      ),
+      skipDuplicates: true,
+    });
+
     await client.plan.upsert({
       where: { slug: 'free' },
       create: {

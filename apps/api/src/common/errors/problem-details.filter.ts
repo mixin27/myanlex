@@ -34,6 +34,7 @@ function titleForStatus(status: number): string {
   if (status === HttpStatus.PAYLOAD_TOO_LARGE) return 'Payload Too Large';
   if (status === HttpStatus.NOT_FOUND) return 'Not Found';
   if (status === HttpStatus.CONFLICT) return 'Conflict';
+  if (status === HttpStatus.GONE) return 'Gone';
   if (status === HttpStatus.SERVICE_UNAVAILABLE) return 'Service Unavailable';
   if (status === HttpStatus.TOO_MANY_REQUESTS) return 'Too Many Requests';
   return 'Internal Server Error';
@@ -94,17 +95,19 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       code =
         status === HttpStatus.CONFLICT
           ? 'conflict'
-          : status === HttpStatus.SERVICE_UNAVAILABLE
-            ? 'service_unavailable'
-            : status === HttpStatus.UNAUTHORIZED
-              ? 'unauthorized'
-              : status === HttpStatus.FORBIDDEN
-                ? 'forbidden'
-                : status === HttpStatus.NOT_FOUND
-                  ? 'not_found'
-                  : status === HttpStatus.PAYLOAD_TOO_LARGE
-                    ? 'payload_too_large'
-                    : 'invalid_request';
+          : status === HttpStatus.GONE
+            ? 'gone'
+            : status === HttpStatus.SERVICE_UNAVAILABLE
+              ? 'service_unavailable'
+              : status === HttpStatus.UNAUTHORIZED
+                ? 'unauthorized'
+                : status === HttpStatus.FORBIDDEN
+                  ? 'forbidden'
+                  : status === HttpStatus.NOT_FOUND
+                    ? 'not_found'
+                    : status === HttpStatus.PAYLOAD_TOO_LARGE
+                      ? 'payload_too_large'
+                      : 'invalid_request';
       detail = exception.message;
     } else {
       const transportStatus = getTransportStatus(exception);

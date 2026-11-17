@@ -11,6 +11,7 @@ describe('portal proxy', () => {
     '/projects/new',
     '/api-keys',
     '/usage',
+    '/team',
     '/documentation',
   ])('protects %s with an early login redirect', (path) => {
     expect(unstable_doesProxyMatch({ config, nextConfig: {}, url: path })).toBe(
@@ -25,6 +26,7 @@ describe('portal proxy', () => {
 
   it.each([
     '/login',
+    '/invitations/accept',
     '/docs',
     '/register',
     '/verify-email',

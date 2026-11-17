@@ -35,6 +35,22 @@ describe('platform browser transport', () => {
       String(message),
     );
   });
+  it('sends DELETE without a body and accepts 204 responses', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetch);
+    await expect(
+      writePlatform('organizations/o/members/u', 'DELETE'),
+    ).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledWith(
+      '/v1/platform/organizations/o/members/u',
+      {
+        method: 'DELETE',
+        credentials: 'same-origin',
+      },
+    );
+  });
   it('handles non-JSON failures from an unavailable proxy', async () => {
     vi.stubGlobal(
       'fetch',

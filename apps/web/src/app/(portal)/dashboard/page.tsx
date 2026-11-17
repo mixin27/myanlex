@@ -14,6 +14,7 @@ import {
 import { readPlatform } from '@/lib/platform-server';
 import type { Organization, Page } from '@/lib/platform-types';
 import { CreateResource } from '@/components/workspace/create-resource';
+import { PendingInvitations } from '@/components/team/pending-invitations';
 import { buttonVariants } from '@/components/ui/button';
 
 export default async function DashboardPage({
@@ -39,6 +40,9 @@ export default async function DashboardPage({
         </div>
         <CreateResource />
       </header>
+      <Suspense fallback={null}>
+        <PendingInvitations />
+      </Suspense>
       <Suspense
         fallback={
           <p className="text-sm text-muted-foreground">

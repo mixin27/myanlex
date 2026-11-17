@@ -7,5 +7,5 @@ export interface AuthenticatedRequest {
     readonly origin?: string;
   };
   apiKeyPrincipal?: ApiKeyPrincipal;
-  accountPrincipal?: { readonly userId: string };
+  accountPrincipal?: { readonly userId: string; readonly email: string };
 }

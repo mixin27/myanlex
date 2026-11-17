@@ -29,7 +29,8 @@ security:
 tags:
   - name: Platform
     description:
-      Session-protected organization onboarding and project management
+      Session-protected organization onboarding, projects, keys, usage and team
+      management
   - name: Health
     description: Service health
   - name: Text
@@ -547,6 +548,609 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/members:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listMembers
+      summary: List organization members (member.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+      parameters:
+        - name: after
+          in: query
+          description: Last identifier from the previous page.
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Maximum page size.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/members/{userId}:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateMember
+      summary: "Change a member's role (member.manage)"
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+        The actor must hold every permission of both the current and the new role.
+        Rejected with 409 when no member would keep member.manage and role.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberUpdate'
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/TeamConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+    delete:
+      operationId: removeMember
+      summary: Remove a member or leave (member.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+        Members may always remove themselves. Removing others requires member.manage
+        and every permission of the member being removed. Rejected with 409 when no
+        member would keep member.manage and role.manage.
+      responses:
+        '204':
+          description: Successful operation. No content.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/TeamConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/permissions:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listPermissions
+      summary: List assignable permissions (role.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/roles:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listRoles
+      summary: List roles (role.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+    post:
+      operationId: createRole
+      summary: Create a custom role (role.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+        Only permissions the actor holds can be granted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleInput'
+      responses:
+        '201':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/TeamConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/roles/{roleId}:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: roleId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateRole
+      summary: Update a custom role (role.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+        System roles cannot be changed. The actor must hold every current and
+        requested permission of the role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/TeamConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+    delete:
+      operationId: deleteRole
+      summary: Delete an unused custom role (role.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+        Rejected with 409 for system roles and for roles still assigned to members
+        or open invitations.
+      responses:
+        '204':
+          description: Successful operation. No content.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/TeamConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/invitations:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listInvitations
+      summary: List open invitations (member.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+      parameters:
+        - name: after
+          in: query
+          description: Last identifier from the previous page.
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Maximum page size.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+    post:
+      operationId: createInvitation
+      summary: Invite by email (member.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+        Sends a single-use link that expires after seven days; only its SHA-256
+        hash is stored and the token is never returned. Email delivery is best
+        effort and reported in emailDelivery. The invitee also sees the invitation
+        in the portal after signing in with the invited address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationInput'
+      responses:
+        '201':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SentInvitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/TeamConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/invitations/{invitationId}/resend:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: invitationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: resendInvitation
+      summary: Rotate the link and resend (member.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+        Invalidates the previous link and restarts the seven-day expiry.
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SentInvitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/invitations/{invitationId}/revoke:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: invitationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: revokeInvitation
+      summary: Revoke an invitation (member.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/invitations:
+    get:
+      operationId: listMyInvitations
+      summary: List invitations for my verified email
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Returns unexpired open invitations addressed to
+        the signed-in account email.
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingInvitationList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/invitations/accept:
+    post:
+      operationId: acceptInvitation
+      summary: Accept an invitation
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required; writes require the configured trusted Origin.
+        Accept with the emailed token or with an id from listMyInvitations. The
+        invitation email must match the account email. Accepting when already a
+        member succeeds with status already_member.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationAccept'
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedInvitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '410':
+          $ref: '#/components/responses/InvitationGone'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -1230,6 +1834,21 @@ components:
           schema:
             $ref: '#/components/schemas/TextRequest'
   responses:
+    TeamConflict:
+      description: |-
+        The change conflicts with team state: a duplicate slug or invitation, a
+        system role, a role in use, or no remaining member manager.
+      content:
+        'application/problem+json':
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvitationGone:
+      description:
+        The invitation has expired, been revoked, or already been used.
+      content:
+        'application/problem+json':
+          schema:
+            $ref: '#/components/schemas/Problem'
     WorkspaceNotFound:
       description: The resource does not exist or is not visible to this member.
       content:
@@ -1317,6 +1936,297 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    RoleReference:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+    Role:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          name,
+          slug,
+          description,
+          system,
+          permissions,
+          memberCount,
+          invitationCount,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: [string, 'null']
+        system:
+          type: boolean
+          description: System roles hold the full catalog and cannot be changed.
+        permissions:
+          type: array
+          items:
+            type: string
+        memberCount:
+          type: integer
+          minimum: 0
+        invitationCount:
+          type: integer
+          minimum: 0
+          description: Open invitations that use this role.
+    RoleList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+    RoleInput:
+      type: object
+      additionalProperties: false
+      required: [name, slug, permissions]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          description: The owner slug is reserved.
+        description:
+          type: [string, 'null']
+          maxLength: 500
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Permission keys from listPermissions.
+    RoleUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        description:
+          type: [string, 'null']
+          maxLength: 500
+        permissions:
+          type: array
+          items:
+            type: string
+    Permission:
+      type: object
+      additionalProperties: false
+      required: [key, description]
+      properties:
+        key:
+          type: string
+        description:
+          type: string
+    PermissionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+    Member:
+      type: object
+      additionalProperties: false
+      required: [userId, name, email, role, permissions, joinedAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/RoleReference'
+        permissions:
+          type: array
+          items:
+            type: string
+        joinedAt:
+          type: string
+          format: date-time
+    MemberPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        nextCursor:
+          type: [string, 'null']
+          format: uuid
+    MemberUpdate:
+      type: object
+      additionalProperties: false
+      required: [roleId]
+      properties:
+        roleId:
+          type: string
+          format: uuid
+    Invitation:
+      type: object
+      additionalProperties: false
+      required: [id, email, role, status, expiresAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/RoleReference'
+        status:
+          type: string
+          enum: [pending, expired, accepted, revoked]
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    SentInvitation:
+      type: object
+      additionalProperties: false
+      required: [id, email, role, status, expiresAt, createdAt, emailDelivery]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/RoleReference'
+        status:
+          type: string
+          enum: [pending, expired, accepted, revoked]
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        emailDelivery:
+          type: string
+          enum: [sent, failed, disabled]
+          description:
+            Best-effort email outcome. The invitation exists regardless.
+    InvitationPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invitation'
+        nextCursor:
+          type: [string, 'null']
+          format: uuid
+    InvitationInput:
+      type: object
+      additionalProperties: false
+      required: [email, roleId]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        roleId:
+          type: string
+          format: uuid
+    PendingInvitation:
+      type: object
+      additionalProperties: false
+      required: [id, organization, role, expiresAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization:
+          $ref: '#/components/schemas/Organization'
+        role:
+          $ref: '#/components/schemas/RoleReference'
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    PendingInvitationList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingInvitation'
+    InvitationAccept:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [token]
+          properties:
+            token:
+              type: string
+              minLength: 32
+              maxLength: 128
+              pattern: '^[A-Za-z0-9_-]+$'
+        - type: object
+          additionalProperties: false
+          required: [invitationId]
+          properties:
+            invitationId:
+              type: string
+              format: uuid
+    AcceptedInvitation:
+      type: object
+      additionalProperties: false
+      required: [status, organization]
+      properties:
+        status:
+          type: string
+          enum: [accepted, already_member]
+        organization:
+          $ref: '#/components/schemas/Organization'
     QuotaDimension:
       type: object
       additionalProperties: false

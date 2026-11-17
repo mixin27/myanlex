@@ -61,3 +61,50 @@ export interface QuotaReport {
   requests: QuotaDimension;
   characters: QuotaDimension;
 }
+
+export interface RoleReference {
+  id: string;
+  name: string;
+  slug: string;
+}
+export interface Role extends RoleReference {
+  description: string | null;
+  system: boolean;
+  permissions: string[];
+  memberCount: number;
+  invitationCount: number;
+}
+export interface Permission {
+  key: string;
+  description: string;
+}
+export interface Member {
+  userId: string;
+  name: string;
+  email: string;
+  role: RoleReference;
+  permissions: string[];
+  joinedAt: string;
+}
+export interface Invitation {
+  id: string;
+  email: string;
+  role: RoleReference;
+  status: 'pending' | 'expired' | 'accepted' | 'revoked';
+  expiresAt: string;
+  createdAt: string;
+}
+export interface SentInvitation extends Invitation {
+  emailDelivery: 'sent' | 'failed' | 'disabled';
+}
+export interface PendingInvitation {
+  id: string;
+  organization: Organization;
+  role: RoleReference;
+  expiresAt: string;
+  createdAt: string;
+}
+export interface AcceptedInvitation {
+  status: 'accepted' | 'already_member';
+  organization: Organization;
+}

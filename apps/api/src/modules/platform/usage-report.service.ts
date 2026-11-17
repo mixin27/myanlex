@@ -1,10 +1,10 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { requireOrganizationPermission } from './organization-access.js';
 import { WORKSPACE_REPOSITORY } from './workspace.repository.js';
 import type { WorkspaceRepository } from './workspace.repository.js';
 import { usageQuery } from './usage-report.schemas.js';
@@ -121,13 +121,12 @@ export class UsageReportService {
     projectId: string,
     query: UsageQuery,
   ) {
-    const organization = await this.repository.getOrganization(
+    await requireOrganizationPermission(
+      this.repository,
       userId,
       organizationId,
+      'usage.read',
     );
-    if (!organization) throw new NotFoundException('Organization not found.');
-    if (!organization.permissions.includes('usage.read'))
-      throw new ForbiddenException('The usage.read permission is required.');
     if (!(await this.repository.findProject(organizationId, projectId)))
       throw new NotFoundException('Project not found.');
     const now = new Date();

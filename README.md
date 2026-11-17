@@ -55,19 +55,25 @@ tests is not a measured linguistic accuracy score or release approval.
 - Repeatable application and in-memory HTTP performance benchmarks
 - Dynamic database-backed RBAC and scoped project API-key foundations
 - Swagger UI and Scalar over the authoritative OpenAPI contract
-- Next.js portal routes for login, dashboard, projects, keys, usage, docs, and
-  account
+- Next.js portal routes for login, dashboard, projects, keys, usage, team, docs,
+  and account
 
 - Self-hosted email/password sessions and optional Google/GitHub OAuth;
   [setup and verification](docs/authentication.md)
 - Session-protected organization onboarding and project management with dynamic
   permissions; [workflow and Scalar testing](docs/platform.md)
+- Scoped project API-key issuance and revocation, best-effort usage reports and
+  monthly quota reporting
+- Team management: member roles, custom roles with permission editing, and email
+  invitations with an in-portal pending list;
+  [team workflow](docs/platform.md#team-management)
+- TypeScript, Dart and Python HTTP SDKs versioned as 0.1.0 betas; see
+  [publishing](docs/publishing.md)
 
 Planned next:
 
-- API-key issuance/revocation and usage reporting
-- Member invitations and custom-role management UI
-- TypeScript, Dart and Python SDKs (unpublished previews)
+- Ownership transfer and administrative audit records
+- Durable billing-grade metering, plans and billing
 
 ## Repository layout
 

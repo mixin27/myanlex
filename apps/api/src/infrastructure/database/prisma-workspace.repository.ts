@@ -92,6 +92,7 @@ export class PrismaWorkspaceRepository
             organizationId: organization.id,
             name: 'Owner',
             slug: 'owner',
+            system: true,
           },
         });
         // Grant an explicit catalog snapshot; never grant arbitrary future rows.

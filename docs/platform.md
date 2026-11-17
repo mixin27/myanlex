@@ -1,4 +1,4 @@
-# Developer console, organizations, projects and API keys
+# Developer console, organizations, projects, API keys and teams
 
 ## Local workflow
 
@@ -75,10 +75,10 @@ to run real onboarding, rollback, dynamic permission and tenant-isolation tests.
 Never point it at production. CI supplies its own PostgreSQL service.
 
 The initial role's display name is Owner. Authorization uses permission rows,
-not that name. The permission catalog is shared by seeding and new-organization
-creation; adding a capability does not retroactively grant it to existing roles.
-This milestone does not expose invitations, role editing, project deletion,
-plans or billing. Those remain separate milestones.
+not that name. Owner is a system role: `pnpm db:seed` grants it any permission
+added to the catalog later, and it cannot be edited or deleted. Custom roles are
+never elevated automatically. Project deletion, plans and billing remain
+separate milestones.
 
 ## Scoped API keys
 
@@ -148,3 +148,62 @@ these best-effort reports: they count admitted requests before handler
 execution, not completed usage events. See [rate limits and quotas](limits.md)
 for configuration, rollout, and operational semantics. Durable billing metering
 remains future work.
+
+## Team management
+
+Open **Team**, choose a workspace, and use the Members, Invitations and Roles
+tabs. Apply the `20261118000000_team_management` migration and rerun
+`pnpm db:seed` before using it. See
+[the team-management decision](decisions/0021-team-management.md) for the
+security rules.
+
+1. **Roles** (`role.read` to view, `role.manage` to change):
+   - Create a custom role with a name, slug, optional description and
+     permissions.
+   - Permissions you do not hold are disabled, and the API rejects them.
+   - The system Owner role cannot be changed.
+   - A role cannot be deleted while members or open invitations use it.
+2. **Invite** (`member.manage`, plus `role.read` for role selection): enter an
+   email address and a role.
+   - The invitee receives a seven-day, single-use link at `/invitations/accept`.
+   - The invitation also appears in a **Pending invitations** card on the
+     invitee's dashboard once they sign in with that address.
+   - If SMTP fails or is not configured, the invitation is still created and the
+     console says the email was not sent.
+3. **Members** (`member.read` to view, `member.manage` to change):
+   - Change roles or remove members.
+   - Anyone can leave a workspace.
+   - Any change that would leave no member holding both `member.manage` and
+     `role.manage` is rejected with 409.
+   - You cannot assign, change or remove a role or member that has permissions
+     you do not hold.
+
+All routes are under `/v1/platform/organizations/:organizationId` unless noted:
+
+| Method | Suffix                            | Permission and notes                                |
+| ------ | --------------------------------- | --------------------------------------------------- |
+| GET    | /members                          | member.read; cursor by user ID                      |
+| PATCH  | /members/:userId                  | member.manage; `{ roleId }`; escalation/last guard  |
+| DELETE | /members/:userId                  | member.manage, or yourself to leave; 204            |
+| GET    | /permissions                      | role.read; assignable permission catalog            |
+| GET    | /roles                            | role.read; permissions, member and invite counts    |
+| POST   | /roles                            | role.manage; `{ name, slug, description?, perms }`  |
+| PATCH  | /roles/:roleId                    | role.manage; partial; system roles return 409       |
+| DELETE | /roles/:roleId                    | role.manage; 409 while in use; 204                  |
+| GET    | /invitations                      | member.read; open (pending or expired) invitations  |
+| POST   | /invitations                      | member.manage; `{ email, roleId }`; `emailDelivery` |
+| POST   | /invitations/:invitationId/resend | member.manage; rotates the link and expiry          |
+| POST   | /invitations/:invitationId/revoke | member.manage; idempotent                           |
+| GET    | `/v1/platform/invitations`        | Your pending invitations (any verified session)     |
+| POST   | `/v1/platform/invitations/accept` | `{ token }` or `{ invitationId }`; 410 when closed  |
+
+To test invitations locally:
+
+1. Sign in as the owner, invite a second address, and open the link from Mailpit
+   in a separate browser profile.
+2. Register and verify that address, then accept the invitation.
+3. Try every route in the session-enabled Scalar reference at the portal's
+   `/api-reference`.
+
+Invitation tokens never appear in API responses, and only their SHA-256 hashes
+are stored.
