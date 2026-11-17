@@ -10,6 +10,7 @@ import { WORKSPACE_REPOSITORY } from './workspace.repository.js';
 import type { WorkspaceRepository } from './workspace.repository.js';
 import type { ListQuery } from './platform.schemas.js';
 import { apiKeyInput } from './api-key.schemas.js';
+import { requireOrganizationPermission } from './organization-access.js';
 import type { ApiKeyInput } from './api-key.schemas.js';
 
 @Injectable()
@@ -25,13 +26,12 @@ export class ApiKeysService {
     projectId: string,
     permission: string,
   ) {
-    const organization = await this.repository.getOrganization(
+    const organization = await requireOrganizationPermission(
+      this.repository,
       userId,
       organizationId,
+      permission,
     );
-    if (!organization) throw new NotFoundException('Organization not found.');
-    if (!organization.permissions.includes(permission))
-      throw new ForbiddenException(`The ${permission} permission is required.`);
     if (!(await this.repository.findProject(organizationId, projectId)))
       throw new NotFoundException('Project not found.');
     return organization;

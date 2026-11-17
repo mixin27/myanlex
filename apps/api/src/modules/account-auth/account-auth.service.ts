@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { OnModuleDestroy } from '@nestjs/common';
@@ -12,6 +13,9 @@ import { createTransport } from 'nodemailer';
 import { PrismaClient } from '../../generated/prisma/client.js';
 import { parseAccountAuthConfig } from './account-auth.config.js';
 import { createAccountAuth } from './create-account-auth.js';
+import type { AuthMail, SendAuthMail } from './create-account-auth.js';
+
+export type MailDelivery = 'sent' | 'failed' | 'disabled';
 
 @Injectable()
 export class AccountAuthService implements OnModuleDestroy {
@@ -19,6 +23,7 @@ export class AccountAuthService implements OnModuleDestroy {
   readonly publicURL: string | undefined;
   readonly providers: string[] = [];
   private readonly prisma: PrismaClient | undefined;
+  private readonly deliver: SendAuthMail | undefined;
 
   constructor(@Inject(ConfigService) config: ConfigService) {
     const keys = [
@@ -58,12 +63,13 @@ export class AccountAuthService implements OnModuleDestroy {
         ? { auth: { user: settings.SMTP_USER, pass: settings.SMTP_PASSWORD } }
         : {}),
     });
+    this.deliver = async (message) => {
+      await mail.sendMail({ from: settings.SMTP_FROM, ...message });
+    };
     this.auth = createAccountAuth(
       settings,
       prismaAdapter(this.prisma, { provider: 'postgresql', transaction: true }),
-      async (message) => {
-        await mail.sendMail({ from: settings.SMTP_FROM, ...message });
-      },
+      this.deliver,
     );
     if (settings.GOOGLE_CLIENT_ID) this.providers.push('google');
     if (settings.GITHUB_CLIENT_ID) this.providers.push('github');
@@ -75,6 +81,21 @@ export class AccountAuthService implements OnModuleDestroy {
         'Account authentication is not configured.',
       );
     return this.auth;
+  }
+
+  /**
+   * Best-effort application mail through the account SMTP transport. Never
+   * throws and never logs recipients or message content.
+   */
+  async sendMail(message: AuthMail): Promise<MailDelivery> {
+    if (!this.deliver) return 'disabled';
+    try {
+      await this.deliver(message);
+      return 'sent';
+    } catch {
+      new Logger('AccountMail').warn({ event: 'mail_delivery_failed' });
+      return 'failed';
+    }
   }
 
   async onModuleDestroy(): Promise<void> {

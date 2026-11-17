@@ -18,6 +18,7 @@ export const config = {
     '/projects/:path*',
     '/api-keys/:path*',
     '/usage/:path*',
+    '/team/:path*',
     '/documentation/:path*',
   ],
 };

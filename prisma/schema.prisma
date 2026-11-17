@@ -8,21 +8,23 @@ datasource db {
 }
 
 model User {
-  id              String               @id @default(uuid()) @db.Uuid
-  email           String               @unique @db.VarChar(320)
+  id              String                   @id @default(uuid()) @db.Uuid
+  email           String                   @unique @db.VarChar(320)
   /// Legacy only. Better Auth credential hashes are stored in Account.password.
-  passwordHash    String?              @map("password_hash")
-  name            String               @db.VarChar(120)
+  passwordHash    String?                  @map("password_hash")
+  name            String                   @db.VarChar(120)
   /// Legacy only. Runtime verification uses emailVerified, not this timestamp.
-  emailVerifiedAt DateTime?            @map("email_verified_at") @db.Timestamptz(3)
-  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  emailVerifiedAt DateTime?                @map("email_verified_at") @db.Timestamptz(3)
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
   memberships     OrganizationMember[]
-  emailVerified   Boolean              @default(false) @map("email_verified")
+  emailVerified   Boolean                  @default(false) @map("email_verified")
   image           String?
   sessions        Session[]
   accounts        Account[]
   playgroundRuns  PlaygroundRun[]
+  invitationsSent OrganizationInvitation[] @relation("InvitationInviter")
+  invitationsUsed OrganizationInvitation[] @relation("InvitationAcceptor")
 
   @@map("users")
 }
@@ -85,16 +87,17 @@ model RateLimit {
 }
 
 model Organization {
-  id            String               @id @default(uuid()) @db.Uuid
-  name          String               @db.VarChar(120)
-  slug          String               @unique @db.VarChar(80)
-  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id            String                   @id @default(uuid()) @db.Uuid
+  name          String                   @db.VarChar(120)
+  slug          String                   @unique @db.VarChar(80)
+  createdAt     DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
   members       OrganizationMember[]
   roles         Role[]
   projects      Project[]
   subscriptions Subscription[]
   quotas        OrganizationQuota[]
+  invitations   OrganizationInvitation[]
 
   @@map("organizations")
 }
@@ -115,20 +118,48 @@ model OrganizationMember {
 }
 
 model Role {
-  id             String               @id @default(uuid()) @db.Uuid
-  organizationId String               @map("organization_id") @db.Uuid
-  name           String               @db.VarChar(80)
-  slug           String               @db.VarChar(80)
+  id             String                   @id @default(uuid()) @db.Uuid
+  organizationId String                   @map("organization_id") @db.Uuid
+  name           String                   @db.VarChar(80)
+  slug           String                   @db.VarChar(80)
   description    String?
-  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// System roles (Owner) keep the full permission catalog and cannot be edited.
+  system         Boolean                  @default(false)
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members        OrganizationMember[]
   permissions    RolePermission[]
+  invitations    OrganizationInvitation[]
 
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
   @@map("roles")
+}
+
+/// Only a SHA-256 hash of the single-use invitation token is stored. The
+/// migration adds a partial unique index for one open invitation per email.
+model OrganizationInvitation {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  email            String       @db.VarChar(320)
+  roleId           String       @map("role_id") @db.Uuid
+  tokenHash        String       @unique @map("token_hash") @db.Char(64)
+  invitedByUserId  String?      @map("invited_by_user_id") @db.Uuid
+  expiresAt        DateTime     @map("expires_at") @db.Timestamptz(3)
+  acceptedAt       DateTime?    @map("accepted_at") @db.Timestamptz(3)
+  acceptedByUserId String?      @map("accepted_by_user_id") @db.Uuid
+  revokedAt        DateTime?    @map("revoked_at") @db.Timestamptz(3)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role             Role         @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  invitedBy        User?        @relation("InvitationInviter", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  acceptedBy       User?        @relation("InvitationAcceptor", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, id])
+  @@index([email, expiresAt])
+  @@index([roleId, organizationId])
+  @@map("organization_invitations")
 }
 
 model Permission {
@@ -156,14 +187,14 @@ model RolePermission {
 }
 
 model Project {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  name           String       @db.VarChar(120)
-  slug           String       @db.VarChar(80)
-  environment    String       @default("development") @db.VarChar(40)
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  name           String          @db.VarChar(120)
+  slug           String          @db.VarChar(80)
+  environment    String          @default("development") @db.VarChar(40)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   apiKeys        ApiKey[]
   usage          ApiUsage[]
   dailyUsage     DailyUsage[]

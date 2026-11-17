@@ -1,6 +1,5 @@
 import {
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -10,6 +9,7 @@ import {
   WorkspaceConflict,
 } from './workspace.repository.js';
 import type { WorkspaceRepository } from './workspace.repository.js';
+import { requireOrganizationPermission } from './organization-access.js';
 import type {
   ListQuery,
   OrganizationInput,
@@ -42,9 +42,12 @@ export class PlatformService {
     organizationId: string,
     permission: string,
   ) {
-    const organization = await this.getOrganization(userId, organizationId);
-    if (!organization.permissions.includes(permission))
-      throw new ForbiddenException(`The ${permission} permission is required.`);
+    await requireOrganizationPermission(
+      this.repository,
+      userId,
+      organizationId,
+      permission,
+    );
   }
 
   private async write<T>(operation: () => Promise<T>): Promise<T> {

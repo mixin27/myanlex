@@ -18,7 +18,7 @@
     "fumadocs-ui": "npm:@fumadocs/base-ui@16.15.14",
     "fumadocs-openapi": "12.0.2",
     "lucide-react": "^1.47.0",
-    "next": "16.3.6",
+    "next": "16.4.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
@@ -33,6 +33,6 @@
     "typescript": "catalog:",
     "vitest": "catalog:",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.3.6"
+    "eslint-config-next": "16.4.6"
   }
 }

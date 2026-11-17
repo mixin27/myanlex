@@ -41,9 +41,14 @@ independently collected edge logs.
 
 Run `pnpm security:audit` before release. CI rejects high/critical production
 dependency advisories; audit findings require review, not blind major upgrades.
-The September 2026 baseline pins transitive fixes in `pnpm-workspace.yaml`:
+The September 2026 baseline pins transitive fixes in `pnpm-workspace.yaml`,
+refreshed in November 2026:
 
-- Undici 7.29.1 within major 7, used by the documentation tooling.
+- Undici 7.30.1 within major 7, used by the documentation tooling.
+- Vite ^8.3.8 as a root development dependency. Vite is otherwise only an
+  auto-installed Vitest peer, which pnpm overrides do not reach, and the audit
+  traced it through better-auth (GHSA-587h-7wmj-h5pm). Remove it once Vitest
+  resolves a patched Vite on its own.
 - mysql2 3.24.4, an optional Prisma dependency (MyanLex uses PostgreSQL).
 - `@prisma/config>deepmerge-ts` 8.0.2 for its recursion exhaustion fix. This is
   a narrowly scoped major override: Prisma uses plain-object config merging, not
