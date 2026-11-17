@@ -13,7 +13,7 @@ import {
 
 // The token is in the URL; never leak it to other origins via Referer.
 export const metadata: Metadata = {
-  title: 'Accept invitation · MyanLex',
+  title: 'Accept invitation',
   referrer: 'no-referrer',
 };
 
