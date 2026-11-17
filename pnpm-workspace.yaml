@@ -13,6 +13,6 @@ catalog:
 
 # Temporary audited security pins; see docs/security/hardening.md.
 overrides:
-  'undici@>=7.0.0 <7.29.1': 7.29.1
+  'undici@>=7.0.0 <7.30.1': 7.30.1
   'mysql2@<3.24.4': 3.24.4
   '@prisma/config>deepmerge-ts': 8.0.2
