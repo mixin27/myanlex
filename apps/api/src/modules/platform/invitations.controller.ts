@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { SessionRoute } from '../../common/auth/session-route.decorator.js';
 import type { AuthenticatedRequest } from '../../common/auth/authenticated-request.js';
+import { auditActor } from './audit.js';
 import { ZodBodyPipe } from '../../common/validation/zod-body.pipe.js';
 import { InvitationsService } from './invitations.service.js';
 import { listQuery } from './platform.schemas.js';
@@ -46,11 +47,7 @@ export class OrganizationInvitationsController {
     @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
     @Body(new ZodBodyPipe(invitationInput)) body: InvitationInput,
   ) {
-    return this.invitations.create(
-      request.accountPrincipal!.userId,
-      organizationId,
-      body,
-    );
+    return this.invitations.create(auditActor(request), organizationId, body);
   }
 
   @Post(':invitationId/resend')
@@ -61,7 +58,7 @@ export class OrganizationInvitationsController {
     @Param('invitationId', new ParseUUIDPipe()) invitationId: string,
   ) {
     return this.invitations.resend(
-      request.accountPrincipal!.userId,
+      auditActor(request),
       organizationId,
       invitationId,
     );
@@ -75,7 +72,7 @@ export class OrganizationInvitationsController {
     @Param('invitationId', new ParseUUIDPipe()) invitationId: string,
   ) {
     return this.invitations.revoke(
-      request.accountPrincipal!.userId,
+      auditActor(request),
       organizationId,
       invitationId,
     );
@@ -102,10 +99,6 @@ export class AccountInvitationsController {
     @Req() request: AuthenticatedRequest,
     @Body(new ZodBodyPipe(invitationAcceptInput)) body: InvitationAcceptInput,
   ) {
-    return this.invitations.accept(
-      request.accountPrincipal!.userId,
-      request.accountPrincipal!.email,
-      body,
-    );
+    return this.invitations.accept(auditActor(request), body);
   }
 }

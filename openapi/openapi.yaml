@@ -1087,6 +1087,119 @@ paths:
           $ref: '#/components/responses/InternalError'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/ownership-transfer:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: transferOwnership
+      summary: Transfer ownership to another member (Owner role)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Writes require the configured trusted Origin.
+        Only a member whose role is the system Owner role may transfer. In one
+        transaction the target member receives the Owner role and the actor moves
+        to newRoleId, which must be a non-system role. confirmSlug must equal the
+        organization slug. Recorded as ownership.transferred in the audit log.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnershipTransferInput'
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnershipTransfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/TeamConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/audit-events:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listAuditEvents
+      summary: List administrative audit events (audit.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Membership and current dynamic permissions
+        are checked on every request. Events are newest first, append-only and
+        written in the same transaction as the change they describe. Events
+        older than the operator's retention period (365 days by default) are
+        removed. Metadata never contains API-key material or invitation tokens.
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque nextCursor from the previous page.
+          schema:
+            type: string
+            maxLength: 200
+        - name: action
+          in: query
+          description: Only return events with this action.
+          schema:
+            $ref: '#/components/schemas/AuditAction'
+        - name: limit
+          in: query
+          description: Maximum page size.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Successful operation. Responses are private and no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /platform/invitations:
     get:
       operationId: listMyInvitations
@@ -2091,6 +2204,105 @@ components:
         nextCursor:
           type: [string, 'null']
           format: uuid
+    OwnershipTransferInput:
+      type: object
+      additionalProperties: false
+      required: [toUserId, newRoleId, confirmSlug]
+      properties:
+        toUserId:
+          type: string
+          format: uuid
+          description: Member who receives the Owner role.
+        newRoleId:
+          type: string
+          format: uuid
+          description: Non-system role the current Owner moves to.
+        confirmSlug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Must equal the organization slug exactly.
+    OwnershipTransfer:
+      type: object
+      additionalProperties: false
+      required: [owner, previousOwner]
+      properties:
+        owner:
+          $ref: '#/components/schemas/Member'
+        previousOwner:
+          $ref: '#/components/schemas/Member'
+    AuditAction:
+      type: string
+      enum:
+        - organization.created
+        - project.created
+        - project.updated
+        - api_key.created
+        - api_key.revoked
+        - member.role_changed
+        - member.removed
+        - member.left
+        - role.created
+        - role.updated
+        - role.deleted
+        - invitation.created
+        - invitation.resent
+        - invitation.revoked
+        - invitation.accepted
+        - ownership.transferred
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required: [id, action, actor, target, metadata, requestId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          $ref: '#/components/schemas/AuditAction'
+        actor:
+          type: object
+          additionalProperties: false
+          required: [userId, email]
+          properties:
+            userId:
+              type: [string, 'null']
+              format: uuid
+              description: Null after the acting account is deleted.
+            email:
+              type: string
+              description: Email address at the time of the change.
+        target:
+          type: object
+          additionalProperties: false
+          required: [type, id]
+          properties:
+            type:
+              type: string
+              enum: [organization, project, api_key, member, role, invitation]
+            id:
+              type: string
+        metadata:
+          type: object
+          description:
+            Action-specific details such as role names or changed fields.
+          additionalProperties: true
+        requestId:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+    AuditEventPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        nextCursor:
+          type: [string, 'null']
     MemberUpdate:
       type: object
       additionalProperties: false

@@ -94,7 +94,8 @@ member therefore cannot leave, which also prevents orphaned organizations.
   They are tested with mocked repositories in `apps/api/test/team.test.ts` and
   against PostgreSQL in `team.postgres.test.ts`.
 - Not included:
-  - ownership transfer beyond assigning another member the Owner role;
-  - admin audit records;
+  - ownership transfer beyond assigning another member the Owner role, and admin
+    audit records. Both were added later in
+    [0022](0022-audit-log-and-ownership-transfer.md);
   - per-project roles;
   - invitation rate limits beyond the existing per-account request limiter.

@@ -10,6 +10,8 @@ import type {
   ProjectInput,
   ProjectUpdateInput,
 } from '../../modules/platform/platform.schemas.js';
+import type { AuditActor } from '../../modules/platform/audit.js';
+import { recordAudit } from './audit-writer.js';
 import { WorkspaceConflict } from '../../modules/platform/workspace.repository.js';
 import type {
   WorkspaceRepository,
@@ -80,7 +82,8 @@ export class PrismaWorkspaceRepository
     });
   }
 
-  createOrganization(userId: string, input: OrganizationInput) {
+  createOrganization(actor: AuditActor, input: OrganizationInput) {
+    const { userId } = actor;
     return uniqueWrite(() =>
       this.client.$transaction(async (tx: Prisma.TransactionClient) => {
         const organization = await tx.organization.create({
@@ -115,6 +118,12 @@ export class PrismaWorkspaceRepository
         });
         await tx.organizationMember.create({
           data: { organizationId: organization.id, userId, roleId: role.id },
+        });
+        await recordAudit(tx, organization.id, actor, {
+          action: 'organization.created',
+          targetType: 'organization',
+          targetId: organization.id,
+          metadata: { name: organization.name, slug: organization.slug },
         });
         return organization;
       }),
@@ -171,35 +180,72 @@ export class PrismaWorkspaceRepository
     );
   }
 
-  createProject(organizationId: string, input: ProjectInput) {
+  createProject(
+    organizationId: string,
+    input: ProjectInput,
+    actor: AuditActor,
+  ) {
     return uniqueWrite(() =>
-      this.client.project.create({
-        data: { ...input, organizationId },
-        select: projectSelect,
+      this.client.$transaction(async (tx) => {
+        const project = await tx.project.create({
+          data: { ...input, organizationId },
+          select: projectSelect,
+        });
+        await recordAudit(tx, organizationId, actor, {
+          action: 'project.created',
+          targetType: 'project',
+          targetId: project.id,
+          metadata: {
+            name: project.name,
+            slug: project.slug,
+            environment: project.environment,
+          },
+        });
+        return project;
       }),
     );
   }
 
-  async updateProject(
+  updateProject(
     organizationId: string,
     projectId: string,
     input: ProjectUpdateInput,
+    actor: AuditActor,
   ) {
-    // The tenant boundary is part of the write, not only a preceding lookup.
-    const projects = await uniqueWrite(() =>
-      this.client.project.updateManyAndReturn({
-        where: { id: projectId, organizationId },
-        data: {
-          ...(input.name !== undefined ? { name: input.name } : {}),
-          ...(input.slug !== undefined ? { slug: input.slug } : {}),
-          ...(input.environment !== undefined
-            ? { environment: input.environment }
-            : {}),
-        },
-        select: projectSelect,
+    return uniqueWrite(() =>
+      this.client.$transaction(async (tx) => {
+        const before = await tx.project.findFirst({
+          where: { id: projectId, organizationId },
+          select: projectSelect,
+        });
+        if (!before) return null;
+        // The tenant boundary is part of the write, not only a preceding lookup.
+        const [project] = await tx.project.updateManyAndReturn({
+          where: { id: projectId, organizationId },
+          data: {
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.slug !== undefined ? { slug: input.slug } : {}),
+            ...(input.environment !== undefined
+              ? { environment: input.environment }
+              : {}),
+          },
+          select: projectSelect,
+        });
+        if (!project) return null;
+        const changes: Record<string, [string, string]> = {};
+        for (const field of ['name', 'slug', 'environment'] as const)
+          if (before[field] !== project[field])
+            changes[field] = [before[field], project[field]];
+        if (Object.keys(changes).length > 0)
+          await recordAudit(tx, organizationId, actor, {
+            action: 'project.updated',
+            targetType: 'project',
+            targetId: projectId,
+            metadata: { name: project.name, changes },
+          });
+        return project;
       }),
     );
-    return projects[0] ?? null;
   }
 
   async onApplicationShutdown() {
@@ -257,19 +303,39 @@ export class PrismaWorkspaceRepository
     organizationId: string,
     projectId: string,
     input: ApiKeyRecord,
+    actor: AuditActor,
   ) {
     const { scopes, ...data } = input;
-    const key = await this.client.apiKey.create({
-      data: {
-        ...data,
-        project: { connect: { id: projectId, organizationId } },
-        scopes: {
-          create: scopes.map((key) => ({ permission: { connect: { key } } })),
+    return this.client.$transaction(async (tx) => {
+      const key = summarizeKey(
+        await tx.apiKey.create({
+          data: {
+            ...data,
+            project: { connect: { id: projectId, organizationId } },
+            scopes: {
+              create: scopes.map((key) => ({
+                permission: { connect: { key } },
+              })),
+            },
+          },
+          select: keySelect,
+        }),
+      );
+      // Identify keys by name and prefix only; never record key material.
+      await recordAudit(tx, organizationId, actor, {
+        action: 'api_key.created',
+        targetType: 'api_key',
+        targetId: key.id,
+        metadata: {
+          name: key.name,
+          prefix: key.prefix,
+          projectId,
+          scopes: key.scopes,
+          expiresAt: key.expiresAt?.toISOString() ?? null,
         },
-      },
-      select: keySelect,
+      });
+      return key;
     });
-    return summarizeKey(key);
   }
 
   async revokeApiKey(
@@ -277,14 +343,23 @@ export class PrismaWorkspaceRepository
     projectId: string,
     keyId: string,
     now: Date,
+    actor: AuditActor,
   ) {
     const where = { id: keyId, projectId, project: { organizationId } };
     return this.client.$transaction(async (tx) => {
-      await tx.apiKey.updateMany({
+      const { count } = await tx.apiKey.updateMany({
         where: { ...where, revokedAt: null },
         data: { revokedAt: now },
       });
       const key = await tx.apiKey.findFirst({ where, select: keySelect });
+      // Revoking an already revoked key is idempotent and not recorded.
+      if (key && count === 1)
+        await recordAudit(tx, organizationId, actor, {
+          action: 'api_key.revoked',
+          targetType: 'api_key',
+          targetId: keyId,
+          metadata: { name: key.name, prefix: key.prefix, projectId },
+        });
       return key ? summarizeKey(key) : null;
     });
   }

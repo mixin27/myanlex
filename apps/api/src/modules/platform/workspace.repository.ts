@@ -5,6 +5,7 @@ import type {
   ProjectInput,
   ProjectUpdateInput,
 } from './platform.schemas.js';
+import type { AuditActor } from './audit.js';
 
 export const WORKSPACE_REPOSITORY = Symbol('WORKSPACE_REPOSITORY');
 export interface OrganizationSummary {
@@ -43,15 +44,18 @@ export interface WorkspaceRepository {
     organizationId: string,
     projectId: string,
     input: ApiKeyRecord,
+    actor: AuditActor,
   ): Promise<ApiKeySummary>;
   revokeApiKey(
     organizationId: string,
     projectId: string,
     keyId: string,
     now: Date,
+    actor: AuditActor,
   ): Promise<ApiKeySummary | null>;
+  /** Creates the organization with the actor as its Owner. */
   createOrganization(
-    userId: string,
+    actor: AuditActor,
     input: OrganizationInput,
   ): Promise<OrganizationSummary>;
   listOrganizations(
@@ -69,11 +73,13 @@ export interface WorkspaceRepository {
   createProject(
     organizationId: string,
     input: ProjectInput,
+    actor: AuditActor,
   ): Promise<ProjectSummary>;
   updateProject(
     organizationId: string,
     projectId: string,
     input: ProjectUpdateInput,
+    actor: AuditActor,
   ): Promise<ProjectSummary | null>;
 }
 

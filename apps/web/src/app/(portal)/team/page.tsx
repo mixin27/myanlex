@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { readPlatform } from '@/lib/platform-server';
 import { requireSession } from '@/lib/auth-server';
 import type {
+  AuditEventPage,
   Invitation,
   Member,
   Organization,
@@ -45,7 +46,7 @@ export default async function TeamPage({
     organization?.permissions.includes(permission) ?? false;
   const base = organization ? `organizations/${organization.id}` : '';
   // Only fetch what the member's current role allows; the API enforces it too.
-  const [members, invitations, roles, permissions] = await Promise.all([
+  const [members, invitations, roles, permissions, audit] = await Promise.all([
     can('member.read')
       ? readPlatform<Page<Member>>(
           `${base}/members${params.membersAfter ? `?after=${params.membersAfter}` : ''}`,
@@ -57,6 +58,9 @@ export default async function TeamPage({
     can('role.read') ? readPlatform<{ items: Role[] }>(`${base}/roles`) : null,
     can('role.read')
       ? readPlatform<{ items: Permission[] }>(`${base}/permissions`)
+      : null,
+    can('audit.read')
+      ? readPlatform<AuditEventPage>(`${base}/audit-events?limit=50`)
       : null,
   ]);
   return (
@@ -88,17 +92,19 @@ export default async function TeamPage({
           )}
         </nav>
       )}
-      {organization && (members || roles) ? (
+      {organization && (members || roles || audit) ? (
         <>
           <TeamManager
             key={organization.id}
             organizationId={organization.id}
+            organizationSlug={organization.slug}
             currentUserId={session.user.id}
             permissions={organization.permissions}
             members={members?.items ?? null}
             invitations={invitations?.items ?? null}
             roles={roles?.items ?? null}
             catalog={permissions?.items ?? []}
+            audit={audit}
           />
           {(members?.nextCursor || params.membersAfter) && (
             <nav
@@ -127,7 +133,7 @@ export default async function TeamPage({
           </h2>
           <p className="my-3 text-sm text-muted-foreground">
             {organization
-              ? 'Your role needs member.read or role.read to view this team.'
+              ? 'Your role needs member.read, role.read or audit.read to view this team.'
               : 'Create a workspace to invite teammates and manage roles.'}
           </p>
           <Link

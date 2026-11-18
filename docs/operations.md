@@ -92,3 +92,18 @@ delivery, staging capacity evidence and on-call routing remain release gates.
 Implementation references:
 [Prometheus Node.js client](https://github.com/prometheus/client_js),
 [node-postgres pool API](https://node-postgres.com/apis/pool).
+
+## Audit log retention
+
+Platform audit events (see
+[platform](platform.md#audit-log-and-ownership-transfer)) are kept until the
+cleanup job removes them. Schedule it daily:
+
+```sh
+DATABASE_URL='<database connection>' MYANLEX_AUDIT_RETENTION_DAYS=365 pnpm audit:cleanup
+```
+
+- The retention value must be an integer of at least 30. The default is 365.
+- Each run deletes up to 50,000 rows, in batches of 500 using `SKIP LOCKED`.
+  Rerun it to clear a larger backlog.
+- Backups keep their own retention.

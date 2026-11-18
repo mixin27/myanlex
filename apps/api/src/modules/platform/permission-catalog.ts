@@ -15,4 +15,5 @@ export const permissionCatalog = [
   ['member.manage', 'Invite, update, and remove organization members.'],
   ['billing.read', 'View plan and subscription details.'],
   ['billing.manage', 'Change plan and subscription settings.'],
+  ['audit.read', 'View the organization audit log.'],
 ] as const;

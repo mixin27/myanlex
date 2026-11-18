@@ -1,7 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Plus, ShieldCheck } from 'lucide-react';
+import { Crown, Mail, Plus, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,13 +23,16 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type {
+  AuditEventPage,
   Invitation,
   Member,
+  OwnershipTransfer,
   Permission,
   Role,
   SentInvitation,
 } from '@/lib/platform-types';
 import { writePlatform } from '@/lib/platform-client';
+import { AuditLog } from '@/components/team/audit-log';
 
 const selectClass = 'h-9 rounded-md border bg-background px-3 text-sm';
 const holdsAll = (actor: string[], granted: string[]) =>
@@ -46,20 +49,24 @@ type Confirm = {
 
 export function TeamManager({
   organizationId,
+  organizationSlug,
   currentUserId,
   permissions,
   members,
   invitations,
   roles,
   catalog,
+  audit,
 }: {
   organizationId: string;
+  organizationSlug: string;
   currentUserId: string;
   permissions: string[];
   members: Member[] | null;
   invitations: Invitation[] | null;
   roles: Role[] | null;
   catalog: Permission[];
+  audit: AuditEventPage | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -67,12 +74,20 @@ export function TeamManager({
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Role | 'new' | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [transferring, setTransferring] = useState<Member | null>(null);
   const base = `organizations/${organizationId}`;
   const can = (permission: string) => permissions.includes(permission);
   // Mirrors the API's escalation rule so the UI only offers allowed choices.
   const assignable = (roles ?? []).filter((role) =>
     holdsAll(permissions, role.permissions),
   );
+  const systemRoleIds = new Set(
+    (roles ?? []).filter((role) => role.system).map((role) => role.id),
+  );
+  const me = members?.find((member) => member.userId === currentUserId);
+  // The API checks the system Owner role itself; this only hides the action.
+  const isOwner = me !== undefined && systemRoleIds.has(me.role.id);
+  const fallbackRoles = (roles ?? []).filter((role) => !role.system);
 
   async function perform<T>(
     operation: () => Promise<T>,
@@ -141,16 +156,32 @@ export function TeamManager({
     if (outcome.ok) setEditing(null);
   }
 
+  async function transfer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!transferring) return;
+    const data = new FormData(event.currentTarget);
+    const outcome = await perform(
+      () =>
+        writePlatform<OwnershipTransfer>(`${base}/ownership-transfer`, 'POST', {
+          toUserId: transferring.userId,
+          newRoleId: data.get('newRoleId'),
+          confirmSlug: String(data.get('confirmSlug') ?? '').trim(),
+        }),
+      `${transferring.name} is now an Owner.`,
+    );
+    if (outcome.ok) setTransferring(null);
+  }
+
   async function confirmAction() {
     if (!confirm) return;
     if ((await perform(confirm.run, confirm.success)).ok) setConfirm(null);
   }
 
   const groups = [...new Set(catalog.map(({ key }) => key.split('.')[0]))];
-  const defaultTab = members ? 'members' : 'roles';
+  const defaultTab = members ? 'members' : roles ? 'roles' : 'activity';
   return (
     <div className="space-y-4">
-      {error && !inviting && !editing && !confirm && (
+      {error && !inviting && !editing && !confirm && !transferring && (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
@@ -165,6 +196,7 @@ export function TeamManager({
             </TabsTrigger>
           )}
           {roles && <TabsTrigger value="roles">Roles</TabsTrigger>}
+          {audit && <TabsTrigger value="activity">Activity</TabsTrigger>}
         </TabsList>
 
         {members && (
@@ -259,7 +291,26 @@ export function TeamManager({
                           )}
                         </TableCell>
                         <TableCell>{date(member.joinedAt)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="space-x-1 text-right whitespace-nowrap">
+                          {isOwner &&
+                            !self &&
+                            !systemRoleIds.has(member.role.id) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setError('');
+                                  setTransferring(member);
+                                }}
+                              >
+                                <Crown className="size-3.5" />
+                                Transfer ownership
+                                <span className="sr-only">
+                                  {' '}
+                                  to {member.name}
+                                </span>
+                              </Button>
+                            )}
                           {(self || manageable) && (
                             <Button
                               variant="ghost"
@@ -425,6 +476,12 @@ export function TeamManager({
                 </TableBody>
               </Table>
             </div>
+          </TabsContent>
+        )}
+
+        {audit && (
+          <TabsContent value="activity">
+            <AuditLog organizationId={organizationId} initial={audit} />
           </TabsContent>
         )}
 
@@ -699,6 +756,78 @@ export function TeamManager({
               )}
               <Button disabled={busy} type="submit" className="w-full">
                 {busy ? 'Saving…' : 'Save role'}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={transferring !== null}
+        onOpenChange={(open) => {
+          if (!busy && !open) setTransferring(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer ownership</DialogTitle>
+            <DialogDescription>
+              {transferring?.name} ({transferring?.email}) will get the Owner
+              role and every permission. You will move to the role you choose
+              below. Only an Owner can undo this.
+            </DialogDescription>
+          </DialogHeader>
+          {transferring && (
+            <form onSubmit={transfer} className="space-y-5">
+              {fallbackRoles.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Create a role for yourself on the Roles tab first. You need a
+                  non-Owner role to move to.
+                </p>
+              ) : (
+                <>
+                  <label className="grid gap-2 text-sm font-medium">
+                    Your new role
+                    <select
+                      name="newRoleId"
+                      required
+                      disabled={busy}
+                      className={selectClass}
+                      defaultValue={fallbackRoles[0]?.id}
+                    >
+                      {fallbackRoles.map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    <span>
+                      Type <code className="text-xs">{organizationSlug}</code>{' '}
+                      to confirm
+                    </span>
+                    <Input
+                      name="confirmSlug"
+                      required
+                      autoComplete="off"
+                      disabled={busy}
+                    />
+                  </label>
+                </>
+              )}
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+              <Button
+                type="submit"
+                variant="destructive"
+                className="w-full"
+                disabled={busy || fallbackRoles.length === 0}
+              >
+                {busy ? 'Transferring…' : 'Transfer ownership'}
               </Button>
             </form>
           )}

@@ -15,6 +15,7 @@ import {
   requireOrganizationPermission,
 } from './organization-access.js';
 import { teamWrite } from './team-errors.js';
+import type { AuditActor } from './audit.js';
 
 @Injectable()
 export class MembersService {
@@ -35,14 +36,14 @@ export class MembersService {
   }
 
   async update(
-    userId: string,
+    actor: AuditActor,
     organizationId: string,
     memberId: string,
     input: MemberUpdateInput,
   ) {
-    const actor = await requireOrganizationPermission(
+    const access = await requireOrganizationPermission(
       this.repository,
-      userId,
+      actor.userId,
       organizationId,
       'member.manage',
     );
@@ -52,20 +53,21 @@ export class MembersService {
     if (!role) throw new NotFoundException('Role not found.');
     // Actors may neither grant nor take away permissions they do not hold.
     if (
-      !holdsAll(actor.permissions, role.permissions) ||
-      !holdsAll(actor.permissions, member.permissions)
+      !holdsAll(access.permissions, role.permissions) ||
+      !holdsAll(access.permissions, member.permissions)
     )
       throw new ForbiddenException(
         'You cannot change a role that has permissions you do not hold.',
       );
     const updated = await teamWrite(() =>
-      this.team.updateMemberRole(organizationId, memberId, role.id),
+      this.team.updateMemberRole(organizationId, memberId, role.id, actor),
     );
     if (!updated) throw new NotFoundException('Member not found.');
     return updated;
   }
 
-  async remove(userId: string, organizationId: string, memberId: string) {
+  async remove(actor: AuditActor, organizationId: string, memberId: string) {
+    const { userId } = actor;
     if (memberId === userId) {
       // Leaving needs membership only; the last-manager guard still applies.
       const organization = await this.repository.getOrganization(
@@ -74,7 +76,7 @@ export class MembersService {
       );
       if (!organization) throw new NotFoundException('Organization not found.');
     } else {
-      const actor = await requireOrganizationPermission(
+      const access = await requireOrganizationPermission(
         this.repository,
         userId,
         organizationId,
@@ -82,13 +84,13 @@ export class MembersService {
       );
       const member = await this.team.findMember(organizationId, memberId);
       if (!member) throw new NotFoundException('Member not found.');
-      if (!holdsAll(actor.permissions, member.permissions))
+      if (!holdsAll(access.permissions, member.permissions))
         throw new ForbiddenException(
           'You cannot remove a member who has permissions you do not hold.',
         );
     }
     const removed = await teamWrite(() =>
-      this.team.removeMember(organizationId, memberId),
+      this.team.removeMember(organizationId, memberId, actor),
     );
     if (!removed) throw new NotFoundException('Member not found.');
   }

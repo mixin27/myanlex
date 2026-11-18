@@ -26,6 +26,7 @@ import {
   requireOrganizationPermission,
 } from './organization-access.js';
 import { teamWrite } from './team-errors.js';
+import type { AuditActor } from './audit.js';
 
 export const invitationLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -68,9 +69,13 @@ export class InvitationsService {
     return actor;
   }
 
-  async create(userId: string, organizationId: string, input: InvitationInput) {
+  async create(
+    actor: AuditActor,
+    organizationId: string,
+    input: InvitationInput,
+  ) {
     const organization = await this.manage(
-      userId,
+      actor.userId,
       organizationId,
       input.roleId,
     );
@@ -84,19 +89,28 @@ export class InvitationsService {
           email: input.email,
           roleId: input.roleId,
           tokenHash: hashInvitationToken(token),
-          invitedByUserId: userId,
+          invitedByUserId: actor.userId,
           expiresAt,
         },
         now,
+        actor,
       ),
     );
     return this.deliver(organization, invitation, token);
   }
 
-  async resend(userId: string, organizationId: string, invitationId: string) {
-    const existing = await this.findOpen(userId, organizationId, invitationId);
+  async resend(
+    actor: AuditActor,
+    organizationId: string,
+    invitationId: string,
+  ) {
+    const existing = await this.findOpen(
+      actor.userId,
+      organizationId,
+      invitationId,
+    );
     const organization = await this.manage(
-      userId,
+      actor.userId,
       organizationId,
       existing.role.id,
     );
@@ -108,15 +122,20 @@ export class InvitationsService {
       hashInvitationToken(token),
       new Date(now.getTime() + invitationLifetimeMs),
       now,
+      actor,
     );
     if (!invitation) throw new NotFoundException('Invitation not found.');
     return this.deliver(organization, invitation, token);
   }
 
-  async revoke(userId: string, organizationId: string, invitationId: string) {
+  async revoke(
+    actor: AuditActor,
+    organizationId: string,
+    invitationId: string,
+  ) {
     await requireOrganizationPermission(
       this.repository,
-      userId,
+      actor.userId,
       organizationId,
       'member.manage',
     );
@@ -124,6 +143,7 @@ export class InvitationsService {
       organizationId,
       invitationId,
       new Date(),
+      actor,
     );
     if (!invitation) throw new NotFoundException('Invitation not found.');
     return invitation;
@@ -135,15 +155,14 @@ export class InvitationsService {
       .then((items) => ({ items }));
   }
 
-  async accept(userId: string, email: string, input: InvitationAcceptInput) {
+  async accept(actor: AuditActor, input: InvitationAcceptInput) {
     const lookup: InvitationLookup =
       'token' in input
         ? { tokenHash: hashInvitationToken(input.token) }
         : { invitationId: input.invitationId };
     const result = await this.team.acceptInvitation(
       lookup,
-      userId,
-      email.toLowerCase(),
+      { ...actor, email: actor.email.toLowerCase() },
       new Date(),
     );
     switch (result.status) {
