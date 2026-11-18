@@ -16,6 +16,7 @@ import {
   requireOrganizationPermission,
 } from './organization-access.js';
 import { teamWrite } from './team-errors.js';
+import type { AuditActor } from './audit.js';
 
 const escalation = () =>
   new ForbiddenException(
@@ -55,15 +56,15 @@ export class RolesService {
     };
   }
 
-  async create(userId: string, organizationId: string, input: RoleInput) {
-    const actor = await requireOrganizationPermission(
+  async create(actor: AuditActor, organizationId: string, input: RoleInput) {
+    const access = await requireOrganizationPermission(
       this.repository,
-      userId,
+      actor.userId,
       organizationId,
       'role.manage',
     );
-    if (!holdsAll(actor.permissions, input.permissions)) throw escalation();
-    return teamWrite(() => this.team.createRole(organizationId, input));
+    if (!holdsAll(access.permissions, input.permissions)) throw escalation();
+    return teamWrite(() => this.team.createRole(organizationId, input, actor));
   }
 
   private async editable(
@@ -86,25 +87,29 @@ export class RolesService {
   }
 
   async update(
-    userId: string,
+    actor: AuditActor,
     organizationId: string,
     roleId: string,
     input: RoleUpdateInput,
   ) {
-    const { actor } = await this.editable(userId, organizationId, roleId);
-    if (input.permissions && !holdsAll(actor, input.permissions))
+    const { actor: held } = await this.editable(
+      actor.userId,
+      organizationId,
+      roleId,
+    );
+    if (input.permissions && !holdsAll(held, input.permissions))
       throw escalation();
     const role = await teamWrite(() =>
-      this.team.updateRole(organizationId, roleId, input),
+      this.team.updateRole(organizationId, roleId, input, actor),
     );
     if (!role) throw new NotFoundException('Role not found.');
     return role;
   }
 
-  async remove(userId: string, organizationId: string, roleId: string) {
-    await this.editable(userId, organizationId, roleId);
+  async remove(actor: AuditActor, organizationId: string, roleId: string) {
+    await this.editable(actor.userId, organizationId, roleId);
     const deleted = await teamWrite(() =>
-      this.team.deleteRole(organizationId, roleId),
+      this.team.deleteRole(organizationId, roleId, actor),
     );
     if (!deleted) throw new NotFoundException('Role not found.');
   }

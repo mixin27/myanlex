@@ -11,6 +11,8 @@ import {
   managementPermissions,
   TeamConflict,
 } from '../../modules/platform/team.repository.js';
+import type { AuditActor } from '../../modules/platform/audit.js';
+import { difference, recordAudit } from './audit-writer.js';
 import type {
   AcceptResult,
   InvitationLookup,
@@ -21,6 +23,7 @@ import type {
   PendingInvitation,
   RoleSummary,
   TeamRepository,
+  TransferResult,
 } from '../../modules/platform/team.repository.js';
 
 type Tx = Prisma.TransactionClient;
@@ -200,9 +203,19 @@ export class PrismaTeamRepository
     return member ? summarizeMember(member) : null;
   }
 
-  updateMemberRole(organizationId: string, userId: string, roleId: string) {
+  updateMemberRole(
+    organizationId: string,
+    userId: string,
+    roleId: string,
+    actor: AuditActor,
+  ) {
     return this.client.$transaction(async (tx) => {
       await lockOrganization(tx, organizationId);
+      const before = await tx.organizationMember.findUnique({
+        where: { organizationId_userId: { organizationId, userId } },
+        select: memberSelect,
+      });
+      if (!before) return null;
       const { count } = await tx.organizationMember.updateMany({
         where: { organizationId, userId },
         data: { roleId },
@@ -213,19 +226,115 @@ export class PrismaTeamRepository
         where: { organizationId_userId: { organizationId, userId } },
         select: memberSelect,
       });
+      if (before.role.id !== member.role.id)
+        await recordAudit(tx, organizationId, actor, {
+          action: 'member.role_changed',
+          targetType: 'member',
+          targetId: userId,
+          metadata: {
+            email: member.user.email,
+            from: { id: before.role.id, name: before.role.name },
+            to: { id: member.role.id, name: member.role.name },
+          },
+        });
       return summarizeMember(member);
     });
   }
 
-  removeMember(organizationId: string, userId: string) {
+  removeMember(organizationId: string, userId: string, actor: AuditActor) {
     return this.client.$transaction(async (tx) => {
       await lockOrganization(tx, organizationId);
+      const member = await tx.organizationMember.findUnique({
+        where: { organizationId_userId: { organizationId, userId } },
+        select: memberSelect,
+      });
+      if (!member) return false;
       const { count } = await tx.organizationMember.deleteMany({
         where: { organizationId, userId },
       });
       if (count === 0) return false;
       await assertManageable(tx, organizationId);
+      const role = { id: member.role.id, name: member.role.name };
+      await recordAudit(
+        tx,
+        organizationId,
+        actor,
+        userId === actor.userId
+          ? {
+              action: 'member.left',
+              targetType: 'member',
+              targetId: userId,
+              metadata: { email: member.user.email, role },
+            }
+          : {
+              action: 'member.removed',
+              targetType: 'member',
+              targetId: userId,
+              metadata: { email: member.user.email, role },
+            },
+      );
       return true;
+    });
+  }
+
+  transferOwnership(
+    organizationId: string,
+    toUserId: string,
+    newRoleId: string,
+    actor: AuditActor,
+  ): Promise<TransferResult> {
+    return this.client.$transaction(async (tx) => {
+      await lockOrganization(tx, organizationId);
+      const memberRole = (userId: string) =>
+        tx.organizationMember.findUnique({
+          where: { organizationId_userId: { organizationId, userId } },
+          select: { role: { select: { id: true, system: true } } },
+        });
+      const current = await memberRole(actor.userId);
+      if (!current?.role.system) return { status: 'not_owner' };
+      const target = await memberRole(toUserId);
+      if (!target) return { status: 'target_not_found' };
+      if (target.role.system) return { status: 'already_owner' };
+      const newRole = await tx.role.findFirst({
+        where: { id: newRoleId, organizationId },
+        select: { id: true, name: true, system: true },
+      });
+      if (!newRole) return { status: 'role_not_found' };
+      if (newRole.system) return { status: 'system_role' };
+      const ownerRoleId = current.role.id;
+      await tx.organizationMember.update({
+        where: { organizationId_userId: { organizationId, userId: toUserId } },
+        data: { roleId: ownerRoleId },
+      });
+      await tx.organizationMember.update({
+        where: {
+          organizationId_userId: { organizationId, userId: actor.userId },
+        },
+        data: { roleId: newRole.id },
+      });
+      await assertManageable(tx, organizationId);
+      const [owner, previous] = await Promise.all(
+        [toUserId, actor.userId].map((userId) =>
+          tx.organizationMember.findUniqueOrThrow({
+            where: { organizationId_userId: { organizationId, userId } },
+            select: memberSelect,
+          }),
+        ),
+      );
+      await recordAudit(tx, organizationId, actor, {
+        action: 'ownership.transferred',
+        targetType: 'member',
+        targetId: toUserId,
+        metadata: {
+          email: owner!.user.email,
+          previousOwnerRole: { id: newRole.id, name: newRole.name },
+        },
+      });
+      return {
+        status: 'transferred',
+        owner: summarizeMember(owner!),
+        previous: summarizeMember(previous!),
+      };
     });
   }
 
@@ -247,40 +356,64 @@ export class PrismaTeamRepository
     return role ? summarizeRole(role) : null;
   }
 
-  async createRole(organizationId: string, input: RoleInput) {
+  async createRole(
+    organizationId: string,
+    input: RoleInput,
+    actor: AuditActor,
+  ) {
     const role = await conflictOnUnique(
       () =>
-        this.client.role.create({
-          data: {
-            organizationId,
-            name: input.name,
-            slug: input.slug,
-            description: input.description,
-            permissions: {
-              create: input.permissions.map((key) => ({
-                permission: { connect: { key } },
-              })),
+        this.client.$transaction(async (tx) => {
+          const created = await tx.role.create({
+            data: {
+              organizationId,
+              name: input.name,
+              slug: input.slug,
+              description: input.description,
+              permissions: {
+                create: input.permissions.map((key) => ({
+                  permission: { connect: { key } },
+                })),
+              },
             },
-          },
-          select: roleSelect,
+            select: roleSelect,
+          });
+          const summary = summarizeRole(created);
+          await recordAudit(tx, organizationId, actor, {
+            action: 'role.created',
+            targetType: 'role',
+            targetId: summary.id,
+            metadata: {
+              name: summary.name,
+              slug: summary.slug,
+              permissions: summary.permissions,
+            },
+          });
+          return summary;
         }),
       'This role slug is already in use.',
     );
-    return summarizeRole(role);
+    return role;
   }
 
-  updateRole(organizationId: string, roleId: string, input: RoleUpdateInput) {
+  updateRole(
+    organizationId: string,
+    roleId: string,
+    input: RoleUpdateInput,
+    actor: AuditActor,
+  ) {
     return conflictOnUnique(
       () =>
         this.client.$transaction(async (tx) => {
           await lockOrganization(tx, organizationId);
-          const role = await tx.role.findFirst({
+          const existing = await tx.role.findFirst({
             where: { id: roleId, organizationId },
-            select: { system: true },
+            select: roleSelect,
           });
-          if (!role) return null;
-          if (role.system)
+          if (!existing) return null;
+          if (existing.system)
             throw new TeamConflict('System roles cannot be changed.');
+          const before = summarizeRole(existing);
           await tx.role.update({
             where: { id: roleId },
             data: {
@@ -305,18 +438,47 @@ export class PrismaTeamRepository
             });
             await assertManageable(tx, organizationId);
           }
-          return summarizeRole(
+          const after = summarizeRole(
             await tx.role.findUniqueOrThrow({
               where: { id: roleId },
               select: roleSelect,
             }),
           );
+          const changes: Record<string, [string | null, string | null]> = {};
+          for (const field of ['name', 'slug', 'description'] as const)
+            if (before[field] !== after[field])
+              changes[field] = [before[field], after[field]];
+          const permissionsAdded = difference(
+            after.permissions,
+            before.permissions,
+          );
+          const permissionsRemoved = difference(
+            before.permissions,
+            after.permissions,
+          );
+          if (
+            Object.keys(changes).length > 0 ||
+            permissionsAdded.length > 0 ||
+            permissionsRemoved.length > 0
+          )
+            await recordAudit(tx, organizationId, actor, {
+              action: 'role.updated',
+              targetType: 'role',
+              targetId: roleId,
+              metadata: {
+                name: after.name,
+                changes,
+                permissionsAdded,
+                permissionsRemoved,
+              },
+            });
+          return after;
         }),
       'This role slug is already in use.',
     );
   }
 
-  deleteRole(organizationId: string, roleId: string) {
+  deleteRole(organizationId: string, roleId: string, actor: AuditActor) {
     return this.client.$transaction(async (tx) => {
       await lockOrganization(tx, organizationId);
       const role = await tx.role.findFirst({
@@ -335,6 +497,17 @@ export class PrismaTeamRepository
         where: { roleId, organizationId },
       });
       await tx.role.delete({ where: { id: roleId } });
+      const summary = summarizeRole(role);
+      await recordAudit(tx, organizationId, actor, {
+        action: 'role.deleted',
+        targetType: 'role',
+        targetId: roleId,
+        metadata: {
+          name: summary.name,
+          slug: summary.slug,
+          permissions: summary.permissions,
+        },
+      });
       return true;
     });
   }
@@ -371,7 +544,12 @@ export class PrismaTeamRepository
     return invitation ? summarizeInvitation(invitation, now) : null;
   }
 
-  createInvitation(organizationId: string, input: InvitationRecord, now: Date) {
+  createInvitation(
+    organizationId: string,
+    input: InvitationRecord,
+    now: Date,
+    actor: AuditActor,
+  ) {
     return conflictOnUnique(
       () =>
         this.client.$transaction(async (tx) => {
@@ -400,6 +578,15 @@ export class PrismaTeamRepository
             data: { organizationId, ...input },
             select: invitationSelect,
           });
+          await recordAudit(tx, organizationId, actor, {
+            action: 'invitation.created',
+            targetType: 'invitation',
+            targetId: invitation.id,
+            metadata: {
+              email: invitation.email,
+              role: { id: invitation.role.id, name: invitation.role.name },
+            },
+          });
           return summarizeInvitation(invitation, now);
         }),
       'An open invitation already exists for this email address.',
@@ -412,6 +599,7 @@ export class PrismaTeamRepository
     tokenHash: string,
     expiresAt: Date,
     now: Date,
+    actor: AuditActor,
   ) {
     return this.client.$transaction(async (tx) => {
       const { count } = await tx.organizationInvitation.updateMany({
@@ -423,13 +611,24 @@ export class PrismaTeamRepository
         where: { id: invitationId },
         select: invitationSelect,
       });
+      await recordAudit(tx, organizationId, actor, {
+        action: 'invitation.resent',
+        targetType: 'invitation',
+        targetId: invitationId,
+        metadata: { email: invitation.email },
+      });
       return summarizeInvitation(invitation, now);
     });
   }
 
-  revokeInvitation(organizationId: string, invitationId: string, now: Date) {
+  revokeInvitation(
+    organizationId: string,
+    invitationId: string,
+    now: Date,
+    actor: AuditActor,
+  ) {
     return this.client.$transaction(async (tx) => {
-      await tx.organizationInvitation.updateMany({
+      const { count } = await tx.organizationInvitation.updateMany({
         where: { id: invitationId, organizationId, ...openInvitation },
         data: { revokedAt: now },
       });
@@ -437,6 +636,14 @@ export class PrismaTeamRepository
         where: { id: invitationId, organizationId },
         select: invitationSelect,
       });
+      // Revoking an already closed invitation is idempotent and not recorded.
+      if (invitation && count === 1)
+        await recordAudit(tx, organizationId, actor, {
+          action: 'invitation.revoked',
+          targetType: 'invitation',
+          targetId: invitationId,
+          metadata: { email: invitation.email },
+        });
       return invitation ? summarizeInvitation(invitation, now) : null;
     });
   }
@@ -461,10 +668,10 @@ export class PrismaTeamRepository
 
   acceptInvitation(
     lookup: InvitationLookup,
-    userId: string,
-    email: string,
+    actor: AuditActor,
     now: Date,
   ): Promise<AcceptResult> {
+    const { userId, email } = actor;
     return this.client.$transaction(async (tx) => {
       const invitation = await tx.organizationInvitation.findFirst({
         where:
@@ -480,6 +687,7 @@ export class PrismaTeamRepository
           acceptedAt: true,
           revokedAt: true,
           organization: { select: { id: true, name: true, slug: true } },
+          role: { select: roleReference },
         },
       });
       if (!invitation) return { status: 'not_found' };
@@ -504,6 +712,15 @@ export class PrismaTeamRepository
       if (count === 0) return { status: 'gone' };
       await tx.organizationMember.create({
         data: { organizationId, userId, roleId: invitation.roleId },
+      });
+      await recordAudit(tx, organizationId, actor, {
+        action: 'invitation.accepted',
+        targetType: 'invitation',
+        targetId: invitation.id,
+        metadata: {
+          email: invitation.email,
+          role: { id: invitation.role.id, name: invitation.role.name },
+        },
       });
       return { status: 'accepted', organization };
     });

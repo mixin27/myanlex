@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { SessionRoute } from '../../common/auth/session-route.decorator.js';
 import type { AuthenticatedRequest } from '../../common/auth/authenticated-request.js';
+import { auditActor } from './audit.js';
 import { ZodBodyPipe } from '../../common/validation/zod-body.pipe.js';
 import { PlatformService } from './platform.service.js';
 import {
@@ -50,10 +51,7 @@ export class PlatformController {
     @Req() request: AuthenticatedRequest,
     @Body(new ZodBodyPipe(organizationInput)) body: OrganizationInput,
   ) {
-    return this.platform.createOrganization(
-      request.accountPrincipal!.userId,
-      body,
-    );
+    return this.platform.createOrganization(auditActor(request), body);
   }
 
   @Get(':organizationId')
@@ -87,7 +85,7 @@ export class PlatformController {
     @Body(new ZodBodyPipe(projectInput)) body: ProjectInput,
   ) {
     return this.platform.createProject(
-      request.accountPrincipal!.userId,
+      auditActor(request),
       organizationId,
       body,
     );
@@ -101,7 +99,7 @@ export class PlatformController {
     @Body(new ZodBodyPipe(projectUpdateInput)) body: ProjectUpdateInput,
   ) {
     return this.platform.updateProject(
-      request.accountPrincipal!.userId,
+      auditActor(request),
       organizationId,
       projectId,
       body,

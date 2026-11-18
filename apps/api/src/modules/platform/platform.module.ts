@@ -7,7 +7,13 @@ import { UsageReportController } from './usage-report.controller.js';
 import { UsageReportService } from './usage-report.service.js';
 import { QuotaReportController } from './quota-report.controller.js';
 import { QuotaReportService } from './quota-report.service.js';
-import { MembersController } from './members.controller.js';
+import {
+  MembersController,
+  OwnershipController,
+} from './members.controller.js';
+import { OwnershipService } from './ownership.service.js';
+import { AuditController } from './audit.controller.js';
+import { AuditService } from './audit.service.js';
 import { MembersService } from './members.service.js';
 import { RolesController } from './roles.controller.js';
 import { RolesService } from './roles.service.js';
@@ -26,6 +32,8 @@ import { AccountAuthModule } from '../account-auth/account-auth.module.js';
     UsageReportController,
     QuotaReportController,
     MembersController,
+    OwnershipController,
+    AuditController,
     RolesController,
     OrganizationInvitationsController,
     AccountInvitationsController,
@@ -36,6 +44,8 @@ import { AccountAuthModule } from '../account-auth/account-auth.module.js';
     UsageReportService,
     QuotaReportService,
     MembersService,
+    OwnershipService,
+    AuditService,
     RolesService,
     InvitationsService,
   ],

@@ -67,12 +67,14 @@ tests is not a measured linguistic accuracy score or release approval.
 - Team management: member roles, custom roles with permission editing, and email
   invitations with an in-portal pending list;
   [team workflow](docs/platform.md#team-management)
+- Administrative audit log of every platform change, with retention cleanup, and
+  confirmed ownership transfer;
+  [audit log](docs/platform.md#audit-log-and-ownership-transfer)
 - TypeScript, Dart and Python HTTP SDKs versioned as 0.1.0 betas; see
   [publishing](docs/publishing.md)
 
 Planned next:
 
-- Ownership transfer and administrative audit records
 - Durable billing-grade metering, plans and billing
 
 ## Repository layout

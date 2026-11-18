@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { asActor } from './actor.js';
 import { describe, expect, it, vi } from 'vitest';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { createApiApplication } from '../src/create-api-application.js';
@@ -159,12 +160,12 @@ describe.skipIf(!databaseURL)(
         },
       });
       try {
-        const organization = await service.createOrganization(user.id, {
+        const organization = await service.createOrganization(asActor(user), {
           name: 'မြန်မာ',
           slug: `workspace-${suffix}`,
         });
         organizationIds.push(organization.id);
-        const other = await service.createOrganization(user.id, {
+        const other = await service.createOrganization(asActor(user), {
           name: 'Other',
           slug: `other-${suffix}`,
         });
@@ -190,18 +191,22 @@ describe.skipIf(!databaseURL)(
         expect(second.items[0]!.id).not.toBe(first.items[0]!.id);
         expect(second.nextCursor).toBeNull();
 
-        const project = await service.createProject(user.id, organization.id, {
-          name: 'Live',
-          slug: 'live',
-          environment: 'production',
-        });
-        await service.createProject(user.id, other.id, {
+        const project = await service.createProject(
+          asActor(user),
+          organization.id,
+          {
+            name: 'Live',
+            slug: 'live',
+            environment: 'production',
+          },
+        );
+        await service.createProject(asActor(user), other.id, {
           name: 'Live',
           slug: 'live',
           environment: 'development',
         });
         await expect(
-          service.createProject(user.id, organization.id, {
+          service.createProject(asActor(user), organization.id, {
             name: 'Duplicate',
             slug: 'live',
             environment: 'development',
@@ -209,13 +214,18 @@ describe.skipIf(!databaseURL)(
         ).rejects.toThrow('slug');
         expect(
           (
-            await service.updateProject(user.id, organization.id, project.id, {
-              name: 'Renamed',
-            })
+            await service.updateProject(
+              asActor(user),
+              organization.id,
+              project.id,
+              {
+                name: 'Renamed',
+              },
+            )
           ).environment,
         ).toBe('production');
         await expect(
-          service.updateProject(user.id, other.id, project.id, {
+          service.updateProject(asActor(user), other.id, project.id, {
             name: 'Cross tenant',
           }),
         ).rejects.toThrow('Project not found');
@@ -238,17 +248,20 @@ describe.skipIf(!databaseURL)(
           },
         });
         await expect(
-          service.updateProject(user.id, organization.id, project.id, {
+          service.updateProject(asActor(user), organization.id, project.id, {
             name: 'Denied',
           }),
         ).rejects.toThrow('project.update');
 
         const rollbackSlug = `rollback-${suffix}`;
         await expect(
-          service.createOrganization(randomUUID(), {
-            name: 'Invalid member',
-            slug: rollbackSlug,
-          }),
+          service.createOrganization(
+            { userId: randomUUID(), email: 'missing@example.com' },
+            {
+              name: 'Invalid member',
+              slug: rollbackSlug,
+            },
+          ),
         ).rejects.toThrow();
         expect(
           await prisma.organization.findUnique({
@@ -256,7 +269,7 @@ describe.skipIf(!databaseURL)(
           }),
         ).toBeNull();
         await expect(
-          service.createOrganization(user.id, {
+          service.createOrganization(asActor(user), {
             name: 'Duplicate',
             slug: organization.slug,
           }),

@@ -36,6 +36,7 @@ const devRoleId = randomUUID();
 const invitationId = randomUUID();
 const origin = 'http://localhost:3000';
 const email = 'Owner@Example.com';
+const actor = { userId, email, requestId: expect.any(String) };
 const organization = { id: organizationId, name: 'မြန်မာ', slug: 'my-team' };
 const allPermissions = permissionCatalog.map(([key]) => key).sort();
 const managerPermissions = [
@@ -91,6 +92,7 @@ const team: { [K in keyof TeamRepository]: ReturnType<typeof vi.fn> } = {
   findMember: vi.fn(),
   updateMemberRole: vi.fn(),
   removeMember: vi.fn(),
+  transferOwnership: vi.fn(),
   listRoles: vi.fn(),
   findRole: vi.fn(),
   createRole: vi.fn(),
@@ -312,12 +314,16 @@ describe('team management HTTP contract', () => {
       permissions: ['project.read', 'project.read', 'api_key.read'],
     });
     expect(created.statusCode).toBe(201);
-    expect(team.createRole).toHaveBeenCalledWith(organizationId, {
-      name: 'Developer',
-      slug: 'developer',
-      description: null,
-      permissions: ['api_key.read', 'project.read'],
-    });
+    expect(team.createRole).toHaveBeenCalledWith(
+      organizationId,
+      {
+        name: 'Developer',
+        slug: 'developer',
+        description: null,
+        permissions: ['api_key.read', 'project.read'],
+      },
+      actor,
+    );
     for (const body of [
       { name: 'X', slug: 'owner', permissions: [] },
       { name: 'X', slug: 'x', permissions: ['not.a.permission'] },
@@ -379,7 +385,11 @@ describe('team management HTTP contract', () => {
     expect(
       (await request('DELETE', orgPath(`members/${userId}`))).statusCode,
     ).toBe(204);
-    expect(team.removeMember).toHaveBeenCalledWith(organizationId, userId);
+    expect(team.removeMember).toHaveBeenCalledWith(
+      organizationId,
+      userId,
+      actor,
+    );
     team.removeMember.mockRejectedValue(new TeamConflict('last manager'));
     expect(
       (await request('DELETE', orgPath(`members/${userId}`))).statusCode,
@@ -513,8 +523,7 @@ describe('team management HTTP contract', () => {
     }
     expect(team.acceptInvitation).toHaveBeenLastCalledWith(
       { tokenHash: hashInvitationToken(token) },
-      userId,
-      'owner@example.com',
+      { ...actor, email: 'owner@example.com' },
       expect.any(Date),
     );
     // Someone else's invitation id is indistinguishable from a missing one.

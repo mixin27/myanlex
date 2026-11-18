@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { asActor } from './actor.js';
 import { describe, expect, it } from 'vitest';
 import { createMyanLexApplication } from '@myanlex/application';
 import { executeLocal } from '@myanlex/playground';
@@ -31,15 +32,19 @@ describe.skipIf(!url)('PostgreSQL private playground artifacts', () => {
         emailVerified: true,
       },
     });
-    const organization = await workspace.createOrganization(user.id, {
+    const organization = await workspace.createOrganization(asActor(user), {
       name: 'Mixed caller',
       slug: 'mixed-' + randomUUID(),
     });
-    const project = await workspace.createProject(organization.id, {
-      name: 'API',
-      slug: 'api',
-      environment: 'development',
-    });
+    const project = await workspace.createProject(
+      organization.id,
+      {
+        name: 'API',
+        slug: 'api',
+        environment: 'development',
+      },
+      asActor(user),
+    );
     const plan = await client.plan.create({
       data: {
         name: 'Mixed fixture',
@@ -57,7 +62,7 @@ describe.skipIf(!url)('PostgreSQL private playground artifacts', () => {
       },
     });
     const key = await new ApiKeysService(workspace).create(
-      user.id,
+      asActor(user),
       organization.id,
       project.id,
       { name: 'Fixture', scopes: ['api.invoke'] },

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { SessionRoute } from '../../common/auth/session-route.decorator.js';
 import type { AuthenticatedRequest } from '../../common/auth/authenticated-request.js';
+import { auditActor } from './audit.js';
 import { ZodBodyPipe } from '../../common/validation/zod-body.pipe.js';
 import { ApiKeysService } from './api-keys.service.js';
 import { apiKeyInput } from './api-key.schemas.js';
@@ -49,7 +50,7 @@ export class ApiKeysController {
     @Body(new ZodBodyPipe(apiKeyInput)) body: ApiKeyInput,
   ) {
     return this.keys.create(
-      request.accountPrincipal!.userId,
+      auditActor(request),
       organizationId,
       projectId,
       body,
@@ -65,7 +66,7 @@ export class ApiKeysController {
     @Param('keyId', new ParseUUIDPipe()) keyId: string,
   ) {
     return this.keys.revoke(
-      request.accountPrincipal!.userId,
+      auditActor(request),
       organizationId,
       projectId,
       keyId,

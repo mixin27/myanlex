@@ -41,6 +41,14 @@ export const roleUpdateInput = z
     'At least one role field is required.',
   );
 export const memberUpdateInput = z.object({ roleId: z.uuid() }).strict();
+export const ownershipTransferInput = z
+  .object({
+    toUserId: z.uuid(),
+    newRoleId: z.uuid(),
+    // Typed confirmation: the organization's slug, exactly.
+    confirmSlug: z.string().min(1).max(80),
+  })
+  .strict();
 export const invitationInput = z
   .object({
     email: z
@@ -68,3 +76,4 @@ export type RoleUpdateInput = z.infer<typeof roleUpdateInput>;
 export type MemberUpdateInput = z.infer<typeof memberUpdateInput>;
 export type InvitationInput = z.infer<typeof invitationInput>;
 export type InvitationAcceptInput = z.infer<typeof invitationAcceptInput>;
+export type OwnershipTransferInput = z.infer<typeof ownershipTransferInput>;

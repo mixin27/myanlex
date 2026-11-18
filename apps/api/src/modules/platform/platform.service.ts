@@ -16,6 +16,7 @@ import type {
   ProjectInput,
   ProjectUpdateInput,
 } from './platform.schemas.js';
+import type { AuditActor } from './audit.js';
 
 @Injectable()
 export class PlatformService {
@@ -60,8 +61,8 @@ export class PlatformService {
     }
   }
 
-  createOrganization(userId: string, input: OrganizationInput) {
-    return this.write(() => this.repository.createOrganization(userId, input));
+  createOrganization(actor: AuditActor, input: OrganizationInput) {
+    return this.write(() => this.repository.createOrganization(actor, input));
   }
 
   async listProjects(userId: string, organizationId: string, query: ListQuery) {
@@ -70,13 +71,13 @@ export class PlatformService {
   }
 
   async createProject(
-    userId: string,
+    actor: AuditActor,
     organizationId: string,
     input: ProjectInput,
   ) {
-    await this.authorize(userId, organizationId, 'project.create');
+    await this.authorize(actor.userId, organizationId, 'project.create');
     return this.write(() =>
-      this.repository.createProject(organizationId, input),
+      this.repository.createProject(organizationId, input, actor),
     );
   }
 
@@ -91,14 +92,14 @@ export class PlatformService {
   }
 
   async updateProject(
-    userId: string,
+    actor: AuditActor,
     organizationId: string,
     projectId: string,
     input: ProjectUpdateInput,
   ) {
-    await this.authorize(userId, organizationId, 'project.update');
+    await this.authorize(actor.userId, organizationId, 'project.update');
     const project = await this.write(() =>
-      this.repository.updateProject(organizationId, projectId, input),
+      this.repository.updateProject(organizationId, projectId, input, actor),
     );
     if (!project) throw new NotFoundException('Project not found.');
     return project;

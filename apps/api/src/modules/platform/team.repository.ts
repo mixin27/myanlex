@@ -1,6 +1,7 @@
 import type { Page } from './workspace.repository.js';
 import type { ListQuery } from './platform.schemas.js';
 import type { RoleInput, RoleUpdateInput } from './team.schemas.js';
+import type { AuditActor } from './audit.js';
 
 export const TEAM_REPOSITORY = Symbol('TEAM_REPOSITORY');
 
@@ -57,6 +58,16 @@ export type AcceptResult =
       organization: { id: string; name: string; slug: string };
     }
   | { status: 'not_found' | 'gone' | 'email_mismatch' };
+export type TransferResult =
+  | { status: 'transferred'; owner: MemberSummary; previous: MemberSummary }
+  | {
+      status:
+        | 'not_owner'
+        | 'target_not_found'
+        | 'already_owner'
+        | 'role_not_found'
+        | 'system_role';
+    };
 
 /**
  * Raised for state conflicts: duplicate slugs or invitations, system roles,
@@ -79,19 +90,43 @@ export interface TeamRepository {
     organizationId: string,
     userId: string,
     roleId: string,
+    actor: AuditActor,
   ): Promise<MemberSummary | null>;
   /** Removes a member; throws TeamConflict if no manager would remain. */
-  removeMember(organizationId: string, userId: string): Promise<boolean>;
+  removeMember(
+    organizationId: string,
+    userId: string,
+    actor: AuditActor,
+  ): Promise<boolean>;
+  /**
+   * Atomically gives `toUserId` the system Owner role and moves the actor to
+   * `newRoleId`. The actor must hold the system role when the lock is taken.
+   */
+  transferOwnership(
+    organizationId: string,
+    toUserId: string,
+    newRoleId: string,
+    actor: AuditActor,
+  ): Promise<TransferResult>;
 
   listRoles(organizationId: string): Promise<RoleSummary[]>;
   findRole(organizationId: string, roleId: string): Promise<RoleSummary | null>;
-  createRole(organizationId: string, input: RoleInput): Promise<RoleSummary>;
+  createRole(
+    organizationId: string,
+    input: RoleInput,
+    actor: AuditActor,
+  ): Promise<RoleSummary>;
   updateRole(
     organizationId: string,
     roleId: string,
     input: RoleUpdateInput,
+    actor: AuditActor,
   ): Promise<RoleSummary | null>;
-  deleteRole(organizationId: string, roleId: string): Promise<boolean>;
+  deleteRole(
+    organizationId: string,
+    roleId: string,
+    actor: AuditActor,
+  ): Promise<boolean>;
 
   listInvitations(
     organizationId: string,
@@ -107,6 +142,7 @@ export interface TeamRepository {
     organizationId: string,
     input: InvitationRecord,
     now: Date,
+    actor: AuditActor,
   ): Promise<InvitationSummary>;
   /** Replaces the token and expiry of an open invitation. */
   rotateInvitation(
@@ -115,20 +151,22 @@ export interface TeamRepository {
     tokenHash: string,
     expiresAt: Date,
     now: Date,
+    actor: AuditActor,
   ): Promise<InvitationSummary | null>;
   revokeInvitation(
     organizationId: string,
     invitationId: string,
     now: Date,
+    actor: AuditActor,
   ): Promise<InvitationSummary | null>;
   listPendingInvitations(
     email: string,
     now: Date,
   ): Promise<PendingInvitation[]>;
+  /** The actor is the invitee; their email must match the invitation. */
   acceptInvitation(
     lookup: InvitationLookup,
-    userId: string,
-    email: string,
+    actor: AuditActor,
     now: Date,
   ): Promise<AcceptResult>;
 }

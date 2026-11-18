@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { asActor } from './actor.js';
 import { describe, expect, it, vi } from 'vitest';
 import { createApiApplication } from '../src/create-api-application.js';
 import { AccountAuthService } from '../src/modules/account-auth/account-auth.service.js';
@@ -35,18 +36,22 @@ describe.skipIf(!databaseUrl)('PostgreSQL usage aggregation', () => {
     });
     let organizationId: string | undefined;
     try {
-      const organization = await repository.createOrganization(user.id, {
+      const organization = await repository.createOrganization(asActor(user), {
         name: 'HTTP report',
         slug: `metering-${randomUUID()}`,
       });
       organizationId = organization.id;
-      const project = await repository.createProject(organization.id, {
-        name: 'API',
-        slug: 'api',
-        environment: 'development',
-      });
+      const project = await repository.createProject(
+        organization.id,
+        {
+          name: 'API',
+          slug: 'api',
+          environment: 'development',
+        },
+        asActor(user),
+      );
       const key = await new ApiKeysService(repository).create(
-        user.id,
+        asActor(user),
         organization.id,
         project.id,
         { name: 'HTTP test', scopes: ['api.invoke'] },
@@ -178,31 +183,43 @@ describe.skipIf(!databaseUrl)('PostgreSQL usage aggregation', () => {
     });
     const organizations: string[] = [];
     try {
-      const organization = await repository.createOrganization(user.id, {
+      const organization = await repository.createOrganization(asActor(user), {
         name: 'Reports',
         slug: `usage-${randomUUID()}`,
       });
       organizations.push(organization.id);
-      const other = await repository.createOrganization(user.id, {
+      const other = await repository.createOrganization(asActor(user), {
         name: 'Other',
         slug: `usage-${randomUUID()}`,
       });
       organizations.push(other.id);
-      const project = await repository.createProject(organization.id, {
-        name: 'API',
-        slug: 'api',
-        environment: 'development',
-      });
-      const sibling = await repository.createProject(organization.id, {
-        name: 'Sibling',
-        slug: 'sibling',
-        environment: 'development',
-      });
-      const foreign = await repository.createProject(other.id, {
-        name: 'Foreign',
-        slug: 'foreign',
-        environment: 'production',
-      });
+      const project = await repository.createProject(
+        organization.id,
+        {
+          name: 'API',
+          slug: 'api',
+          environment: 'development',
+        },
+        asActor(user),
+      );
+      const sibling = await repository.createProject(
+        organization.id,
+        {
+          name: 'Sibling',
+          slug: 'sibling',
+          environment: 'development',
+        },
+        asActor(user),
+      );
+      const foreign = await repository.createProject(
+        other.id,
+        {
+          name: 'Foreign',
+          slug: 'foreign',
+          environment: 'production',
+        },
+        asActor(user),
+      );
       const keys = await Promise.all(
         [project, sibling, foreign].map((item) =>
           client.apiKey.create({

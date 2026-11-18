@@ -108,3 +108,37 @@ export interface AcceptedInvitation {
   status: 'accepted' | 'already_member';
   organization: Organization;
 }
+export type AuditAction =
+  | 'organization.created'
+  | 'project.created'
+  | 'project.updated'
+  | 'api_key.created'
+  | 'api_key.revoked'
+  | 'member.role_changed'
+  | 'member.removed'
+  | 'member.left'
+  | 'role.created'
+  | 'role.updated'
+  | 'role.deleted'
+  | 'invitation.created'
+  | 'invitation.resent'
+  | 'invitation.revoked'
+  | 'invitation.accepted'
+  | 'ownership.transferred';
+export interface AuditEvent {
+  id: string;
+  action: AuditAction;
+  actor: { userId: string | null; email: string };
+  target: { type: string; id: string };
+  metadata: Record<string, unknown>;
+  requestId: string | null;
+  createdAt: string;
+}
+export interface AuditEventPage {
+  items: AuditEvent[];
+  nextCursor: string | null;
+}
+export interface OwnershipTransfer {
+  owner: Member;
+  previousOwner: Member;
+}

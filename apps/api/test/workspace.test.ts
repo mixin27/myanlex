@@ -22,6 +22,11 @@ import { projectUpdateInput } from '../src/modules/platform/platform.schemas.js'
 import { loadOpenApiDocument } from '../src/common/docs/api-documentation.js';
 
 const userId = randomUUID();
+const actor = {
+  userId,
+  email: 'owner@example.com',
+  requestId: expect.any(String),
+};
 const organizationId = randomUUID();
 const projectId = randomUUID();
 const organization = { id: organizationId, name: 'မြန်မာ', slug: 'my-team' };
@@ -155,7 +160,7 @@ describe('session-protected workspace HTTP contract', () => {
     vi.resetAllMocks();
     getSession.mockImplementation(async ({ headers }: { headers: Headers }) =>
       headers.get('cookie') === 'session=valid'
-        ? { user: { id: userId, emailVerified: true } }
+        ? { user: { id: userId, email: actor.email, emailVerified: true } }
         : null,
     );
     vi.mocked(repository.getOrganization).mockImplementation(
@@ -199,7 +204,7 @@ describe('session-protected workspace HTTP contract', () => {
     expect(result.statusCode).toBe(201);
     expect(result.json()).toEqual(organization);
     expect(result.headers['cache-control']).toBe('private, no-store');
-    expect(repository.createOrganization).toHaveBeenCalledWith(userId, {
+    expect(repository.createOrganization).toHaveBeenCalledWith(actor, {
       name: 'မြန်မာ',
       slug: 'my-team',
     });
@@ -355,11 +360,11 @@ describe('session-protected workspace HTTP contract', () => {
         })
       ).statusCode,
     ).toBe(201);
-    expect(repository.createProject).toHaveBeenCalledWith(organizationId, {
-      name: 'Test',
-      slug: 'test',
-      environment: 'development',
-    });
+    expect(repository.createProject).toHaveBeenCalledWith(
+      organizationId,
+      { name: 'Test', slug: 'test', environment: 'development' },
+      actor,
+    );
     expect(
       (
         await request(
@@ -373,6 +378,7 @@ describe('session-protected workspace HTTP contract', () => {
       organizationId,
       projectId,
       { name: 'Changed' },
+      actor,
     );
     expect(projectUpdateInput.parse({ name: 'Changed' })).toEqual({
       name: 'Changed',
@@ -460,6 +466,8 @@ describe('session-protected workspace HTTP contract', () => {
       '/platform/organizations/{organizationId}/invitations',
       '/platform/organizations/{organizationId}/invitations/{invitationId}/resend',
       '/platform/organizations/{organizationId}/invitations/{invitationId}/revoke',
+      '/platform/organizations/{organizationId}/ownership-transfer',
+      '/platform/organizations/{organizationId}/audit-events',
       '/platform/invitations',
       '/platform/invitations/accept',
     ]) {
@@ -589,6 +597,7 @@ describe('session-protected workspace HTTP contract', () => {
         scopes: ['api.invoke'],
         expiresAt: null,
       },
+      actor,
     );
     const second = await request('POST', keyPath, {
       name: 'Server',
@@ -664,6 +673,7 @@ describe('session-protected workspace HTTP contract', () => {
       projectId,
       key.id,
       expect.any(Date),
+      actor,
     );
     expect(
       (await request('GET', keyPath.replace(organizationId, randomUUID())))

@@ -11,6 +11,7 @@ export const disabledTeamRepository: TeamRepository = {
   findMember: unavailable,
   updateMemberRole: unavailable,
   removeMember: unavailable,
+  transferOwnership: unavailable,
   listRoles: unavailable,
   findRole: unavailable,
   createRole: unavailable,

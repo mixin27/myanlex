@@ -207,3 +207,39 @@ To test invitations locally:
 
 Invitation tokens never appear in API responses, and only their SHA-256 hashes
 are stored.
+
+## Audit log and ownership transfer
+
+Apply the `20261119000000_audit_events` migration. It grants the new
+`audit.read` permission to Owner roles. See
+[the audit decision](decisions/0022-audit-log-and-ownership-transfer.md) for the
+rules.
+
+- **Activity tab** (`audit.read`): **Team → Activity** lists every platform
+  change in the workspace, newest first, each with:
+  - the actor's email;
+  - a readable sentence;
+  - expandable details (action, target, request id, metadata).
+
+  Filter by action, and use **Load older activity** to page.
+
+- **Transfer ownership** (Owner role only): on the Members tab, an Owner sees
+  **Transfer ownership** next to each member who is not already an Owner.
+  - Pick the role you will move to. You need at least one non-Owner role.
+  - Type the workspace slug to confirm.
+  - The other member becomes Owner, and you get the role you picked, in one
+    step.
+
+| Method | Suffix              | Permission and notes                                               |
+| ------ | ------------------- | ------------------------------------------------------------------ |
+| GET    | /audit-events       | audit.read; `?limit=&cursor=&action=`; newest first                |
+| POST   | /ownership-transfer | Owner role; `{ toUserId, newRoleId, confirmSlug }`; 409 if already |
+
+Events are written in the same transaction as the change, so a rejected change
+leaves no event. Events never contain API-key secrets or invitation tokens. To
+remove events past the retention period (`MYANLEX_AUDIT_RETENTION_DAYS`, default
+365, minimum 30), run this from cron, for example daily:
+
+```sh
+DATABASE_URL='<database connection>' pnpm audit:cleanup
+```

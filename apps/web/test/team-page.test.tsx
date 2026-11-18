@@ -16,6 +16,8 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/team',
 }));
 import TeamPage from '../src/app/(portal)/team/page';
+import { TeamManager } from '../src/components/team/team-manager';
+import type { Member, Role } from '../src/lib/platform-types';
 import AcceptInvitationPage from '../src/app/invitations/accept/page';
 
 const organization = '3a450187-fa8b-464f-9564-cb5cae9fcd94';
@@ -66,6 +68,26 @@ describe('team page', () => {
     expect(readPlatform).toHaveBeenCalledTimes(2);
   });
 
+  it('loads the audit log only with audit.read', async () => {
+    serve(['member.read', 'role.read']);
+    await TeamPage({ searchParams: Promise.resolve({ organization }) });
+    expect(
+      readPlatform.mock.calls.some(([path]) => path.includes('audit-events')),
+    ).toBe(false);
+    readPlatform.mockClear();
+    serve(['audit.read']);
+    const result = await TeamPage({
+      searchParams: Promise.resolve({ organization }),
+    });
+    expect(readPlatform).toHaveBeenCalledWith(
+      `organizations/${organization}/audit-events?limit=50`,
+    );
+    expect(
+      readPlatform.mock.calls.some(([path]) => path.includes('/members')),
+    ).toBe(false);
+    expect(renderToStaticMarkup(result)).not.toContain('Access restricted');
+  });
+
   it('rejects invalid identifiers before issuing requests', async () => {
     await expect(
       TeamPage({ searchParams: Promise.resolve({ organization: '../x' }) }),
@@ -102,5 +124,60 @@ describe('invitation accept page', () => {
     });
     expect(text(result)).toContain('owner@example.com');
     expect(text(result)).toContain('Accept invitation');
+  });
+});
+
+describe('ownership transfer action', () => {
+  const role = (id: string, name: string, system: boolean): Role => ({
+    id,
+    name,
+    slug: name.toLowerCase(),
+    description: null,
+    system,
+    permissions: [],
+    memberCount: 1,
+    invitationCount: 0,
+  });
+  const owner = role('r-owner', 'Owner', true);
+  const developer = role('r-dev', 'Developer', false);
+  const member = (userId: string, name: string, of: Role): Member => ({
+    userId,
+    name,
+    email: `${name.toLowerCase()}@example.com`,
+    role: { id: of.id, name: of.name, slug: of.slug },
+    permissions: [],
+    joinedAt: '2026-11-19T00:00:00.000Z',
+  });
+  const render = (members: Member[]) =>
+    renderToStaticMarkup(
+      <TeamManager
+        organizationId={organization}
+        organizationSlug="team"
+        currentUserId="u1"
+        permissions={['member.read', 'member.manage', 'role.read']}
+        members={members}
+        invitations={[]}
+        roles={[owner, developer]}
+        catalog={[]}
+        audit={null}
+      />,
+    );
+
+  it('is offered to Owners for non-Owner members only', () => {
+    const html = render([
+      member('u1', 'Olivia', owner),
+      member('u2', 'Dana', developer),
+      member('u3', 'Otto', owner),
+    ]);
+    expect(html.match(/Transfer ownership/g)).toHaveLength(1);
+    expect(html).toContain('to Dana');
+  });
+
+  it('is hidden from members without the Owner role', () => {
+    const html = render([
+      member('u1', 'Olivia', developer),
+      member('u2', 'Dana', developer),
+    ]);
+    expect(html).not.toContain('Transfer ownership');
   });
 });

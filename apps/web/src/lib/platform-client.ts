@@ -22,3 +22,17 @@ export async function writePlatform<T>(
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
+
+/** Browser-side read through the same-origin platform proxy. */
+export async function readPlatformClient<T>(path: string): Promise<T> {
+  const response = await fetch(`/v1/platform/${path}`, {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    if (response.status === 401)
+      throw new Error('Your session expired. Please sign in again.');
+    throw new Error('Unable to load this page. Please try again.');
+  }
+  return response.json() as Promise<T>;
+}

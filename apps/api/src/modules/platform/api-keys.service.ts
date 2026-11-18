@@ -12,6 +12,7 @@ import type { ListQuery } from './platform.schemas.js';
 import { apiKeyInput } from './api-key.schemas.js';
 import { requireOrganizationPermission } from './organization-access.js';
 import type { ApiKeyInput } from './api-key.schemas.js';
+import type { AuditActor } from './audit.js';
 
 @Injectable()
 export class ApiKeysService {
@@ -48,13 +49,13 @@ export class ApiKeysService {
   }
 
   async create(
-    userId: string,
+    actor: AuditActor,
     organizationId: string,
     projectId: string,
     input: ApiKeyInput,
   ) {
     const organization = await this.authorize(
-      userId,
+      actor.userId,
       organizationId,
       projectId,
       'api_key.create',
@@ -76,28 +77,39 @@ export class ApiKeysService {
     if (expiresAt && expiresAt.getTime() <= Date.now())
       throw new BadRequestException('Expiration must be in the future.');
     const secret = `mylx_${randomBytes(32).toString('base64url')}`;
-    const key = await this.repository.createApiKey(organizationId, projectId, {
-      name: parsed.data.name,
-      prefix: secret.slice(0, 13),
-      keyHash: createHash('sha256').update(secret).digest('hex'),
-      scopes: [...new Set(parsed.data.scopes)],
-      expiresAt,
-    });
+    const key = await this.repository.createApiKey(
+      organizationId,
+      projectId,
+      {
+        name: parsed.data.name,
+        prefix: secret.slice(0, 13),
+        keyHash: createHash('sha256').update(secret).digest('hex'),
+        scopes: [...new Set(parsed.data.scopes)],
+        expiresAt,
+      },
+      actor,
+    );
     return { ...key, secret };
   }
 
   async revoke(
-    userId: string,
+    actor: AuditActor,
     organizationId: string,
     projectId: string,
     keyId: string,
   ) {
-    await this.authorize(userId, organizationId, projectId, 'api_key.revoke');
+    await this.authorize(
+      actor.userId,
+      organizationId,
+      projectId,
+      'api_key.revoke',
+    );
     const key = await this.repository.revokeApiKey(
       organizationId,
       projectId,
       keyId,
       new Date(),
+      actor,
     );
     if (!key) throw new NotFoundException('API key not found.');
     return key;

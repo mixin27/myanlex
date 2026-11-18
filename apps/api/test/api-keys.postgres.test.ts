@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { createHash, randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { asActor } from './actor.js';
 import { describe, expect, it } from 'vitest';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { PrismaWorkspaceRepository } from '../src/infrastructure/database/prisma-workspace.repository.js';
@@ -28,25 +29,34 @@ describe.skipIf(!databaseUrl)('API-key persistence and revocation', () => {
     });
     const organizationIds: string[] = [];
     try {
-      const organization = await repository.createOrganization(user.id, {
+      const organization = await repository.createOrganization(asActor(user), {
         name: 'Team',
         slug: `keys-${randomUUID()}`,
       });
       organizationIds.push(organization.id);
-      const other = await repository.createOrganization(user.id, {
+      const other = await repository.createOrganization(asActor(user), {
         name: 'Other',
         slug: `keys-${randomUUID()}`,
       });
       organizationIds.push(other.id);
-      const project = await repository.createProject(organization.id, {
-        name: 'Server',
-        slug: 'server',
-        environment: 'production',
-      });
-      const key = await service.create(user.id, organization.id, project.id, {
-        name: 'Server key',
-        scopes: ['api.invoke'],
-      });
+      const project = await repository.createProject(
+        organization.id,
+        {
+          name: 'Server',
+          slug: 'server',
+          environment: 'production',
+        },
+        asActor(user),
+      );
+      const key = await service.create(
+        asActor(user),
+        organization.id,
+        project.id,
+        {
+          name: 'Server key',
+          scopes: ['api.invoke'],
+        },
+      );
       const hash = createHash('sha256').update(key.secret).digest('hex');
       const stored = await client.apiKey.findUniqueOrThrow({
         where: { id: key.id },
@@ -69,29 +79,40 @@ describe.skipIf(!databaseUrl)('API-key persistence and revocation', () => {
       expect(JSON.stringify(listed)).not.toContain(hash);
       expect(JSON.stringify(listed)).not.toContain(key.secret);
       await expect(
-        service.create(user.id, other.id, project.id, {
+        service.create(asActor(user), other.id, project.id, {
           name: 'Denied',
           scopes: ['api.invoke'],
         }),
       ).rejects.toThrow('Project not found');
       expect(
-        await repository.revokeApiKey(other.id, project.id, key.id, new Date()),
+        await repository.revokeApiKey(
+          other.id,
+          project.id,
+          key.id,
+          new Date(),
+          asActor(user),
+        ),
       ).toBeNull();
       expect(
         (await repository.listApiKeys(other.id, project.id, { limit: 25 }))
           .items,
       ).toEqual([]);
       await expect(
-        repository.createApiKey(other.id, project.id, {
-          name: 'Denied',
-          prefix: 'test',
-          keyHash: 'f'.repeat(64),
-          scopes: ['api.invoke'],
-          expiresAt: null,
-        }),
+        repository.createApiKey(
+          other.id,
+          project.id,
+          {
+            name: 'Denied',
+            prefix: 'test',
+            keyHash: 'f'.repeat(64),
+            scopes: ['api.invoke'],
+            expiresAt: null,
+          },
+          asActor(user),
+        ),
       ).rejects.toThrow();
       const expiring = await service.create(
-        user.id,
+        asActor(user),
         organization.id,
         project.id,
         {
@@ -107,8 +128,8 @@ describe.skipIf(!databaseUrl)('API-key persistence and revocation', () => {
         ),
       ).toBeUndefined();
       const revoked = await Promise.all([
-        service.revoke(user.id, organization.id, project.id, key.id),
-        service.revoke(user.id, organization.id, project.id, key.id),
+        service.revoke(asActor(user), organization.id, project.id, key.id),
+        service.revoke(asActor(user), organization.id, project.id, key.id),
       ]);
       expect(revoked[0]?.revokedAt).toEqual(revoked[1]?.revokedAt);
       expect(

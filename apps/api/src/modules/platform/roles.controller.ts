@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { SessionRoute } from '../../common/auth/session-route.decorator.js';
 import type { AuthenticatedRequest } from '../../common/auth/authenticated-request.js';
+import { auditActor } from './audit.js';
 import { ZodBodyPipe } from '../../common/validation/zod-body.pipe.js';
 import { RolesService } from './roles.service.js';
 import { roleInput, roleUpdateInput } from './team.schemas.js';
@@ -48,11 +49,7 @@ export class RolesController {
     @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
     @Body(new ZodBodyPipe(roleInput)) body: RoleInput,
   ) {
-    return this.roles.create(
-      request.accountPrincipal!.userId,
-      organizationId,
-      body,
-    );
+    return this.roles.create(auditActor(request), organizationId, body);
   }
 
   @Patch('roles/:roleId')
@@ -62,12 +59,7 @@ export class RolesController {
     @Param('roleId', new ParseUUIDPipe()) roleId: string,
     @Body(new ZodBodyPipe(roleUpdateInput)) body: RoleUpdateInput,
   ) {
-    return this.roles.update(
-      request.accountPrincipal!.userId,
-      organizationId,
-      roleId,
-      body,
-    );
+    return this.roles.update(auditActor(request), organizationId, roleId, body);
   }
 
   @Delete('roles/:roleId')
@@ -77,10 +69,6 @@ export class RolesController {
     @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
     @Param('roleId', new ParseUUIDPipe()) roleId: string,
   ): Promise<void> {
-    await this.roles.remove(
-      request.accountPrincipal!.userId,
-      organizationId,
-      roleId,
-    );
+    await this.roles.remove(auditActor(request), organizationId, roleId);
   }
 }
