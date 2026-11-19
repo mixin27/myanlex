@@ -56,10 +56,11 @@ paths:
         Requires a verified member session and the dynamic usage.read permission.
         No project.read permission or project is required. Non-members receive 404.
         Read-only database snapshot; never creates or consumes a reservation.
-        Counts span all organization projects and keys. Disabled enforcement shows
-        retained reservations, not uncounted traffic. Null limits/remaining mean
-        unlimited. Remaining is clamped to zero after a plan downgrade. Values are
-        decimal strings, not floating-point numbers. This is not billing metering.
+        Counts span all organization projects, keys and playground runs. Usage is
+        always counted; when enforcement is disabled, limits simply do not deny.
+        Null limits/remaining mean unlimited. Remaining is clamped to zero after a
+        plan downgrade. Values are decimal strings, not floating-point numbers.
+        For billable totals, use the usage statement.
       parameters:
         - name: organizationId
           in: path
@@ -1138,6 +1139,118 @@ paths:
           $ref: '#/components/responses/InternalError'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/usage-statements:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getUsageStatement
+      summary: Read a monthly billable usage statement (usage.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required; API keys are not accepted. Non-members receive
+        404 and members without usage.read receive 403.
+        The billable unit is an admitted request: one counted once it passes
+        authentication, permission and limit checks, even if it later fails
+        validation. Each one is written to an append-only ledger in the same
+        database transaction as the organization's quota counter, whether or not
+        quota enforcement is enabled. A closed month returns its immutable stored
+        statement; the current month, or a finished month not yet closed by the
+        operator, is summed live (`status: open`). `reconciled` is false when the
+        ledger differs from the quota counter, which is expected for the month
+        metering was deployed. Counts are decimal strings.
+      parameters:
+        - name: month
+          in: query
+          description:
+            UTC calendar month as YYYY-MM. Defaults to the current month.
+          schema:
+            type: string
+            pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+      responses:
+        '200':
+          description: Monthly statement.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: 'private, no-store' }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageStatement'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/usage-statements/{month}/events.csv:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: month
+        in: path
+        required: true
+        description: UTC calendar month as YYYY-MM.
+        schema:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+    get:
+      operationId: downloadUsageLedger
+      summary: Download a month's ledger lines as CSV (usage.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Streams every ledger line for the month in (created_at, event_id) order,
+        for checking a statement line by line. Columns: created_at, event_id,
+        request_id, project_id, project_name, source, api_key_prefix, endpoint,
+        request_units, characters. No request text is stored or returned. Text
+        fields that begin with a spreadsheet formula character are prefixed with
+        an apostrophe. Months past the operator's ledger retention (13 months by
+        default) return 410; their statements remain available.
+      responses:
+        '200':
+          description: RFC 4180 CSV with a header row and CRLF line endings.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: 'private, no-store' }
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/csv:
+              schema: { type: string }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '410':
+          $ref: '#/components/responses/LedgerExpired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /platform/organizations/{organizationId}/audit-events:
     parameters:
       - name: organizationId
@@ -1962,6 +2075,14 @@ components:
         'application/problem+json':
           schema:
             $ref: '#/components/schemas/Problem'
+    LedgerExpired:
+      description:
+        The month's ledger lines are past the retention period. Its statement
+        remains available.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     WorkspaceNotFound:
       description: The resource does not exist or is not visible to this member.
       content:
@@ -2292,6 +2413,101 @@ components:
         createdAt:
           type: string
           format: date-time
+    UsageStatement:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          organizationId,
+          month,
+          timezone,
+          periodStart,
+          periodEnd,
+          status,
+          billableUnit,
+          generatedAt,
+          closedAt,
+          totals,
+          counter,
+          reconciled,
+          plan,
+          lines,
+          ledgerAvailable,
+        ]
+      properties:
+        organizationId: { type: string, format: uuid }
+        month: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+        timezone: { type: string, const: UTC }
+        periodStart: { type: string, format: date-time }
+        periodEnd:
+          type: string
+          format: date-time
+          description: Exclusive end of the month.
+        status:
+          type: string
+          enum: [open, closed]
+        billableUnit: { type: string, const: admitted-request }
+        generatedAt: { type: string, format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        totals:
+          type: object
+          additionalProperties: false
+          required: [requests, characters, events]
+          properties:
+            requests: { $ref: '#/components/schemas/DecimalCount' }
+            characters:
+              $ref: '#/components/schemas/DecimalCount'
+            events: { $ref: '#/components/schemas/DecimalCount' }
+        counter:
+          type: object
+          additionalProperties: false
+          description: The organization's quota counter for the same month.
+          required: [requests, characters]
+          properties:
+            requests: { $ref: '#/components/schemas/DecimalCount' }
+            characters:
+              $ref: '#/components/schemas/DecimalCount'
+        reconciled:
+          type: boolean
+          description: True when ledger totals equal the quota counter.
+        plan:
+          type: object
+          additionalProperties: false
+          description:
+            Plan in effect at the end of the month, or now for the open month.
+          required: [name, slug, monthlyRequestLimit, monthlyCharacterLimit]
+          properties:
+            name: { type: string }
+            slug: { type: string }
+            monthlyRequestLimit: { type: [string, 'null'] }
+            monthlyCharacterLimit: { type: [string, 'null'] }
+        lines:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              [projectId, projectName, source, apiKey, requests, characters]
+            properties:
+              projectId: { type: string, format: uuid }
+              projectName: { type: string }
+              source:
+                type: string
+                enum: [api_key, playground]
+              apiKey:
+                type: [object, 'null']
+                additionalProperties: false
+                required: [id, name, prefix]
+                properties:
+                  id: { type: string, format: uuid }
+                  name: { type: [string, 'null'] }
+                  prefix: { type: [string, 'null'] }
+              requests: { $ref: '#/components/schemas/DecimalCount' }
+              characters:
+                $ref: '#/components/schemas/DecimalCount'
+        ledgerAvailable:
+          type: boolean
+          description: Whether the month's ledger lines can still be downloaded.
     AuditEventPage:
       type: object
       additionalProperties: false
@@ -2439,6 +2655,10 @@ components:
           enum: [accepted, already_member]
         organization:
           $ref: '#/components/schemas/Organization'
+    DecimalCount:
+      type: string
+      description: Non-negative integer as a decimal string.
+      pattern: '^(0|[1-9][0-9]*)$'
     QuotaDimension:
       type: object
       additionalProperties: false

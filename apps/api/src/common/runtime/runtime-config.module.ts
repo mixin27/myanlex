@@ -16,7 +16,9 @@ import {
   REDIS_PREFIX,
   QUOTAS_ENABLED,
   METRICS_TOKEN,
+  USAGE_RETENTION_MONTHS,
 } from '../tokens.js';
+import { usageRetention } from '../../modules/platform/usage-ledger.js';
 
 export interface RuntimeConfigOptions {
   readonly metricsToken?: string;
@@ -59,6 +61,11 @@ const runtimeEnvironmentSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
+    MYANLEX_USAGE_RETENTION_MONTHS: z.coerce
+      .number()
+      .int()
+      .min(usageRetention.minimumMonths)
+      .default(usageRetention.defaultMonths),
     MYANLEX_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
     MYANLEX_RATE_LIMIT_WINDOW_MS: z.coerce
       .number()
@@ -173,6 +180,12 @@ export class RuntimeConfigModule {
             config.getOrThrow<boolean>('MYANLEX_QUOTAS_ENABLED'),
         },
         {
+          provide: USAGE_RETENTION_MONTHS,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): number =>
+            config.getOrThrow<number>('MYANLEX_USAGE_RETENTION_MONTHS'),
+        },
+        {
           provide: API_KEY,
           inject: [ConfigService],
           useFactory: (config: ConfigService): string | undefined =>
@@ -214,6 +227,7 @@ export class RuntimeConfigModule {
         REDIS_URL,
         REDIS_PREFIX,
         QUOTAS_ENABLED,
+        USAGE_RETENTION_MONTHS,
         API_KEY,
         DATABASE_URL,
         HTTP_PORT,

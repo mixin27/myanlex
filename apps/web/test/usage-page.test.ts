@@ -33,6 +33,28 @@ const totals = {
   processingTimeMs: '0',
   averageProcessingTimeMs: null,
 };
+const statement = {
+  organizationId: organization,
+  month: '2026-01',
+  timezone: 'UTC',
+  periodStart: '2026-01-01T00:00:00.000Z',
+  periodEnd: '2026-02-01T00:00:00.000Z',
+  status: 'open',
+  billableUnit: 'admitted-request',
+  generatedAt: '2026-01-02T12:00:00Z',
+  closedAt: null,
+  totals: { requests: '0', characters: '0', events: '0' },
+  counter: { requests: '0', characters: '0' },
+  reconciled: true,
+  plan: {
+    name: 'Free',
+    slug: 'free',
+    monthlyRequestLimit: '10000',
+    monthlyCharacterLimit: '1000000',
+  },
+  lines: [],
+  ledgerAvailable: true,
+};
 describe('usage screens', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -41,6 +63,8 @@ describe('usage screens', () => {
       if (path === `organizations/${organization}`) return org;
       if (path === `organizations/${organization}/projects`)
         return { items: [projectData], nextCursor: null };
+      if (path.startsWith(`organizations/${organization}/usage-statements`))
+        return statement;
       if (path.includes('/usage'))
         return {
           projectId: project,
@@ -67,6 +91,36 @@ describe('usage screens', () => {
     expect(readPlatform).toHaveBeenLastCalledWith(
       `organizations/${organization}/projects/${project}/usage?from=2026-01-01&to=2026-01-02`,
     );
+    expect(readPlatform).toHaveBeenCalledWith(
+      `organizations/${organization}/usage-statements`,
+    );
+  });
+  it('reads the selected statement month and rejects malformed months', async () => {
+    await UsagePage({
+      searchParams: Promise.resolve({ organization, month: '2025-12' }),
+    });
+    expect(readPlatform).toHaveBeenCalledWith(
+      `organizations/${organization}/usage-statements?month=2025-12`,
+    );
+    await expect(
+      loadUsageContext({ organization, month: '2025-13' }),
+    ).rejects.toThrow('not-found');
+  });
+  it('shows the statement with usage.read alone, without project data', async () => {
+    readPlatform.mockImplementation(async (path: string) => {
+      if (path === 'organizations') return { items: [org], nextCursor: null };
+      if (path === `organizations/${organization}`)
+        return { ...org, permissions: ['usage.read'] };
+      if (path.startsWith(`organizations/${organization}/usage-statements`))
+        return statement;
+      throw new Error(`Unexpected path: ${path}`);
+    });
+    await UsagePage({ searchParams: Promise.resolve({ organization }) });
+    expect(readPlatform.mock.calls.map(([path]) => path as string)).toEqual([
+      'organizations',
+      `organizations/${organization}`,
+      `organizations/${organization}/usage-statements`,
+    ]);
   });
   it('does not fetch reports for invalid dates', async () => {
     await UsagePage({
@@ -78,7 +132,9 @@ describe('usage screens', () => {
       }),
     });
     expect(
-      readPlatform.mock.calls.some(([path]) => path.includes('/usage')),
+      readPlatform.mock.calls.some(([path]) =>
+        path.includes(`projects/${project}/usage`),
+      ),
     ).toBe(false);
   });
   it('does not fetch project data or totals without usage.read', async () => {

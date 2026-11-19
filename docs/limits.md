@@ -50,7 +50,19 @@ limiter is admission protection, not a financial accounting system.
   but have already consumed a short-window request.
 - HTTP/parser or earlier guard rejections do not consume monthly quota. Usage
   charts remain best-effort completed-event reports and can differ from quota
-  reservations. Neither is presently billing-grade metering.
+  reservations.
+- Portal playground runs reserve the same organization quota as API keys.
+
+## Billing-grade metering
+
+Every reservation is also written to the `usage_events` ledger in the same
+transaction, whether or not enforcement is enabled; see
+[0023](decisions/0023-billing-grade-usage-metering.md). With
+`MYANLEX_QUOTAS_ENABLED=false` requests from persisted API keys and the
+playground are still counted, but plan limits never deny them. A request that
+cannot be metered (database unavailable) returns `503` instead of being served
+unmetered. Monthly statements are closed by `pnpm usage:close-month`; see
+[operations](operations.md#usage-statements-and-ledger-retention).
 
 ## Plans, rollout, and failures
 
@@ -70,12 +82,12 @@ an in-flight request uses the plan it read at transaction start. Existing
 counters survive API/Redis restarts and do not depend on asynchronous usage
 persistence.
 
-First enablement starts counting new admitted traffic; historical usage is not
-backfilled. Disabling enforcement stops counting; re-enabling resumes the same
-month's ledger. Roll out the setting consistently across all replicas,
-preferably at a UTC month boundary. Do not disable it temporarily and expect the
-omitted traffic to appear later. Old ledger rows are retained; retention policy
-is future operational work.
+Counting no longer depends on the setting: counters and the ledger record
+admitted traffic whether enforcement is on or off. Enabling enforcement only
+starts denying requests over the plan's limits, using the month's existing
+counts. Roll out the setting consistently across all replicas, preferably at a
+UTC month boundary. Counter rows are retained; ledger rows follow the usage
+retention setting.
 
 HTTP `429` uses `rate_limited` for short windows or `quota_exceeded` for monthly
 quotas. `Retry-After` gives seconds until that allowance resets. `RateLimit-*`
@@ -101,11 +113,11 @@ plan resolver and never inserts, resets, or consumes a quota row. Large counts
 remain decimal strings. Null limits/remaining mean unlimited; remaining is
 clamped to zero when reservations exceed a newly reduced limit.
 
-When enforcement is off, the panel explicitly labels retained reservations and
-does not imply ongoing usage is counted. Reads still work while enforcement is
-disabled. The enforcement flag describes the serving API instance; configuration
-must remain consistent across replicas. Reload to refresh the snapshot. This is
-not a subscription editor, payment flow, or billing statement.
+When enforcement is off, the panel says that limits are not enforced and that
+usage is still counted. Reads still work while enforcement is disabled. The
+enforcement flag describes the serving API instance; configuration must remain
+consistent across replicas. Reload to refresh the snapshot. This is not a
+subscription editor, payment flow, or billing statement.
 
 ## Tests
 

@@ -62,6 +62,38 @@ export interface QuotaReport {
   characters: QuotaDimension;
 }
 
+export interface UsageStatementLine {
+  projectId: string;
+  projectName: string;
+  source: 'api_key' | 'playground';
+  apiKey: { id: string; name: string | null; prefix: string | null } | null;
+  requests: string;
+  characters: string;
+}
+/** Billable monthly totals from the usage ledger (admitted requests). */
+export interface UsageStatement {
+  organizationId: string;
+  month: string;
+  timezone: 'UTC';
+  periodStart: string;
+  periodEnd: string;
+  status: 'open' | 'closed';
+  billableUnit: 'admitted-request';
+  generatedAt: string;
+  closedAt: string | null;
+  totals: { requests: string; characters: string; events: string };
+  counter: { requests: string; characters: string };
+  reconciled: boolean;
+  plan: {
+    name: string;
+    slug: string;
+    monthlyRequestLimit: string | null;
+    monthlyCharacterLimit: string | null;
+  };
+  lines: UsageStatementLine[];
+  ledgerAvailable: boolean;
+}
+
 export interface RoleReference {
   id: string;
   name: string;

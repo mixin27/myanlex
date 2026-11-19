@@ -25,16 +25,17 @@ describe('Quota policy', () => {
     expect(period.retryAfterSeconds).toBe(seconds);
   });
 
-  it('bypasses disabled enforcement, sessions, bootstrap, and public requests', async () => {
-    const consume = vi.fn();
+  it('skips sessions, bootstrap keys and public routes, but meters with enforcement off', async () => {
+    const meter = vi
+      .fn()
+      .mockResolvedValue({ allowed: true, retryAfterSeconds: 1, eventId: 'e' });
     const reflector = new Reflector();
-    const principal = { persisted: true, projectId: 'project' };
-    expect(
-      await new QuotaGuard(false, { consume }, reflector).canActivate(
-        context({ apiKeyPrincipal: principal }),
-      ),
-    ).toBe(true);
-    const guard = new QuotaGuard(true, { consume }, reflector);
+    const principal = {
+      persisted: true,
+      projectId: 'project',
+      apiKeyId: 'key',
+    };
+    const guard = new QuotaGuard(true, { meter }, reflector);
     for (const request of [
       {},
       { accountPrincipal: { userId: 'user' } },
@@ -42,33 +43,67 @@ describe('Quota policy', () => {
     ]) {
       expect(await guard.canActivate(context(request))).toBe(true);
     }
+    expect(meter).not.toHaveBeenCalled();
+
+    const request = { apiKeyPrincipal: principal, usageEventId: undefined };
+    expect(
+      await new QuotaGuard(false, { meter }, reflector).canActivate(
+        context(request),
+      ),
+    ).toBe(true);
+    expect(meter).toHaveBeenCalledWith(
+      expect.objectContaining({ enforce: false, apiKeyId: 'key' }),
+    );
+    expect(request.usageEventId).toBe('e');
+
+    meter.mockClear();
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(true);
     expect(
       await guard.canActivate(context({ apiKeyPrincipal: principal })),
     ).toBe(true);
-    expect(consume).not.toHaveBeenCalled();
+    expect(meter).not.toHaveBeenCalled();
   });
 
   it('counts code points, propagates denial, and sanitizes backend failures', async () => {
-    const consume = vi
-      .fn()
-      .mockResolvedValue({ allowed: true, retryAfterSeconds: 10 });
-    const guard = new QuotaGuard(true, { consume }, new Reflector());
+    const meter = vi.fn().mockResolvedValue({
+      allowed: true,
+      retryAfterSeconds: 10,
+      eventId: 'e',
+    });
+    const guard = new QuotaGuard(true, { meter }, new Reflector());
     const request = context({
-      apiKeyPrincipal: { persisted: true, projectId: 'project' },
+      id: 'req-1',
+      routeOptions: { url: '/v1/batch/syllabify' },
+      apiKeyPrincipal: {
+        persisted: true,
+        projectId: 'project',
+        apiKeyId: 'key',
+      },
       body: { items: [{ text: 'က😀' }, { text: 'က' }] },
     });
     expect(await guard.canActivate(request)).toBe(true);
-    expect(consume).toHaveBeenCalledWith('project', 3);
-    consume.mockResolvedValue({ allowed: false, retryAfterSeconds: 10 });
+    expect(meter).toHaveBeenCalledWith({
+      projectId: 'project',
+      characters: 3,
+      enforce: true,
+      source: 'api_key',
+      apiKeyId: 'key',
+      endpoint: '/v1/batch/syllabify',
+      requestId: 'req-1',
+    });
+    meter.mockResolvedValue({
+      allowed: false,
+      retryAfterSeconds: 10,
+      eventId: null,
+    });
     await expect(guard.canActivate(request)).rejects.toMatchObject({
       status: 429,
       retryAfterSeconds: 10,
     });
-    consume.mockRejectedValue(new Error('secret connection details'));
+    meter.mockRejectedValue(new Error('secret connection details'));
     await expect(guard.canActivate(request)).rejects.toMatchObject({
       status: 503,
-      message: 'Quota enforcement is temporarily unavailable.',
+      message: 'Usage metering is temporarily unavailable.',
     });
   });
 });

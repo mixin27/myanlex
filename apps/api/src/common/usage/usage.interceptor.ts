@@ -73,6 +73,7 @@ export class UsageInterceptor implements NestInterceptor {
           requestUnits: 1,
           charactersProcessed,
           processingTimeMs,
+          usageEventId: request.usageEventId ?? null,
         })
         .catch(() => {
           this.logger.error({ event: 'usage_persistence_failed' });

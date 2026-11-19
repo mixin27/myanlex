@@ -163,17 +163,25 @@ export class PlaygroundService implements OnModuleInit, OnModuleDestroy {
       typeof body === 'object' && body !== null && 'payload' in body
         ? body.payload
         : undefined;
-    if (this.quotasEnabled) {
-      const quota = await this.quotas
-        .consume(projectId, countRequestCharacters(payload))
-        .catch(() => {
-          throw new ServiceUnavailableException(
-            'Quota enforcement is temporarily unavailable.',
-          );
-        });
-      if (!quota.allowed)
-        throw new QuotaExceededException(quota.retryAfterSeconds);
-    }
+    // Playground runs reserve the organization's quota, so they are metered
+    // like API-key requests; enforcement only decides whether limits deny.
+    const quota = await this.quotas
+      .meter({
+        projectId,
+        characters: countRequestCharacters(payload),
+        enforce: this.quotasEnabled,
+        source: 'playground',
+        apiKeyId: null,
+        endpoint: 'playground/execute',
+        requestId,
+      })
+      .catch(() => {
+        throw new ServiceUnavailableException(
+          'Usage metering is temporarily unavailable.',
+        );
+      });
+    if (!quota.allowed)
+      throw new QuotaExceededException(quota.retryAfterSeconds);
     const started = performance.now();
     let status = 200;
     let operation: string = 'invalid';
@@ -221,6 +229,7 @@ export class PlaygroundService implements OnModuleInit, OnModuleDestroy {
           requestUnits: 1,
           charactersProcessed: countRequestCharacters(payload),
           processingTimeMs: elapsed,
+          usageEventId: quota.eventId,
         })
         .catch(() => {
           this.logger.error({ event: 'usage_persistence_failed' });
