@@ -76,9 +76,8 @@ export function QuotaSummary({ report }: { report: QuotaReport }) {
       </div>
       {!report.enforcementEnabled && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-          Quotas are not enforced. These are retained reservations only; traffic
-          while enforcement is off is not counted. Remaining values are not an
-          active allowance.
+          Limits are not enforced, so requests are not denied when an allowance
+          runs out. Usage is still counted and appears on the monthly statement.
         </p>
       )}
       <div className="grid gap-4 sm:grid-cols-2">

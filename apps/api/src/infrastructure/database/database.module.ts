@@ -13,6 +13,9 @@ import { disabledTeamRepository } from './disabled-team.repository.js';
 import { AUDIT_REPOSITORY } from '../../modules/platform/audit.js';
 import { PrismaAuditRepository } from './prisma-audit.repository.js';
 import { disabledAuditRepository } from './disabled-audit.repository.js';
+import { USAGE_LEDGER_REPOSITORY } from '../../modules/platform/usage-ledger.js';
+import { PrismaUsageLedgerRepository } from './prisma-usage-ledger.repository.js';
+import { disabledUsageLedgerRepository } from './disabled-usage-ledger.repository.js';
 import {
   QUOTA_REPOSITORY,
   type QuotaRepository,
@@ -46,7 +49,7 @@ import { PrismaPlaygroundRepository } from './prisma-playground.repository.js';
         url
           ? new PrismaQuotaRepository(url)
           : {
-              consume: () => Promise.reject(new Error('Database unavailable.')),
+              meter: () => Promise.reject(new Error('Database unavailable.')),
               read: () => Promise.reject(new Error('Database unavailable.')),
             },
     },
@@ -69,6 +72,14 @@ import { PrismaPlaygroundRepository } from './prisma-playground.repository.js';
         url ? new PrismaAuditRepository(url) : disabledAuditRepository,
     },
     {
+      provide: USAGE_LEDGER_REPOSITORY,
+      inject: [DATABASE_URL],
+      useFactory: (url: string | undefined) =>
+        url
+          ? new PrismaUsageLedgerRepository(url)
+          : disabledUsageLedgerRepository,
+    },
+    {
       provide: PLATFORM_REPOSITORY,
       inject: [DATABASE_URL],
       useFactory: (databaseUrl: string | undefined): PlatformRepository =>
@@ -82,6 +93,7 @@ import { PrismaPlaygroundRepository } from './prisma-playground.repository.js';
     WORKSPACE_REPOSITORY,
     TEAM_REPOSITORY,
     AUDIT_REPOSITORY,
+    USAGE_LEDGER_REPOSITORY,
     QUOTA_REPOSITORY,
     PLAYGROUND_REPOSITORY,
   ],

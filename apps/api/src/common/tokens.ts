@@ -10,3 +10,4 @@ export const REDIS_URL = Symbol('REDIS_URL');
 export const REDIS_PREFIX = Symbol('REDIS_PREFIX');
 export const QUOTAS_ENABLED = Symbol('QUOTAS_ENABLED');
 export const METRICS_TOKEN = Symbol('METRICS_TOKEN');
+export const USAGE_RETENTION_MONTHS = Symbol('USAGE_RETENTION_MONTHS');

@@ -1,14 +1,16 @@
+import { randomUUID } from 'node:crypto';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, type Prisma } from '../../generated/prisma/client.js';
 import { quotaPeriod } from '../../common/quota/quota-period.js';
 import type {
+  MeterInput,
   QuotaDecision,
   QuotaRepository,
   QuotaSnapshot,
 } from '../../common/quota/quota.repository.js';
 
-async function readPlan(
+export async function readPlan(
   tx: Prisma.TransactionClient,
   organizationId: string,
   now: Date,
@@ -49,7 +51,9 @@ async function readPlan(
   };
 }
 
-async function databaseTime(tx: Prisma.TransactionClient): Promise<Date> {
+export async function databaseTime(
+  tx: Prisma.TransactionClient,
+): Promise<Date> {
   const [clock] = await tx.$queryRaw<
     { now: string }[]
   >`SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS now`;
@@ -71,9 +75,12 @@ export class PrismaQuotaRepository
     });
   }
 
-  async consume(projectId: string, characters: number): Promise<QuotaDecision> {
+  async meter(input: MeterInput): Promise<QuotaDecision> {
+    const { projectId, characters, enforce } = input;
     if (!Number.isSafeInteger(characters) || characters < 0)
       throw new Error('Invalid character count');
+    if ((input.source === 'api_key') !== (input.apiKeyId !== null))
+      throw new Error('Invalid usage source');
     return this.client.$transaction(
       async (tx) => {
         // Database time avoids disagreement between API replicas at UTC month boundaries.
@@ -84,9 +91,10 @@ export class PrismaQuotaRepository
           select: { organizationId: true },
         });
         const organizationId = project.organizationId;
-        const plan = await readPlan(tx, organizationId, now);
-        const requestLimit = plan.monthlyRequestLimit;
-        const characterLimit = plan.monthlyCharacterLimit;
+        // Unenforced requests are still metered; only the limit check is skipped.
+        const plan = enforce ? await readPlan(tx, organizationId, now) : null;
+        const requestLimit = plan?.monthlyRequestLimit ?? null;
+        const characterLimit = plan?.monthlyCharacterLimit ?? null;
 
         // INSERT and guarded UPDATE serialize on the same organization/month row.
         // Both dimensions are reserved together; a denied request spends neither.
@@ -102,10 +110,26 @@ export class PrismaQuotaRepository
           AND month_start = ${monthStart.toISOString()}::timestamptz
           AND (${requestLimit}::bigint IS NULL OR request_count < ${requestLimit}::bigint)
           AND (${characterLimit}::bigint IS NULL OR character_count + ${BigInt(characters)} <= ${characterLimit}::bigint)`;
-        return {
-          allowed: changed === 1,
-          retryAfterSeconds,
-        };
+        if (changed !== 1)
+          return { allowed: false, retryAfterSeconds, eventId: null };
+        // Same transaction as the counter: the ledger and counter never diverge.
+        const eventId = randomUUID();
+        await tx.usageEvent.create({
+          data: {
+            id: eventId,
+            organizationId,
+            projectId,
+            apiKeyId: input.apiKeyId,
+            source: input.source,
+            monthStart,
+            requestUnits: 1,
+            characters: BigInt(characters),
+            endpoint: input.endpoint.slice(0, 160),
+            requestId: input.requestId?.slice(0, 128) ?? null,
+            createdAt: now,
+          },
+        });
+        return { allowed: true, retryAfterSeconds, eventId };
       },
       { maxWait: 2_000, timeout: 5_000 },
     );

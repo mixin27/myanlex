@@ -38,6 +38,8 @@
     "db:seed": "prisma db seed",
     "playground:cleanup": "tsx scripts/playground-cleanup.ts",
     "audit:cleanup": "tsx scripts/audit-cleanup.ts",
+    "usage:close-month": "tsx scripts/usage-close-month.ts",
+    "usage:cleanup": "tsx scripts/usage-cleanup.ts",
     "playground:verify": "node scripts/playground-integration.mjs",
     "playground:smoke": "pnpm --filter @myanlex/web... build && node scripts/playground-smoke.mjs",
     "db:studio": "prisma studio",

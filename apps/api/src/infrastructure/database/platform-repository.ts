@@ -14,6 +14,8 @@ export interface UsageRecord {
   readonly requestUnits: number;
   readonly charactersProcessed: number;
   readonly processingTimeMs: number;
+  /** The billable ledger entry, when the request was metered. */
+  readonly usageEventId?: string | null;
 }
 
 export interface PlatformRepository {

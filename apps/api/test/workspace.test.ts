@@ -468,6 +468,8 @@ describe('session-protected workspace HTTP contract', () => {
       '/platform/organizations/{organizationId}/invitations/{invitationId}/revoke',
       '/platform/organizations/{organizationId}/ownership-transfer',
       '/platform/organizations/{organizationId}/audit-events',
+      '/platform/organizations/{organizationId}/usage-statements',
+      '/platform/organizations/{organizationId}/usage-statements/{month}/events.csv',
       '/platform/invitations',
       '/platform/invitations/accept',
     ]) {

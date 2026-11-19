@@ -56,11 +56,14 @@ Start Redis with `docker compose --profile redis up -d` and set `REDIS_URL`. Use
 one prefix and consistent limit settings across replicas. Redis failures fail
 closed rather than granting a fresh local allowance.
 
-Monthly quotas are opt-in: set `MYANLEX_QUOTAS_ENABLED=true` consistently across
-replicas after migrations and seeding. Enforcement uses PostgreSQL, not Redis.
-Bootstrap keys and sessions bypass monthly quotas; remove a bootstrap key in
-production if that bypass is inappropriate. Historical traffic is not backfilled
-on enablement, and disabling enforcement stops counting.
+Usage is always metered in PostgreSQL: each admitted request from a persisted
+API key or the playground is counted and written to a billing ledger, and
+requests return 503 if that write is impossible. Enforcing monthly quotas is
+opt-in: set `MYANLEX_QUOTAS_ENABLED=true` consistently across replicas after
+migrations and seeding. Enforcement uses PostgreSQL, not Redis. Bootstrap keys
+bypass metering and quotas; remove a bootstrap key in production if that bypass
+is inappropriate. Run `pnpm usage:close-month` and `pnpm usage:cleanup` daily to
+close monthly statements and apply ledger retention.
 
 ## Readiness and metrics
 

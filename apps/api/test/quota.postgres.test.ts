@@ -8,6 +8,20 @@ import { createApiApplication } from '../src/create-api-application.js';
 import { hashApiKey } from '../src/common/auth/api-key-authentication.service.js';
 
 const databaseUrl = process.env.MYANLEX_TEST_DATABASE_URL;
+// Enforced metering without an API key; ledger behaviour has its own suite.
+const consume = (
+  repository: PrismaQuotaRepository,
+  projectId: string,
+  characters: number,
+) =>
+  repository.meter({
+    projectId,
+    characters,
+    enforce: true,
+    source: 'playground',
+    apiKeyId: null,
+    endpoint: 'test',
+  });
 
 async function fixture(
   requestLimit: bigint | null,
@@ -97,7 +111,7 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
       ).toBe(0);
       const results = await Promise.all(
         Array.from({ length: 24 }, (_, index) =>
-          f.repositories[index % 2]!.consume(f.projects[index % 2]!.id, 2),
+          consume(f.repositories[index % 2]!, f.projects[index % 2]!.id, 2),
         ),
       );
       expect(results.filter((result) => result.allowed)).toHaveLength(5);
@@ -123,12 +137,12 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
       ).toEqual(rows);
       expect(rows[0]!.monthStart.toISOString()).toMatch(/-01T00:00:00.000Z$/);
       expect(
-        (await f.repositories[0]!.consume(f.projects[2]!.id, 2)).allowed,
+        (await consume(f.repositories[0]!, f.projects[2]!.id, 2)).allowed,
       ).toBe(true);
       // A new adapter/process reads the existing durable allowance.
       const restarted = new PrismaQuotaRepository(databaseUrl!);
       try {
-        expect((await restarted.consume(f.projects[0]!.id, 0)).allowed).toBe(
+        expect((await consume(restarted, f.projects[0]!.id, 0)).allowed).toBe(
           false,
         );
       } finally {
@@ -151,7 +165,7 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
         (await f.repositories[1]!.read(f.organization.id)).plan.source,
       ).toBe('free');
       expect(
-        (await f.repositories[1]!.consume(f.projects[0]!.id, 1)).allowed,
+        (await consume(f.repositories[1]!, f.projects[0]!.id, 1)).allowed,
       ).toBe(true);
       await f.client.subscription.updateMany({
         where: { organizationId: f.organization.id },
@@ -164,7 +178,7 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
         (await f.repositories[1]!.read(f.organization.id)).plan.source,
       ).toBe('subscription');
       expect(
-        (await f.repositories[1]!.consume(f.projects[0]!.id, 0)).allowed,
+        (await consume(f.repositories[1]!, f.projects[0]!.id, 0)).allowed,
       ).toBe(false);
       await f.client.subscription.updateMany({
         where: { organizationId: f.organization.id },
@@ -183,9 +197,9 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
     try {
       const repository = f.repositories[0]!;
       const projectId = f.projects[0]!.id;
-      expect((await repository.consume(projectId, 4)).allowed).toBe(false);
-      expect((await repository.consume(projectId, 3)).allowed).toBe(true);
-      expect((await repository.consume(projectId, 1)).allowed).toBe(false);
+      expect((await consume(repository, projectId, 4)).allowed).toBe(false);
+      expect((await consume(repository, projectId, 3)).allowed).toBe(true);
+      expect((await consume(repository, projectId, 1)).allowed).toBe(false);
       expect(
         await f.client.organizationQuota.findFirst({
           where: { organizationId: f.organization.id },
@@ -195,20 +209,20 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
         where: { id: f.plan.id },
         data: { monthlyCharacterLimit: null, monthlyRequestLimit: 2n },
       });
-      expect((await repository.consume(projectId, 100)).allowed).toBe(true);
-      expect((await repository.consume(projectId, 0)).allowed).toBe(false);
+      expect((await consume(repository, projectId, 100)).allowed).toBe(true);
+      expect((await consume(repository, projectId, 0)).allowed).toBe(false);
       await f.client.plan.update({
         where: { id: f.plan.id },
         data: { monthlyRequestLimit: 0n },
       });
-      expect((await repository.consume(f.projects[2]!.id, 0)).allowed).toBe(
+      expect((await consume(repository, f.projects[2]!.id, 0)).allowed).toBe(
         false,
       );
       await f.client.plan.update({
         where: { id: f.plan.id },
         data: { monthlyRequestLimit: -1n },
       });
-      await expect(repository.consume(projectId, 0)).rejects.toThrow(
+      await expect(consume(repository, projectId, 0)).rejects.toThrow(
         'Invalid plan limits',
       );
     } finally {
@@ -232,7 +246,7 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
         },
       });
       const repository = f.repositories[0]!;
-      expect((await repository.consume(f.projects[0]!.id, 1)).allowed).toBe(
+      expect((await consume(repository, f.projects[0]!.id, 1)).allowed).toBe(
         true,
       );
       const free = await f.client.plan.findUniqueOrThrow({
@@ -246,7 +260,7 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
         },
         data: { requestCount: free.monthlyRequestLimit! },
       });
-      expect((await repository.consume(f.projects[0]!.id, 0)).allowed).toBe(
+      expect((await consume(repository, f.projects[0]!.id, 0)).allowed).toBe(
         false,
       );
       await f.client.subscription.createMany({
@@ -257,7 +271,7 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
           startsAt: new Date('2020-01-01T00:00:00Z'),
         })),
       });
-      await expect(repository.consume(f.projects[0]!.id, 0)).rejects.toThrow(
+      await expect(consume(repository, f.projects[0]!.id, 0)).rejects.toThrow(
         'Ambiguous active subscription',
       );
     } finally {

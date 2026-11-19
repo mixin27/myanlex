@@ -44,5 +44,6 @@ guards. Bootstrap keys, session routes and pre-interceptor rejections (including
 rate-limit rejections) are not counted. Persistence failures or process exits
 can lose events. These limitations are visible in the console and contract; an
 empty report means no recorded usage in that interval, not guaranteed zero
-traffic. Durable billing metering remains separate work. Admission quotas are
+traffic. Billing-grade metering is a separate ledger, described in
+[ADR 0023](0023-billing-grade-usage-metering.md). Admission quotas are
 implemented separately in [ADR 0011](0011-distributed-limits-and-quotas.md).

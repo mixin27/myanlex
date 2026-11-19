@@ -60,7 +60,7 @@ describe('dashboard quotas without browser automation', () => {
       <QuotaSummary report={{ ...report, enforcementEnabled: false }} />,
     );
     expect(html).toContain('Enforcement off');
-    expect(html).toContain('traffic while enforcement is off is not counted');
+    expect(html).toContain('Usage is still counted');
     expect(html).not.toContain('Allowance exhausted');
   });
   it('handles zero limits without division by zero', () => {

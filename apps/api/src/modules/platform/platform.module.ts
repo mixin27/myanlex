@@ -14,6 +14,8 @@ import {
 import { OwnershipService } from './ownership.service.js';
 import { AuditController } from './audit.controller.js';
 import { AuditService } from './audit.service.js';
+import { UsageStatementController } from './usage-statement.controller.js';
+import { UsageStatementService } from './usage-statement.service.js';
 import { MembersService } from './members.service.js';
 import { RolesController } from './roles.controller.js';
 import { RolesService } from './roles.service.js';
@@ -34,6 +36,7 @@ import { AccountAuthModule } from '../account-auth/account-auth.module.js';
     MembersController,
     OwnershipController,
     AuditController,
+    UsageStatementController,
     RolesController,
     OrganizationInvitationsController,
     AccountInvitationsController,
@@ -46,6 +49,7 @@ import { AccountAuthModule } from '../account-auth/account-auth.module.js';
     MembersService,
     OwnershipService,
     AuditService,
+    UsageStatementService,
     RolesService,
     InvitationsService,
   ],

@@ -64,6 +64,9 @@ tests is not a measured linguistic accuracy score or release approval.
   permissions; [workflow and Scalar testing](docs/platform.md)
 - Scoped project API-key issuance and revocation, best-effort usage reports and
   monthly quota reporting
+- Billing-grade usage metering: an append-only ledger written with each quota
+  reservation, immutable monthly statements and a CSV export;
+  [statements](docs/platform.md#monthly-statements)
 - Team management: member roles, custom roles with permission editing, and email
   invitations with an in-portal pending list;
   [team workflow](docs/platform.md#team-management)
@@ -75,7 +78,7 @@ tests is not a measured linguistic accuracy score or release approval.
 
 Planned next:
 
-- Durable billing-grade metering, plans and billing
+- Plans, prices and billing on top of monthly statements
 
 ## Repository layout
 
@@ -163,9 +166,10 @@ All language operations require `Authorization: Bearer <key>` and follow
 Interactive API documentation is served by the Nest application at
 `http://localhost:3000/docs` (Scalar) and `http://localhost:3000/swagger`.
 
-For multi-instance deployments, configure Redis-backed rate limiting. Monthly
-organization quotas are opt-in and use PostgreSQL. See the
-[limits setup guide](docs/limits.md) before enabling either feature.
+For multi-instance deployments, configure Redis-backed rate limiting. Usage
+metering always uses PostgreSQL; enforcing monthly organization quotas is
+opt-in. See the [limits setup guide](docs/limits.md) before enabling either
+feature.
 
 ## Local packages and publishing
 

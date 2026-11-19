@@ -135,19 +135,38 @@ the database or depend on a scheduled rollup. Integer counters are JSON decimal
 strings to avoid precision loss. No migration or additional dependency is
 needed.
 
-Metering is **best-effort**, not billing-grade: bootstrap keys, pre-handler
-rejections (including rate limits), and events lost to persistence failure or
-process exit are not represented. Successful batch responses with individual
-item failures do not increase the HTTP error count. Character totals describe
-submitted text lengths, not guaranteed successful processing. Text is never
-stored in usage events. Historical activity remains after a key is revoked.
+These daily reports are **best-effort** diagnostics, not the billable figures
+(see Monthly statements below): bootstrap keys, pre-handler rejections
+(including rate limits), and events lost to persistence failure or process exit
+are not represented. Successful batch responses with individual item failures do
+not increase the HTTP error count. Character totals describe submitted text
+lengths, not guaranteed successful processing. Text is never stored in usage
+events. Historical activity remains after a key is revoked.
 
 See [the reporting decision](decisions/0010-usage-reporting.md) for metric
 definitions and UTC semantics. Monthly quota reservations are separate from
 these best-effort reports: they count admitted requests before handler
 execution, not completed usage events. See [rate limits and quotas](limits.md)
-for configuration, rollout, and operational semantics. Durable billing metering
-remains future work.
+for configuration, rollout, and operational semantics.
+
+### Monthly statements
+
+The Usage page starts with the workspace's **monthly statement**: billable
+requests and characters, the plan, and a breakdown by project and API key or
+playground. It needs only `usage.read`. Pick a month from the last 13. Open
+months are summed live; closed months show the stored statement. A note appears
+when a statement doesn't match the quota counter. **Download every request
+(CSV)** gives one line per billable request, without request text.
+
+- GET `/:organizationId/usage-statements?month=2026-11` returns the statement;
+  `month` defaults to the current UTC month. Future months return 400.
+- GET `/:organizationId/usage-statements/2026-11/events.csv` streams the ledger
+  lines. Months past retention return 410.
+
+Statements count admitted requests, exactly like quota reservations, and come
+from an append-only ledger written in the same transaction. They are the
+billable figures; the daily activity charts below them are diagnostics. See
+[0023](decisions/0023-billing-grade-usage-metering.md).
 
 ## Team management
 

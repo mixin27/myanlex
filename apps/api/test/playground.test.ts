@@ -47,7 +47,7 @@ describe('playground HTTP admission', () => {
     });
     Object.defineProperties(app.get(PlaygroundService), {
       workspace: { value: { getOrganization: membership, findProject } },
-      quotas: { value: { consume } },
+      quotas: { value: { meter: consume } },
       quotasEnabled: { value: true },
       rateLimits: { value: { consume: burst } },
       usage: { value: { recordUsage } },
@@ -71,7 +71,11 @@ describe('playground HTTP admission', () => {
     findProject.mockImplementation(async (_org: string, id: string) =>
       id === project ? { id: project } : null,
     );
-    consume.mockResolvedValue({ allowed: true, retryAfterSeconds: 10 });
+    consume.mockResolvedValue({
+      allowed: true,
+      retryAfterSeconds: 10,
+      eventId: 'event-1',
+    });
     burst.mockResolvedValue({
       allowed: true,
       limit: 100,
@@ -255,12 +259,21 @@ describe('playground HTTP admission', () => {
     });
     expect(response.headers['cache-control']).toBe('private, no-store');
     expect(burst).toHaveBeenCalledOnce();
-    expect(consume).toHaveBeenCalledExactlyOnceWith(project, 2);
+    expect(consume).toHaveBeenCalledExactlyOnceWith({
+      projectId: project,
+      characters: 2,
+      enforce: true,
+      source: 'playground',
+      apiKeyId: null,
+      endpoint: 'playground/execute',
+      requestId: expect.any(String),
+    });
     expect(recordUsage).toHaveBeenCalledOnce();
     expect(recordUsage.mock.calls[0]?.[0]).toMatchObject({
       source: 'playground',
       apiKeyId: null,
       charactersProcessed: 2,
+      usageEventId: 'event-1',
     });
     expect(JSON.stringify(recordUsage.mock.calls)).not.toContain('က');
   });
@@ -278,7 +291,9 @@ describe('playground HTTP admission', () => {
         })
       ).statusCode,
     ).toBe(200);
-    expect(consume).toHaveBeenCalledExactlyOnceWith(project, 4);
+    expect(consume).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ projectId: project, characters: 4 }),
+    );
     consume.mockRejectedValue(new Error('database secret'));
     const failed = await request();
     expect(failed.statusCode).toBe(503);

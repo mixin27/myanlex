@@ -9,5 +9,7 @@ export interface AuthenticatedRequest {
     readonly origin?: string;
   };
   apiKeyPrincipal?: ApiKeyPrincipal;
+  /** The billable usage_events row written when this request was admitted. */
+  usageEventId?: string;
   accountPrincipal?: { readonly userId: string; readonly email: string };
 }

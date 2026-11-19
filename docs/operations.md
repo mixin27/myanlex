@@ -107,3 +107,29 @@ DATABASE_URL='<database connection>' MYANLEX_AUDIT_RETENTION_DAYS=365 pnpm audit
 - Each run deletes up to 50,000 rows, in batches of 500 using `SKIP LOCKED`.
   Rerun it to clear a larger backlog.
 - Backups keep their own retention.
+
+## Usage statements and ledger retention
+
+Billable usage is recorded in the `usage_events` ledger (see
+[0023](decisions/0023-billing-grade-usage-metering.md)). Schedule both jobs
+daily, close first:
+
+```sh
+DATABASE_URL='<database connection>' pnpm usage:close-month
+DATABASE_URL='<database connection>' MYANLEX_USAGE_RETENTION_MONTHS=13 pnpm usage:cleanup
+```
+
+- `usage:close-month` writes an immutable statement for every organization and
+  month that ended more than an hour ago and has none. It is idempotent.
+- It exits with status 2 and lists the organizations and months whose ledger
+  totals differ from the quota counter. The month metering was first deployed is
+  expected to differ, because its counter already held earlier reservations. Any
+  other mismatch means a reservation was written without its ledger row, or a
+  row was removed outside cleanup: investigate before billing that month.
+- `usage:cleanup` deletes ledger rows for closed months older than the retention
+  period, in batches of 500 using `SKIP LOCKED`, up to 50,000 rows per run. The
+  retention value must be an integer of at least 13; the default is 13. Set the
+  same value for the API, which uses it to refuse CSV downloads for expired
+  months with 410. Statements are kept permanently.
+- If the database is unavailable, API-key and playground requests return 503
+  rather than running unmetered.

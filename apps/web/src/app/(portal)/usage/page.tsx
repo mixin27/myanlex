@@ -2,8 +2,11 @@ import Link from 'next/link';
 import {
   loadUsageContext,
   readUsageReport,
+  readUsageStatement,
+  recentMonths,
   type UsageSelection,
 } from '@/lib/usage-server';
+import { UsageStatementPanel } from '@/components/usage/usage-statement';
 import { validateUsageDates } from '@/lib/usage-range';
 import { OrganizationPicker } from '@/components/workspace/organization-picker';
 import { ProjectPicker } from '@/components/workspace/project-picker';
@@ -28,6 +31,10 @@ export default async function UsagePage({
     projectChoices,
     canRead,
   } = await loadUsageContext(params);
+  // The statement covers the whole workspace, so it needs only usage.read.
+  const statement = organization?.permissions.includes('usage.read')
+    ? await readUsageStatement(organization.id, params.month)
+    : null;
   const today = new Date().toISOString().slice(0, 10);
   const issue = validateUsageDates(params.from, params.to, today);
   const report =
@@ -39,12 +46,14 @@ export default async function UsagePage({
           params.to,
         )
       : null;
+  const currentMonth = new Date().toISOString().slice(0, 7);
   return (
     <div className="space-y-6">
       <header className="page-heading">
         <h1>Usage</h1>
         <p>
-          Understand your project’s recorded API activity, one day at a time.
+          Your workspace’s billable monthly statement, and each project’s daily
+          API activity.
         </p>
       </header>
       <div className="flex flex-wrap gap-3">
@@ -87,6 +96,31 @@ export default async function UsagePage({
           </Link>
         )}
       </nav>
+      {statement && (
+        <UsageStatementPanel
+          statement={statement}
+          months={recentMonths(
+            statement.month > currentMonth ? statement.month : currentMonth,
+          )}
+          selection={{
+            ...(organization ? { organization: organization.id } : {}),
+            ...(project ? { project: project.id } : {}),
+            ...(params.from && params.to
+              ? { from: params.from, to: params.to }
+              : {}),
+          }}
+        />
+      )}
+      {organization && project && canRead && (
+        <div>
+          <h2 className="font-semibold">Daily activity</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Each project’s requests by day, recorded after each response. Use it
+            to spot errors and trends; the monthly statement is the billable
+            total.
+          </p>
+        </div>
+      )}
       {organization && project && canRead ? (
         <UsageFilters
           key={`${organization.id}-${project.id}-${params.from}-${params.to}`}
