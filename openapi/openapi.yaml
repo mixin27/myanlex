@@ -1139,6 +1139,51 @@ paths:
           $ref: '#/components/responses/InternalError'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getBillingOverview
+      summary:
+        Read the workspace plan, this month's estimate and plan history
+        (billing.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required; API keys are not accepted. Non-members receive
+        404 and members without billing.read receive 403. Read-only: plans are
+        assigned by operators with `pnpm billing:assign`, and there is no
+        self-service plan change or payment yet. A month is billed on the plan
+        in effect at its end, without proration; `currentMonth.charges` is an
+        estimate on the current plan. Amounts are decimal strings in the plan
+        currency's minor units.
+      responses:
+        '200':
+          description: Billing overview.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: 'private, no-store' }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /platform/organizations/{organizationId}/usage-statements:
     parameters:
       - name: organizationId
@@ -2371,6 +2416,7 @@ components:
         - invitation.revoked
         - invitation.accepted
         - ownership.transferred
+        - billing.plan_changed
     AuditEvent:
       type: object
       additionalProperties: false
@@ -2431,6 +2477,7 @@ components:
           counter,
           reconciled,
           plan,
+          charges,
           lines,
           ledgerAvailable,
         ]
@@ -2471,16 +2518,20 @@ components:
           type: boolean
           description: True when ledger totals equal the quota counter.
         plan:
-          type: object
-          additionalProperties: false
-          description:
+          allOf:
+            - $ref: '#/components/schemas/PlanTermsPartial'
+          description: |
             Plan in effect at the end of the month, or now for the open month.
-          required: [name, slug, monthlyRequestLimit, monthlyCharacterLimit]
-          properties:
-            name: { type: string }
-            slug: { type: string }
-            monthlyRequestLimit: { type: [string, 'null'] }
-            monthlyCharacterLimit: { type: [string, 'null'] }
+            Statements closed before plan pricing hold only name, slug and the
+            two limits.
+        charges:
+          description: |
+            Charges on that plan: an estimate (`estimated: true`) while the
+            month is open, fixed once closed. Null for months closed before plan
+            pricing existed.
+          oneOf:
+            - $ref: '#/components/schemas/Charges'
+            - type: 'null'
         lines:
           type: array
           items:
@@ -2662,11 +2713,197 @@ components:
     QuotaDimension:
       type: object
       additionalProperties: false
-      required: [used, limit, remaining]
+      required: [used, limit, remaining, ceiling, overage]
       properties:
         used: { type: string, pattern: '^(0|[1-9][0-9]*)$' }
-        limit: { type: [string, 'null'], pattern: '^(0|[1-9][0-9]*)$' }
+        limit:
+          type: [string, 'null']
+          pattern: '^(0|[1-9][0-9]*)$'
+          description:
+            Monthly allowance included in the plan; null is unlimited.
         remaining: { type: [string, 'null'], pattern: '^(0|[1-9][0-9]*)$' }
+        ceiling:
+          type: [string, 'null']
+          pattern: '^(0|[1-9][0-9]*)$'
+          description:
+            Count at which admission stops when enforcement is on. The allowance
+            on block plans; the overage ceiling (null for none) on allow plans.
+        overage:
+          $ref: '#/components/schemas/DecimalCount'
+          description: Usage above the allowance.
+    MinorAmount:
+      type: string
+      description:
+        Non-negative integer amount in the currency's minor units, as a decimal
+        string, using the currency's standard digits (MMK 0, USD 2).
+      pattern: '^(0|[1-9][0-9]*)$'
+    PlanTerms:
+      type: object
+      description: Plan terms. Responses may add fields such as source.
+      required:
+        [
+          name,
+          slug,
+          monthlyRequestLimit,
+          monthlyCharacterLimit,
+          currency,
+          baseFeeMinor,
+          overageMode,
+          requestBlock,
+          requestBlockPriceMinor,
+          characterBlock,
+          characterBlockPriceMinor,
+          requestCeiling,
+          characterCeiling,
+        ]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        monthlyRequestLimit:
+          type: [string, 'null']
+          description: Requests included each month; null is unlimited.
+        monthlyCharacterLimit:
+          type: [string, 'null']
+          description: Characters included each month; null is unlimited.
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        baseFeeMinor: { $ref: '#/components/schemas/MinorAmount' }
+        overageMode:
+          type: string
+          enum: [block, allow]
+          description:
+            block refuses requests at the allowance; allow bills usage above it
+            per started block, up to the ceilings.
+        requestBlock: { $ref: '#/components/schemas/DecimalCount' }
+        requestBlockPriceMinor: { $ref: '#/components/schemas/MinorAmount' }
+        characterBlock: { $ref: '#/components/schemas/DecimalCount' }
+        characterBlockPriceMinor: { $ref: '#/components/schemas/MinorAmount' }
+        requestCeiling: { type: [string, 'null'] }
+        characterCeiling: { type: [string, 'null'] }
+    PlanTermsPartial:
+      type: object
+      additionalProperties: false
+      required: [name, slug, monthlyRequestLimit, monthlyCharacterLimit]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        monthlyRequestLimit:
+          type: [string, 'null']
+          description: Requests included each month; null is unlimited.
+        monthlyCharacterLimit:
+          type: [string, 'null']
+          description: Characters included each month; null is unlimited.
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        baseFeeMinor: { $ref: '#/components/schemas/MinorAmount' }
+        overageMode:
+          type: string
+          enum: [block, allow]
+          description:
+            block refuses requests at the allowance; allow bills usage above it
+            per started block, up to the ceilings.
+        requestBlock: { $ref: '#/components/schemas/DecimalCount' }
+        requestBlockPriceMinor: { $ref: '#/components/schemas/MinorAmount' }
+        characterBlock: { $ref: '#/components/schemas/DecimalCount' }
+        characterBlockPriceMinor: { $ref: '#/components/schemas/MinorAmount' }
+        requestCeiling: { type: [string, 'null'] }
+        characterCeiling: { type: [string, 'null'] }
+    OverageLine:
+      type: object
+      additionalProperties: false
+      required: [units, blocks, blockSize, blockPriceMinor, amountMinor]
+      properties:
+        units:
+          $ref: '#/components/schemas/DecimalCount'
+          description: Usage above the allowance.
+        blocks:
+          $ref: '#/components/schemas/DecimalCount'
+          description: Started blocks charged, ceil(units / blockSize).
+        blockSize: { $ref: '#/components/schemas/DecimalCount' }
+        blockPriceMinor: { $ref: '#/components/schemas/MinorAmount' }
+        amountMinor: { $ref: '#/components/schemas/MinorAmount' }
+    Charges:
+      type: object
+      additionalProperties: false
+      required:
+        [currency, baseFeeMinor, requests, characters, totalMinor, estimated]
+      properties:
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        baseFeeMinor: { $ref: '#/components/schemas/MinorAmount' }
+        requests: { $ref: '#/components/schemas/OverageLine' }
+        characters: { $ref: '#/components/schemas/OverageLine' }
+        totalMinor: { $ref: '#/components/schemas/MinorAmount' }
+        estimated:
+          type: boolean
+          description: True while the month is open and may still change.
+    BillingOverview:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          organizationId,
+          generatedAt,
+          plan,
+          currentMonth,
+          subscriptions,
+          publicPlans,
+        ]
+      properties:
+        organizationId: { type: string, format: uuid }
+        generatedAt: { type: string, format: date-time }
+        plan:
+          allOf:
+            - $ref: '#/components/schemas/PlanTerms'
+          type: object
+          required: [source, description]
+          properties:
+            source: { type: string, enum: [subscription, free] }
+            description: { type: [string, 'null'] }
+        currentMonth:
+          type: object
+          additionalProperties: false
+          required: [month, timezone, totals, charges]
+          properties:
+            month: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+            timezone: { type: string, const: UTC }
+            totals:
+              type: object
+              additionalProperties: false
+              required: [requests, characters]
+              properties:
+                requests: { $ref: '#/components/schemas/DecimalCount' }
+                characters: { $ref: '#/components/schemas/DecimalCount' }
+            charges: { $ref: '#/components/schemas/Charges' }
+        subscriptions:
+          type: array
+          description:
+            Plan periods, newest first. Gaps mean the Free plan applied.
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, plan, startsAt, endsAt, status, note]
+            properties:
+              id: { type: string, format: uuid }
+              plan:
+                type: object
+                additionalProperties: false
+                required: [name, slug]
+                properties:
+                  name: { type: string }
+                  slug: { type: string }
+              startsAt: { type: string, format: date-time }
+              endsAt: { type: [string, 'null'], format: date-time }
+              status:
+                type: string
+                enum: [current, scheduled, ended]
+              note: { type: [string, 'null'] }
+        publicPlans:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/PlanTerms'
+            type: object
+            required: [description]
+            properties:
+              description: { type: [string, 'null'] }
     QuotaReport:
       type: object
       additionalProperties: false
@@ -2694,11 +2931,12 @@ components:
         plan:
           type: object
           additionalProperties: false
-          required: [name, slug, source]
+          required: [name, slug, source, overageMode]
           properties:
             name: { type: string }
             slug: { type: string }
             source: { type: string, enum: [subscription, free] }
+            overageMode: { type: string, enum: [block, allow] }
         requests:
           $ref: '#/components/schemas/QuotaDimension'
         characters:

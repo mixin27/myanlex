@@ -31,9 +31,21 @@ const report: QuotaReport = {
   periodStart: '2026-09-01T00:00:00Z',
   resetsAt: '2026-10-01T00:00:00Z',
   metering: 'admission-reservations',
-  plan: { name: 'Free', slug: 'free', source: 'free' },
-  requests: { used: '12', limit: '10', remaining: '0' },
-  characters: { used: '9007199254740993', limit: null, remaining: null },
+  plan: { name: 'Free', slug: 'free', source: 'free', overageMode: 'block' },
+  requests: {
+    used: '12',
+    limit: '10',
+    remaining: '0',
+    ceiling: '10',
+    overage: '2',
+  },
+  characters: {
+    used: '9007199254740993',
+    limit: null,
+    remaining: null,
+    ceiling: null,
+    overage: '0',
+  },
 };
 describe('dashboard quotas without browser automation', () => {
   beforeEach(() => {
@@ -63,13 +75,33 @@ describe('dashboard quotas without browser automation', () => {
     expect(html).toContain('Usage is still counted');
     expect(html).not.toContain('Allowance exhausted');
   });
+  it('describes billed overage and the ceiling on overage plans', () => {
+    const html = renderToStaticMarkup(
+      <QuotaSummary
+        report={{
+          ...report,
+          plan: { ...report.plan, overageMode: 'allow' },
+          requests: { ...report.requests, ceiling: '50' },
+        }}
+      />,
+    );
+    expect(html).toContain('2 over the allowance · billed as overage');
+    expect(html).toContain('up to a ceiling of 50');
+    expect(html).not.toContain('Allowance exhausted');
+  });
   it('handles zero limits without division by zero', () => {
     expect(
       renderToStaticMarkup(
         <QuotaSummary
           report={{
             ...report,
-            requests: { used: '0', limit: '0', remaining: '0' },
+            requests: {
+              used: '0',
+              limit: '0',
+              remaining: '0',
+              ceiling: '0',
+              overage: '0',
+            },
           }}
         />,
       ),

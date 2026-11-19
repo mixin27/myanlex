@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, type Prisma } from '../../generated/prisma/client.js';
+import { Prisma, PrismaClient } from '../../generated/prisma/client.js';
+import {
+  enforcedLimits,
+  type PlanTerms,
+} from '../../common/billing/pricing.js';
 import { quotaPeriod } from '../../common/quota/quota-period.js';
 import type {
   MeterInput,
@@ -10,44 +14,49 @@ import type {
   QuotaSnapshot,
 } from '../../common/quota/quota.repository.js';
 
+const planColumns = Prisma.sql`
+  p.name, p.slug, p.monthly_request_limit AS "monthlyRequestLimit",
+  p.monthly_character_limit AS "monthlyCharacterLimit", p.currency,
+  p.base_fee_minor AS "baseFeeMinor", p.overage_mode AS "overageMode",
+  p.request_block AS "requestBlock",
+  p.request_block_price_minor AS "requestBlockPriceMinor",
+  p.character_block AS "characterBlock",
+  p.character_block_price_minor AS "characterBlockPriceMinor",
+  p.request_ceiling AS "requestCeiling", p.character_ceiling AS "characterCeiling"`;
+
+/** Plan terms in effect for an organization at `now` (Free without a subscription). */
 export async function readPlan(
   tx: Prisma.TransactionClient,
   organizationId: string,
   now: Date,
-) {
-  const subscriptions = await tx.$queryRaw<
-    {
-      name: string;
-      slug: string;
-      monthlyRequestLimit: bigint | null;
-      monthlyCharacterLimit: bigint | null;
-    }[]
-  >`
-    SELECT p.name, p.slug, p.monthly_request_limit AS "monthlyRequestLimit",
-           p.monthly_character_limit AS "monthlyCharacterLimit"
+): Promise<PlanTerms & { source: 'subscription' | 'free' }> {
+  const subscriptions = await tx.$queryRaw<PlanTerms[]>`
+    SELECT ${planColumns}
     FROM subscriptions s JOIN plans p ON p.id = s.plan_id
     WHERE s.organization_id = ${organizationId}::uuid AND s.status = 'active'
       AND s.starts_at <= ${now.toISOString()}::timestamptz
       AND (s.ends_at IS NULL OR s.ends_at > ${now.toISOString()}::timestamptz)
     LIMIT 2`;
+  // The subscriptions_no_overlap constraint prevents this; kept as a guard.
   if (subscriptions.length > 1)
     throw new Error('Ambiguous active subscription');
   const plan =
     subscriptions[0] ??
-    (await tx.plan.findUniqueOrThrow({ where: { slug: 'free' } }));
+    (
+      await tx.$queryRaw<PlanTerms[]>`
+        SELECT ${planColumns} FROM plans p WHERE p.slug = 'free'`
+    )[0];
+  if (!plan) throw new Error('Free plan missing');
   if (
     (plan.monthlyRequestLimit !== null && plan.monthlyRequestLimit < 0n) ||
     (plan.monthlyCharacterLimit !== null && plan.monthlyCharacterLimit < 0n)
   )
     throw new Error('Invalid plan limits');
   return {
-    name: plan.name,
-    slug: plan.slug,
-    source: subscriptions.length
-      ? ('subscription' as const)
-      : ('free' as const),
-    monthlyRequestLimit: plan.monthlyRequestLimit,
-    monthlyCharacterLimit: plan.monthlyCharacterLimit,
+    ...plan,
+    currency: plan.currency.trim(),
+    overageMode: plan.overageMode === 'allow' ? 'allow' : 'block',
+    source: subscriptions.length ? 'subscription' : 'free',
   };
 }
 
@@ -93,8 +102,10 @@ export class PrismaQuotaRepository
         const organizationId = project.organizationId;
         // Unenforced requests are still metered; only the limit check is skipped.
         const plan = enforce ? await readPlan(tx, organizationId, now) : null;
-        const requestLimit = plan?.monthlyRequestLimit ?? null;
-        const characterLimit = plan?.monthlyCharacterLimit ?? null;
+        // Block plans stop at the allowance; overage plans at their ceiling.
+        const limits = plan ? enforcedLimits(plan) : null;
+        const requestLimit = limits?.requests ?? null;
+        const characterLimit = limits?.characters ?? null;
 
         // INSERT and guarded UPDATE serialize on the same organization/month row.
         // Both dimensions are reserved together; a denied request spends neither.

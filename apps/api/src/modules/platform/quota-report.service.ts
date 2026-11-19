@@ -6,6 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { QUOTAS_ENABLED } from '../../common/tokens.js';
+import { enforcedLimits } from '../../common/billing/pricing.js';
 import {
   QUOTA_REPOSITORY,
   type QuotaRepository,
@@ -15,12 +16,22 @@ import {
   type WorkspaceRepository,
 } from './workspace.repository.js';
 
-export function quotaDimension(used: bigint, limit: bigint | null) {
+/**
+ * `limit` is the plan allowance. On overage plans, `ceiling` is where
+ * admission stops and `overage` is usage billed above the allowance.
+ */
+export function quotaDimension(
+  used: bigint,
+  limit: bigint | null,
+  ceiling: bigint | null = limit,
+) {
   return {
     used: used.toString(),
     limit: limit?.toString() ?? null,
     remaining:
       limit === null ? null : (limit > used ? limit - used : 0n).toString(),
+    ceiling: ceiling?.toString() ?? null,
+    overage: limit === null || used <= limit ? '0' : (used - limit).toString(),
   };
 }
 
@@ -46,6 +57,7 @@ export class QuotaReportService {
         'Quota reporting is temporarily unavailable.',
       );
     });
+    const enforced = enforcedLimits(snapshot.plan);
     return {
       organizationId,
       enforcementEnabled: this.enabled,
@@ -58,14 +70,17 @@ export class QuotaReportService {
         name: snapshot.plan.name,
         slug: snapshot.plan.slug,
         source: snapshot.plan.source,
+        overageMode: snapshot.plan.overageMode,
       },
       requests: quotaDimension(
         snapshot.requestCount,
         snapshot.plan.monthlyRequestLimit,
+        enforced.requests,
       ),
       characters: quotaDimension(
         snapshot.characterCount,
         snapshot.plan.monthlyCharacterLimit,
+        enforced.characters,
       ),
     };
   }

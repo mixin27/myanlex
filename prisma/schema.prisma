@@ -282,14 +282,28 @@ model PlaygroundRun {
 }
 
 model Plan {
-  id                    String         @id @default(uuid()) @db.Uuid
-  name                  String         @db.VarChar(80)
-  slug                  String         @unique @db.VarChar(80)
-  monthlyRequestLimit   BigInt?        @map("monthly_request_limit")
-  monthlyCharacterLimit BigInt?        @map("monthly_character_limit")
-  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
-  subscriptions         Subscription[]
+  id                       String         @id @default(uuid()) @db.Uuid
+  name                     String         @db.VarChar(80)
+  slug                     String         @unique @db.VarChar(80)
+  monthlyRequestLimit      BigInt?        @map("monthly_request_limit")
+  monthlyCharacterLimit    BigInt?        @map("monthly_character_limit")
+  /// ISO 4217 code; every amount on the plan is in this currency's minor units.
+  currency                 String         @default("MMK") @db.Char(3)
+  baseFeeMinor             BigInt         @default(0) @map("base_fee_minor")
+  /// `block` denies at the allowance; `allow` bills overage up to the ceilings.
+  overageMode              String         @default("block") @map("overage_mode") @db.VarChar(16)
+  requestBlock             BigInt         @default(1000) @map("request_block")
+  requestBlockPriceMinor   BigInt         @default(0) @map("request_block_price_minor")
+  characterBlock           BigInt         @default(100000) @map("character_block")
+  characterBlockPriceMinor BigInt         @default(0) @map("character_block_price_minor")
+  requestCeiling           BigInt?        @map("request_ceiling")
+  characterCeiling         BigInt?        @map("character_ceiling")
+  public                   Boolean        @default(false)
+  description              String?        @db.VarChar(500)
+  archivedAt               DateTime?      @map("archived_at") @db.Timestamptz(3)
+  createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  subscriptions            Subscription[]
 
   @@map("plans")
 }
@@ -301,6 +315,8 @@ model Subscription {
   status         String       @db.VarChar(40)
   startsAt       DateTime     @map("starts_at") @db.Timestamptz(3)
   endsAt         DateTime?    @map("ends_at") @db.Timestamptz(3)
+  assignedBy     String?      @map("assigned_by") @db.VarChar(320)
+  note           String?      @db.VarChar(500)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -385,6 +401,8 @@ model UsageStatement {
   reconciled        Boolean
   plan              Json
   breakdown         Json
+  /// Priced charges; null for months closed before plan pricing existed.
+  charges           Json?
   closedAt          DateTime     @default(now()) @map("closed_at") @db.Timestamptz(3)
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 

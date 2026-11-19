@@ -70,6 +70,7 @@ async function fixture(
       startsAt: new Date('2020-01-01T00:00:00Z'),
     })),
   });
+  const plans = new Set([plan.id]);
   return {
     client,
     repositories,
@@ -77,6 +78,28 @@ async function fixture(
     other,
     plan,
     projects,
+    /**
+     * Moves both tenants to a plan with new limits. Plan terms are immutable
+     * once subscribed (0024), so a plan change is a new plan.
+     */
+    async switchPlan(
+      monthlyRequestLimit: bigint | null,
+      monthlyCharacterLimit: bigint | null,
+    ) {
+      const next = await client.plan.create({
+        data: {
+          name: 'Quota fixture',
+          slug: `quota-${randomUUID()}`,
+          monthlyRequestLimit,
+          monthlyCharacterLimit,
+        },
+      });
+      plans.add(next.id);
+      await client.subscription.updateMany({
+        where: { organizationId: { in: [organization.id, other.id] } },
+        data: { planId: next.id },
+      });
+    },
     async cleanup() {
       await client.apiUsage.deleteMany({
         where: {
@@ -86,7 +109,7 @@ async function fixture(
       await client.organization.deleteMany({
         where: { id: { in: [organization.id, other.id] } },
       });
-      await client.plan.delete({ where: { id: plan.id } });
+      await client.plan.deleteMany({ where: { id: { in: [...plans] } } });
       await Promise.all([
         client.$disconnect(),
         ...repositories.map((repository) => repository.onApplicationShutdown()),
@@ -205,32 +228,29 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
           where: { organizationId: f.organization.id },
         }),
       ).toMatchObject({ requestCount: 1n, characterCount: 3n });
-      await f.client.plan.update({
-        where: { id: f.plan.id },
-        data: { monthlyCharacterLimit: null, monthlyRequestLimit: 2n },
-      });
+      await f.switchPlan(2n, null);
       expect((await consume(repository, projectId, 100)).allowed).toBe(true);
       expect((await consume(repository, projectId, 0)).allowed).toBe(false);
-      await f.client.plan.update({
-        where: { id: f.plan.id },
-        data: { monthlyRequestLimit: 0n },
-      });
+      await f.switchPlan(0n, null);
       expect((await consume(repository, f.projects[2]!.id, 0)).allowed).toBe(
         false,
       );
-      await f.client.plan.update({
-        where: { id: f.plan.id },
-        data: { monthlyRequestLimit: -1n },
-      });
-      await expect(consume(repository, projectId, 0)).rejects.toThrow(
-        'Invalid plan limits',
-      );
+      // Limits cannot be negative (plans_amounts_check).
+      await expect(
+        f.client.plan.create({
+          data: {
+            name: 'Invalid',
+            slug: `quota-${randomUUID()}`,
+            monthlyRequestLimit: -1n,
+          },
+        }),
+      ).rejects.toThrow();
     } finally {
       await f.cleanup();
     }
   });
 
-  it('uses Free without a current active subscription, ignores past months, and refuses ambiguous subscriptions', async () => {
+  it('uses Free without a current active subscription, ignores past months, and forbids overlapping subscriptions', async () => {
     const f = await fixture(0n, 0n);
     try {
       await f.client.subscription.updateMany({
@@ -263,17 +283,18 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
       expect((await consume(repository, f.projects[0]!.id, 0)).allowed).toBe(
         false,
       );
-      await f.client.subscription.createMany({
-        data: [1, 2].map(() => ({
-          organizationId: f.organization.id,
-          planId: f.plan.id,
-          status: 'active',
-          startsAt: new Date('2020-01-01T00:00:00Z'),
-        })),
-      });
-      await expect(consume(repository, f.projects[0]!.id, 0)).rejects.toThrow(
-        'Ambiguous active subscription',
-      );
+      // The subscriptions_no_overlap constraint replaces the runtime
+      // ambiguity check as the guarantee of one plan per instant.
+      await expect(
+        f.client.subscription.createMany({
+          data: [1, 2].map(() => ({
+            organizationId: f.organization.id,
+            planId: f.plan.id,
+            status: 'active',
+            startsAt: new Date('2020-01-01T00:00:00Z'),
+          })),
+        }),
+      ).rejects.toThrow();
     } finally {
       await f.cleanup();
     }
@@ -388,10 +409,9 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
       } finally {
         await disabled.close();
       }
-      await f.client.plan.update({
-        where: { id: f.plan.id },
-        data: { monthlyRequestLimit: -1n },
-      });
+      const failing = vi
+        .spyOn(PrismaQuotaRepository.prototype, 'meter')
+        .mockRejectedValueOnce(new Error('database unavailable'));
       const unavailable = await app.inject({
         method: 'POST',
         url: '/v1/text/normalize',
@@ -400,6 +420,7 @@ describe.skipIf(!databaseUrl)('Durable organization quotas', () => {
       });
       expect(unavailable.statusCode).toBe(503);
       expect(unavailable.json().code).toBe('service_unavailable');
+      failing.mockRestore();
     } finally {
       await app.close();
       await f.cleanup();

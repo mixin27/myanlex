@@ -1,5 +1,6 @@
 import type { UsageStatement } from '@/lib/platform-types';
 import { formatUsageCount } from '@/lib/usage-range';
+import { ChargesTable } from '@/components/billing/charges';
 import {
   Table,
   TableBody,
@@ -110,6 +111,32 @@ export function UsageStatementPanel({
           </dd>
         </div>
       </dl>
+
+      <div className="rounded-lg border bg-background p-4">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-medium">Charges</h3>
+          {statement.charges?.estimated && (
+            <span className="rounded-full border px-2 py-0.5 text-xs">
+              Estimate
+            </span>
+          )}
+        </div>
+        {statement.charges ? (
+          <>
+            <ChargesTable charges={statement.charges} />
+            {statement.charges.estimated && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Priced on the current plan; the final amount is fixed when the
+                month closes, on the plan in effect at the end of the month.
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Not priced: this month closed before plan pricing was available.
+          </p>
+        )}
+      </div>
 
       {statement.lines.length === 0 ? (
         <p className="text-sm text-muted-foreground">
