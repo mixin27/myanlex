@@ -1,0 +1,10 @@
+# Example configuration for the flutter_launcher_icons package. Copy the
+# images from packages/brand/assets/mobile into the app (here assets/brand/).
+flutter_launcher_icons:
+  image_path: "assets/brand/app-icon-1024.png"
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/brand/adaptive-foreground-1024.png"
+  adaptive_icon_monochrome: "assets/brand/adaptive-monochrome-1024.png"

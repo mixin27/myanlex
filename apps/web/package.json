@@ -15,6 +15,7 @@
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@myanlex/application": "workspace:*",
+    "@myanlex/brand": "workspace:*",
     "@myanlex/playground": "workspace:*",
     "@tanstack/react-table": "^9.2.4",
     "better-auth": "^1.7.25",

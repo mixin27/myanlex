@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/mixin27/myanlex/main/packages/brand/assets/kit/lockup.png" alt="MyanLex" height="40">
+
 # MyanLex Python SDK
 
 Unpublished preview, Python 3.10+. The proposed distribution name is

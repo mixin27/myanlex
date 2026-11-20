@@ -1,4 +1,9 @@
-# MyanLex
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="packages/brand/src/svg/lockup-dark.svg">
+    <img src="packages/brand/src/svg/lockup.svg" alt="MyanLex" height="56">
+  </picture>
+</h1>
 
 [![CI](https://github.com/mixin27/myanlex/actions/workflows/ci.yml/badge.svg)](https://github.com/mixin27/myanlex/actions/workflows/ci.yml)
 
