@@ -18,6 +18,7 @@ COPY packages/core/package.json packages/core/package.json
 COPY packages/application/package.json packages/application/package.json
 COPY packages/playground/package.json packages/playground/package.json
 COPY packages/sdk/package.json packages/sdk/package.json
+COPY packages/brand/package.json packages/brand/package.json
 RUN --mount=type=cache,id=myanlex-pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts --store-dir=/pnpm/store
 COPY . .
 ARG MYANLEX_BUILD_ID=development
