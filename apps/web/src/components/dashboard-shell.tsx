@@ -121,9 +121,13 @@ export function DashboardShell({
                   render={<Link href="/dashboard" />}
                   tooltip="MyanLex overview"
                 >
-                  <LogoMark size={32} title="" className="shrink-0" />
+                  <LogoMark size={32} title="" className="size-8! shrink-0" />
                   <span className="grid gap-1">
-                    <Wordmark height={17} title="MyanLex" />
+                    <Wordmark
+                      height={17}
+                      title="MyanLex"
+                      className="h-[17px]! w-auto!"
+                    />
                     <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                       Developer console
                     </span>
