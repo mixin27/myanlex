@@ -55,6 +55,9 @@ refreshed in November 2026:
   the changed Map/type/deepmergeInto interfaces. Revalidate Prisma generation,
   migrations, and seeding when changing it. Remove the override when upstream
   adopts a patched version.
+- `@prisma/config>effect` 3.22.4 within major 3, for the
+  `Schema.TemplateLiteral` ReDoS (GHSA-7589-6fvf-x4pw). Prisma pins 3.20.0;
+  remove the override when it adopts a patched version.
 
 An empty audit reports only known advisories, not proof of security.
 

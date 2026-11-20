@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/mixin27/myanlex/main/packages/brand/assets/kit/lockup.png" alt="MyanLex" height="40">
+
 # myanlex_dart
 
 Typed HTTP SDK for MyanLex language processing. Requires Dart 3.13.1 or newer

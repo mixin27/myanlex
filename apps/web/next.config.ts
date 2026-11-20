@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  transpilePackages: ['@myanlex/brand'],
   outputFileTracingRoot: resolve(process.cwd(), '../..'),
   async rewrites() {
     return [

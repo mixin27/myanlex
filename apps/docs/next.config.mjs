@@ -8,6 +8,7 @@ const config = {
   output: 'standalone',
   outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
   reactStrictMode: true,
+  transpilePackages: ['@myanlex/brand'],
 };
 
 export default withMDX(config);

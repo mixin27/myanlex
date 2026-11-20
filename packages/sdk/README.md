@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/mixin27/myanlex/main/packages/brand/assets/kit/lockup.png" alt="MyanLex" height="40">
+
 # @myanlex/sdk
 
 Thin, typed ESM client for the MyanLex HTTP language API. Uses native `fetch`;

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Logo } from '@myanlex/brand/logo';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
@@ -135,112 +136,121 @@ export function AuthForm({
 
   return (
     <main className="grid min-h-screen place-items-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>
-            <h1>{titles[mode]}</h1>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!enabled && (
-            <p role="alert">
-              Sign-in is currently unavailable. Please try again later.
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="text-destructive">
-              {error}
-            </p>
-          )}
-          {message && <p role="status">{message}</p>}
-          <form onSubmit={submit} className="space-y-4">
-            {mode === 'register' && (
-              <label className="grid gap-2">
-                Name
-                <Input
-                  name="name"
-                  autoComplete="name"
-                  required
-                  maxLength={120}
-                />
-              </label>
+      <div className="grid w-full max-w-md gap-6">
+        <Link
+          href="/"
+          className="justify-self-center"
+          aria-label="MyanLex home"
+        >
+          <Logo height={32} title="" />
+        </Link>
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>
+              <h1>{titles[mode]}</h1>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!enabled && (
+              <p role="alert">
+                Sign-in is currently unavailable. Please try again later.
+              </p>
             )}
-            {mode !== 'reset-password' && (
-              <label className="grid gap-2">
-                Email
-                <Input
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  maxLength={320}
-                />
-              </label>
+            {error && (
+              <p role="alert" className="text-destructive">
+                {error}
+              </p>
             )}
-            {(mode === 'login' ||
-              mode === 'register' ||
-              mode === 'reset-password') && (
-              <label className="grid gap-2">
-                Password
-                <Input
-                  name="password"
-                  type="password"
-                  autoComplete={
-                    mode === 'login' ? 'current-password' : 'new-password'
-                  }
-                  required
-                  minLength={mode === 'login' ? 1 : 12}
-                  maxLength={128}
-                />
-                {mode !== 'login' && (
-                  <span className="text-sm text-muted-foreground">
-                    Use at least 12 characters.
-                  </span>
-                )}
-              </label>
-            )}
-            <Button
-              type="submit"
-              disabled={busy || !enabled}
-              className="w-full"
-            >
-              {busy
-                ? 'Please wait…'
-                : mode === 'login'
-                  ? 'Sign in'
-                  : 'Continue'}
-            </Button>
-          </form>
-          {mode === 'login' &&
-            providers.map((provider) => (
+            {message && <p role="status">{message}</p>}
+            <form onSubmit={submit} className="space-y-4">
+              {mode === 'register' && (
+                <label className="grid gap-2">
+                  Name
+                  <Input
+                    name="name"
+                    autoComplete="name"
+                    required
+                    maxLength={120}
+                  />
+                </label>
+              )}
+              {mode !== 'reset-password' && (
+                <label className="grid gap-2">
+                  Email
+                  <Input
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    maxLength={320}
+                  />
+                </label>
+              )}
+              {(mode === 'login' ||
+                mode === 'register' ||
+                mode === 'reset-password') && (
+                <label className="grid gap-2">
+                  Password
+                  <Input
+                    name="password"
+                    type="password"
+                    autoComplete={
+                      mode === 'login' ? 'current-password' : 'new-password'
+                    }
+                    required
+                    minLength={mode === 'login' ? 1 : 12}
+                    maxLength={128}
+                  />
+                  {mode !== 'login' && (
+                    <span className="text-sm text-muted-foreground">
+                      Use at least 12 characters.
+                    </span>
+                  )}
+                </label>
+              )}
               <Button
-                key={provider}
-                variant="outline"
-                className="w-full"
+                type="submit"
                 disabled={busy || !enabled}
-                onClick={() => social(provider)}
+                className="w-full"
               >
-                Continue with {provider === 'github' ? 'GitHub' : 'Google'}
+                {busy
+                  ? 'Please wait…'
+                  : mode === 'login'
+                    ? 'Sign in'
+                    : 'Continue'}
               </Button>
-            ))}
-          <nav
-            className="flex flex-wrap gap-4 text-sm underline"
-            aria-label="Account help"
-          >
-            {mode !== 'login' && <Link href="/login">Sign in</Link>}
-            {mode === 'login' && (
-              <>
-                <Link href="/register">Create account</Link>
-                <Link href="/forgot-password">Forgot password?</Link>
-                <Link href="/verify-email">Resend verification</Link>
-              </>
-            )}
-            {mode === 'reset-password' && (
-              <Link href="/forgot-password">Request a new reset link</Link>
-            )}
-          </nav>
-        </CardContent>
-      </Card>
+            </form>
+            {mode === 'login' &&
+              providers.map((provider) => (
+                <Button
+                  key={provider}
+                  variant="outline"
+                  className="w-full"
+                  disabled={busy || !enabled}
+                  onClick={() => social(provider)}
+                >
+                  Continue with {provider === 'github' ? 'GitHub' : 'Google'}
+                </Button>
+              ))}
+            <nav
+              className="flex flex-wrap gap-4 text-sm underline"
+              aria-label="Account help"
+            >
+              {mode !== 'login' && <Link href="/login">Sign in</Link>}
+              {mode === 'login' && (
+                <>
+                  <Link href="/register">Create account</Link>
+                  <Link href="/forgot-password">Forgot password?</Link>
+                  <Link href="/verify-email">Resend verification</Link>
+                </>
+              )}
+              {mode === 'reset-password' && (
+                <Link href="/forgot-password">Request a new reset link</Link>
+              )}
+            </nav>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }
