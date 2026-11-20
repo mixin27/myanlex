@@ -46,8 +46,13 @@ export interface UsageReport {
 
 export interface QuotaDimension {
   used: string;
+  /** Monthly allowance included in the plan. */
   limit: string | null;
   remaining: string | null;
+  /** Where admission stops: the allowance, or an overage plan's ceiling. */
+  ceiling: string | null;
+  /** Usage above the allowance (billed on overage plans). */
+  overage: string;
 }
 export interface QuotaReport {
   organizationId: string;
@@ -57,9 +62,71 @@ export interface QuotaReport {
   periodStart: string;
   resetsAt: string;
   metering: 'admission-reservations';
-  plan: { name: string; slug: string; source: 'subscription' | 'free' };
+  plan: {
+    name: string;
+    slug: string;
+    source: 'subscription' | 'free';
+    overageMode: OverageMode;
+  };
   requests: QuotaDimension;
   characters: QuotaDimension;
+}
+
+export type OverageMode = 'block' | 'allow';
+/** Plan terms; amounts are integer strings in the currency's minor units. */
+export interface PlanTerms {
+  name: string;
+  slug: string;
+  monthlyRequestLimit: string | null;
+  monthlyCharacterLimit: string | null;
+  currency: string;
+  baseFeeMinor: string;
+  overageMode: OverageMode;
+  requestBlock: string;
+  requestBlockPriceMinor: string;
+  characterBlock: string;
+  characterBlockPriceMinor: string;
+  requestCeiling: string | null;
+  characterCeiling: string | null;
+}
+export interface OverageLine {
+  units: string;
+  blocks: string;
+  blockSize: string;
+  blockPriceMinor: string;
+  amountMinor: string;
+}
+export interface Charges {
+  currency: string;
+  baseFeeMinor: string;
+  requests: OverageLine;
+  characters: OverageLine;
+  totalMinor: string;
+  /** True while the month is open. */
+  estimated: boolean;
+}
+export interface BillingOverview {
+  organizationId: string;
+  generatedAt: string;
+  plan: PlanTerms & {
+    source: 'subscription' | 'free';
+    description: string | null;
+  };
+  currentMonth: {
+    month: string;
+    timezone: 'UTC';
+    totals: { requests: string; characters: string };
+    charges: Charges;
+  };
+  subscriptions: {
+    id: string;
+    plan: { name: string; slug: string };
+    startsAt: string;
+    endsAt: string | null;
+    status: 'current' | 'scheduled' | 'ended';
+    note: string | null;
+  }[];
+  publicPlans: (PlanTerms & { description: string | null })[];
 }
 
 export interface UsageStatementLine {
@@ -84,12 +151,14 @@ export interface UsageStatement {
   totals: { requests: string; characters: string; events: string };
   counter: { requests: string; characters: string };
   reconciled: boolean;
-  plan: {
-    name: string;
-    slug: string;
-    monthlyRequestLimit: string | null;
-    monthlyCharacterLimit: string | null;
-  };
+  /** Statements closed before plan pricing hold only the first four fields. */
+  plan: Pick<
+    PlanTerms,
+    'name' | 'slug' | 'monthlyRequestLimit' | 'monthlyCharacterLimit'
+  > &
+    Partial<PlanTerms>;
+  /** Null for months closed before plan pricing. */
+  charges: Charges | null;
   lines: UsageStatementLine[];
   ledgerAvailable: boolean;
 }
@@ -156,7 +225,8 @@ export type AuditAction =
   | 'invitation.resent'
   | 'invitation.revoked'
   | 'invitation.accepted'
-  | 'ownership.transferred';
+  | 'ownership.transferred'
+  | 'billing.plan_changed';
 export interface AuditEvent {
   id: string;
   action: AuditAction;

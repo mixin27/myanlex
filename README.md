@@ -67,6 +67,9 @@ tests is not a measured linguistic accuracy score or release approval.
 - Billing-grade usage metering: an append-only ledger written with each quota
   reservation, immutable monthly statements and a CSV export;
   [statements](docs/platform.md#monthly-statements)
+- Plans with a monthly fee, allowances and per-block overage in any currency,
+  assigned by operators, with priced statements and a portal Billing page;
+  [plans and pricing](docs/operations.md#plans-and-pricing)
 - Team management: member roles, custom roles with permission editing, and email
   invitations with an in-portal pending list;
   [team workflow](docs/platform.md#team-management)
@@ -78,7 +81,7 @@ tests is not a measured linguistic accuracy score or release approval.
 
 Planned next:
 
-- Plans, prices and billing on top of monthly statements
+- Payment collection and self-service plan changes on top of priced statements
 
 ## Repository layout
 

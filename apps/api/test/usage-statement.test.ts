@@ -48,6 +48,7 @@ const record = (
     monthlyRequestLimit: '10000',
     monthlyCharacterLimit: '1000000',
   },
+  charges: null,
   lines: [
     {
       projectId,
@@ -97,6 +98,7 @@ const ledger: { [K in keyof UsageLedgerRepository]: ReturnType<typeof vi.fn> } =
     events: vi.fn(),
     closeFinishedMonths: vi.fn(),
     cleanup: vi.fn(),
+    billing: vi.fn(),
   };
 
 function actsWith(permissions: string[] | null) {
@@ -214,6 +216,38 @@ describe('usage statement HTTP contract', () => {
     expect((await get('/2025-09/events.csv')).statusCode).toBe(410);
     expect((await get('/2025-10/events.csv')).statusCode).toBe(200);
     expect(ledger.events).toHaveBeenCalledOnce();
+  });
+
+  it('marks open-month charges as estimates and keeps unpriced months null', async () => {
+    const charges = {
+      currency: 'USD',
+      baseFeeMinor: '2900',
+      requests: {
+        units: '0',
+        blocks: '0',
+        blockSize: '1000',
+        blockPriceMinor: '150',
+        amountMinor: '0',
+      },
+      characters: {
+        units: '0',
+        blocks: '0',
+        blockSize: '100000',
+        blockPriceMinor: '0',
+        amountMinor: '0',
+      },
+      totalMinor: '2900',
+    };
+    ledger.statement.mockResolvedValueOnce(record({ charges }));
+    expect((await get('')).json().charges).toEqual({
+      ...charges,
+      estimated: true,
+    });
+    ledger.statement.mockResolvedValueOnce(
+      record({ status: 'closed', charges, closedAt: november }),
+    );
+    expect((await get('')).json().charges.estimated).toBe(false);
+    expect((await get('')).json().charges).toBeNull();
   });
 
   it('validates months', async () => {

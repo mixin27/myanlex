@@ -40,6 +40,8 @@
     "audit:cleanup": "tsx scripts/audit-cleanup.ts",
     "usage:close-month": "tsx scripts/usage-close-month.ts",
     "usage:cleanup": "tsx scripts/usage-cleanup.ts",
+    "billing:plans": "tsx scripts/billing-plans.ts",
+    "billing:assign": "tsx scripts/billing-assign.ts",
     "playground:verify": "node scripts/playground-integration.mjs",
     "playground:smoke": "pnpm --filter @myanlex/web... build && node scripts/playground-smoke.mjs",
     "db:studio": "prisma studio",

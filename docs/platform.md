@@ -168,6 +168,31 @@ from an append-only ledger written in the same transaction. They are the
 billable figures; the daily activity charts below them are diagnostics. See
 [0023](decisions/0023-billing-grade-usage-metering.md).
 
+Each statement also shows **charges**: the plan's base fee and any overage, in
+the plan's currency.
+
+- Open months are an estimate on the current plan.
+- Closed months are fixed, priced on the plan in effect at the end of the month.
+- Months closed before pricing existed show "Not priced".
+
+### Billing
+
+The **Billing** page needs `billing.read` (Owners have it). It shows:
+
+- the workspace's plan: fee, allowance, what happens over the allowance, and any
+  ceiling;
+- this month's estimated charge;
+- the plan history;
+- other public plans.
+
+Plans are changed by the operator (see
+[plans and pricing](operations.md#plans-and-pricing)); there is no checkout.
+
+- GET `/:organizationId/billing` returns the same overview. Amounts are decimal
+  strings in the currency's minor units (MMK has none, USD has two).
+
+See [0024](decisions/0024-plans-and-pricing.md).
+
 ## Team management
 
 Open **Team**, choose a workspace, and use the Members, Invitations and Roles

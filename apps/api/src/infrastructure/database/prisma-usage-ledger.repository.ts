@@ -3,7 +3,14 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, type Prisma } from '../../generated/prisma/client.js';
 import { quotaPeriod } from '../../common/quota/quota-period.js';
 import { databaseTime, readPlan } from './prisma-quota.repository.js';
+import {
+  priceUsage,
+  storeCharges,
+  storeTerms,
+  type StoredCharges,
+} from '../../common/billing/pricing.js';
 import type {
+  BillingOverview,
   ClosedMonth,
   LedgerEvent,
   StatementLine,
@@ -23,6 +30,15 @@ const nextMonth = (monthStart: Date) =>
   new Date(
     Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1),
   );
+
+/** PostgreSQL 40001, raised when a concurrent close commits the same month. */
+function isSerializationFailure(error: unknown): boolean {
+  const meta = (error as { meta?: { code?: unknown } } | null)?.meta;
+  return (
+    meta?.code === '40001' ||
+    (error instanceof Error && /\b40001\b/.test(error.message))
+  );
+}
 
 interface LineRow {
   projectId: string;
@@ -81,12 +97,12 @@ async function summarize(
     counterCharacters,
     reconciled:
       requestCount === counterRequests && characterCount === counterCharacters,
-    plan: {
-      name: plan.name,
-      slug: plan.slug,
-      monthlyRequestLimit: plan.monthlyRequestLimit?.toString() ?? null,
-      monthlyCharacterLimit: plan.monthlyCharacterLimit?.toString() ?? null,
-    } satisfies StatementPlan,
+    plan: storeTerms(plan) satisfies StatementPlan,
+    // Billable usage is the ledger, not the counter (they differ only in the
+    // month metering was deployed).
+    charges: storeCharges(
+      priceUsage(plan, { requests: requestCount, characters: characterCount }),
+    ),
     lines: lines as StatementLine[],
   };
 }
@@ -158,6 +174,7 @@ export class PrismaUsageLedgerRepository
             counterCharacters: stored.counterCharacters,
             reconciled: stored.reconciled,
             plan: stored.plan as unknown as StatementPlan,
+            charges: stored.charges as unknown as StoredCharges | null,
             lines: loadLines(stored.breakdown),
             closedAt: stored.closedAt,
             generatedAt: now,
@@ -225,44 +242,137 @@ export class PrismaUsageLedgerRepository
 
   async closeFinishedMonths(): Promise<ClosedMonth[]> {
     const closed: ClosedMonth[] = [];
+    const delay = `${closeDelayMs} milliseconds`;
     // Every ledger row increments its organization_quotas row in the same
-    // transaction, so the counter table lists every month with usage.
+    // transaction, so the counter table lists every month with usage. Months
+    // on a subscription are closed even without traffic, so the base fee is
+    // billed. Months are UTC; a subscription bills a month when it is in
+    // effect at the month's last millisecond, as summarize() reads the plan.
     const pending = await this.client.$queryRaw<
       { organizationId: string; monthStart: Date }[]
     >`
-      SELECT q.organization_id AS "organizationId", q.month_start AS "monthStart"
-      FROM organization_quotas q
-      WHERE q.month_start + interval '1 month' + ${`${closeDelayMs} milliseconds`}::interval
-            <= CURRENT_TIMESTAMP
+      WITH candidates AS (
+        SELECT q.organization_id, q.month_start FROM organization_quotas q
+        UNION
+        SELECT s.organization_id, g.m AT TIME ZONE 'UTC'
+        FROM subscriptions s
+        CROSS JOIN LATERAL generate_series(
+          -- Never bill months before the subscription was recorded.
+          date_trunc('month', GREATEST(s.starts_at, s.created_at) AT TIME ZONE 'UTC'),
+          date_trunc('month', LEAST(COALESCE(s.ends_at, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
+            AT TIME ZONE 'UTC'),
+          interval '1 month') AS g(m)
+        WHERE s.status = 'active'
+          AND s.starts_at <= ((g.m + interval '1 month') AT TIME ZONE 'UTC') - interval '1 millisecond'
+          AND (s.ends_at IS NULL
+               OR s.ends_at > ((g.m + interval '1 month') AT TIME ZONE 'UTC') - interval '1 millisecond')
+      )
+      SELECT c.organization_id AS "organizationId", c.month_start AS "monthStart"
+      FROM candidates c
+      WHERE ((c.month_start AT TIME ZONE 'UTC' + interval '1 month') AT TIME ZONE 'UTC')
+              + ${delay}::interval <= CURRENT_TIMESTAMP
         AND NOT EXISTS (
           SELECT 1 FROM usage_statements s
-          WHERE s.organization_id = q.organization_id AND s.month_start = q.month_start)
-      ORDER BY q.month_start, q.organization_id
+          WHERE s.organization_id = c.organization_id AND s.month_start = c.month_start)
+      ORDER BY c.month_start, c.organization_id
       LIMIT ${closeBatch}`;
     for (const { organizationId, monthStart } of pending) {
-      const result = await this.client.$transaction(
-        async (tx) => {
-          const now = await databaseTime(tx);
-          const summary = await summarize(tx, organizationId, monthStart, now);
-          // A concurrent close of the same month keeps the first statement.
-          const inserted = await tx.$executeRaw`
+      const result = await this.client
+        .$transaction(
+          async (tx) => {
+            const now = await databaseTime(tx);
+            const summary = await summarize(
+              tx,
+              organizationId,
+              monthStart,
+              now,
+            );
+            // A concurrent close of the same month keeps the first statement.
+            const inserted = await tx.$executeRaw`
             INSERT INTO usage_statements (organization_id, month_start, request_count,
               character_count, event_count, counter_requests, counter_characters,
-              reconciled, plan, breakdown)
+              reconciled, plan, breakdown, charges)
             VALUES (${organizationId}::uuid, ${monthStart.toISOString()}::timestamptz,
               ${summary.requestCount}, ${summary.characterCount}, ${summary.eventCount},
               ${summary.counterRequests}, ${summary.counterCharacters}, ${summary.reconciled},
               ${JSON.stringify(summary.plan)}::jsonb,
-              ${JSON.stringify({ lines: storeLines(summary.lines) })}::jsonb)
+              ${JSON.stringify({ lines: storeLines(summary.lines) })}::jsonb,
+              ${JSON.stringify(summary.charges)}::jsonb)
             ON CONFLICT (organization_id, month_start) DO NOTHING`;
-          return inserted === 1 ? summary.reconciled : null;
-        },
-        { isolationLevel: 'RepeatableRead', maxWait: 2_000, timeout: 30_000 },
-      );
+            return inserted === 1 ? summary.reconciled : null;
+          },
+          { isolationLevel: 'RepeatableRead', maxWait: 2_000, timeout: 30_000 },
+        )
+        // Another close run inserted this month first; it keeps its statement.
+        .catch((error: unknown) => {
+          if (isSerializationFailure(error)) return null;
+          throw error;
+        });
       if (result !== null)
         closed.push({ organizationId, monthStart, reconciled: result });
     }
     return closed;
+  }
+
+  billing(organizationId: string): Promise<BillingOverview> {
+    return this.client.$transaction(
+      async (tx) => {
+        const now = await databaseTime(tx);
+        const { monthStart } = quotaPeriod(now);
+        const plan = await readPlan(tx, organizationId, now);
+        const [current] = await tx.$queryRaw<{ description: string | null }[]>`
+          SELECT description FROM plans WHERE slug = ${plan.slug}`;
+        const [usage] = await tx.$queryRaw<
+          { requests: bigint | null; characters: bigint | null }[]
+        >`
+          SELECT sum(request_units)::bigint AS requests, sum(characters)::bigint AS characters
+          FROM usage_events
+          WHERE organization_id = ${organizationId}::uuid
+            AND month_start = ${monthStart.toISOString()}::timestamptz`;
+        const requests = usage?.requests ?? 0n;
+        const characters = usage?.characters ?? 0n;
+        const subscriptions = await tx.subscription.findMany({
+          where: { organizationId, status: 'active' },
+          orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
+          take: 50,
+          select: {
+            id: true,
+            startsAt: true,
+            endsAt: true,
+            note: true,
+            plan: { select: { name: true, slug: true } },
+          },
+        });
+        const publicPlans = await tx.plan.findMany({
+          where: { public: true, archivedAt: null },
+          orderBy: [{ baseFeeMinor: 'asc' }, { slug: 'asc' }],
+        });
+        return {
+          now,
+          plan: {
+            ...storeTerms(plan),
+            source: plan.source,
+            description: current?.description ?? null,
+          },
+          subscriptions,
+          month: {
+            monthStart,
+            requests,
+            characters,
+            charges: storeCharges(priceUsage(plan, { requests, characters })),
+          },
+          publicPlans: publicPlans.map((row) => ({
+            ...storeTerms({
+              ...row,
+              currency: row.currency.trim(),
+              overageMode: row.overageMode === 'allow' ? 'allow' : 'block',
+            }),
+            description: row.description,
+          })),
+        };
+      },
+      { isolationLevel: 'RepeatableRead', maxWait: 2_000, timeout: 10_000 },
+    );
   }
 
   cleanup(before: Date) {

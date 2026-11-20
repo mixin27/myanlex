@@ -33,6 +33,7 @@ export const auditActions = [
   'invitation.revoked',
   'invitation.accepted',
   'ownership.transferred',
+  'billing.plan_changed',
 ] as const;
 export type AuditAction = (typeof auditActions)[number];
 

@@ -133,3 +133,80 @@ DATABASE_URL='<database connection>' MYANLEX_USAGE_RETENTION_MONTHS=13 pnpm usag
   months with 410. Statements are kept permanently.
 - If the database is unavailable, API-key and playground requests return 503
   rather than running unmetered.
+- Closed statements carry the month's charges, priced on the plan in effect at
+  the end of the month. Months on a subscription are closed even without
+  traffic, so the base fee is billed. Two close runs at once are safe: each
+  month is written once.
+
+## Plans and pricing
+
+Plans and assignments are managed only with these scripts (see
+[0024](decisions/0024-plans-and-pricing.md)). There is no payment provider:
+invoice from the closed statements.
+
+Define or update a plan from a JSON file:
+
+```json
+{
+  "slug": "pro",
+  "name": "Pro",
+  "description": "For production apps",
+  "public": true,
+  "currency": "MMK",
+  "baseFeeMinor": 50000,
+  "monthlyRequestLimit": 100000,
+  "monthlyCharacterLimit": 10000000,
+  "overageMode": "allow",
+  "requestBlock": 1000,
+  "requestBlockPriceMinor": 500,
+  "characterBlock": 100000,
+  "characterBlockPriceMinor": 300,
+  "requestCeiling": 200000,
+  "characterCeiling": null
+}
+```
+
+```sh
+DATABASE_URL='<database connection>' pnpm billing:plans upsert pro.json
+DATABASE_URL='<database connection>' pnpm billing:plans list
+DATABASE_URL='<database connection>' pnpm billing:plans archive pro
+```
+
+- **Amounts** are integers in the currency's minor units, using its standard
+  digits: MMK has none, USD has two (`2900` is $29.00). Large values may be
+  given as strings.
+- **Overage modes:**
+  - `block` refuses requests at the allowance;
+  - `allow` bills every started block above it, and stops at a ceiling when one
+    is set.
+- **Once any workspace has used a plan, its terms are fixed** (the database
+  enforces this too). Only `name`, `description` and `public` can change. To
+  change a price, create a new plan with a new slug, move workspaces to it and
+  archive the old one. Archived plans can't be assigned, but their current
+  subscriptions continue.
+
+Assign a plan:
+
+```sh
+DATABASE_URL='<database connection>' pnpm billing:assign acme pro --actor ops@example.com --note "Order 42"
+DATABASE_URL='<database connection>' pnpm billing:assign acme team --actor ops@example.com --starts-at 2027-01-01T00:00:00Z
+DATABASE_URL='<database connection>' pnpm billing:assign acme free --actor ops@example.com
+```
+
+- The change applies to limits from its start time.
+- Each month is billed in full on the plan in effect at its end, without
+  proration. Schedule changes for 00:00 UTC on the first of a month to bill
+  exactly from then.
+- Starts cannot be in the past.
+- `free` ends the paid subscription.
+- Every change is recorded in the workspace audit log as `billing.plan_changed`.
+
+**Monthly invoicing routine:**
+
+1. After the month ends, run `pnpm usage:close-month`.
+2. Read each workspace's statement (portal Usage page, or the statements API)
+   and invoice its `charges.totalMinor` in `charges.currency`.
+3. Investigate statements that don't reconcile before invoicing them.
+
+Set `MYANLEX_BILLING_CONTACT` (an email address or short text) on the portal to
+tell customers how to change plan.

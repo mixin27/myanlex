@@ -161,6 +161,10 @@ function present(record: UsageStatementRecord, ledgerAvailable: boolean) {
     },
     reconciled: record.reconciled,
     plan: record.plan,
+    // Open months are priced live and may still change.
+    charges: record.charges
+      ? { ...record.charges, estimated: record.status === 'open' }
+      : null,
     lines: record.lines.map((line) => ({
       projectId: line.projectId,
       projectName: line.projectName,

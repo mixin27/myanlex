@@ -6,6 +6,7 @@ export const auditActionLabels: Record<AuditAction, string> = {
   'member.removed': 'Member removed',
   'member.left': 'Member left',
   'ownership.transferred': 'Ownership transferred',
+  'billing.plan_changed': 'Plan changed',
   'invitation.created': 'Invitation sent',
   'invitation.resent': 'Invitation resent',
   'invitation.revoked': 'Invitation revoked',
@@ -78,6 +79,8 @@ export function describeAuditEvent(event: AuditEvent): string {
       return `${who} accepted an invitation and joined as ${named(meta.role)}.`;
     case 'ownership.transferred':
       return `${who} transferred ownership to ${email} and became ${named(meta.previousOwnerRole)}.`;
+    case 'billing.plan_changed':
+      return `${who} changed the plan from ${named(meta.from, 'a plan')} to ${named(meta.to, 'a plan')}.`;
     default:
       return `${who} made a change (${String(event.action)}).`;
   }

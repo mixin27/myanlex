@@ -1,3 +1,5 @@
+import type { PlanTerms } from '../billing/pricing.js';
+
 export const QUOTA_REPOSITORY = Symbol('QUOTA_REPOSITORY');
 
 export interface QuotaDecision {
@@ -32,13 +34,7 @@ export interface QuotaSnapshot {
   now: Date;
   monthStart: Date;
   resetsAt: Date;
-  plan: {
-    name: string;
-    slug: string;
-    source: 'subscription' | 'free';
-    monthlyRequestLimit: bigint | null;
-    monthlyCharacterLimit: bigint | null;
-  };
+  plan: PlanTerms & { source: 'subscription' | 'free' };
   requestCount: bigint;
   characterCount: bigint;
 }

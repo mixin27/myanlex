@@ -1,3 +1,8 @@
+import type {
+  StoredCharges,
+  StoredTerms,
+} from '../../common/billing/pricing.js';
+
 /** Billing-grade usage ledger types. See docs/decisions/0023. */
 export const USAGE_LEDGER_REPOSITORY = Symbol('USAGE_LEDGER_REPOSITORY');
 
@@ -16,13 +21,20 @@ export interface StatementLine {
   readonly characters: bigint;
 }
 
-/** Plan in effect at the end of the month (or now, for the open month). */
-export interface StatementPlan {
-  readonly name: string;
-  readonly slug: string;
-  readonly monthlyRequestLimit: string | null;
-  readonly monthlyCharacterLimit: string | null;
-}
+/**
+ * Plan in effect at the end of the month (or now, for the open month).
+ * Statements closed before plan pricing (0024) hold only the first four fields.
+ */
+export type StatementPlan = Pick<
+  StoredTerms,
+  'name' | 'slug' | 'monthlyRequestLimit' | 'monthlyCharacterLimit'
+> &
+  Partial<
+    Omit<
+      StoredTerms,
+      'name' | 'slug' | 'monthlyRequestLimit' | 'monthlyCharacterLimit'
+    >
+  >;
 
 export interface UsageStatementRecord {
   readonly organizationId: string;
@@ -35,6 +47,8 @@ export interface UsageStatementRecord {
   readonly counterCharacters: bigint;
   readonly reconciled: boolean;
   readonly plan: StatementPlan;
+  /** Priced on the plan above; an estimate while open, null if closed before pricing. */
+  readonly charges: StoredCharges | null;
   readonly lines: readonly StatementLine[];
   readonly closedAt: Date | null;
   readonly generatedAt: Date;
@@ -78,6 +92,34 @@ export interface UsageLedgerRepository {
   closeFinishedMonths(): Promise<ClosedMonth[]>;
   /** Deletes up to one batch of closed-month ledger rows before `before`. */
   cleanup(before: Date): Promise<number>;
+  /** Current plan, subscription history, this month's estimate and public plans. */
+  billing(organizationId: string): Promise<BillingOverview>;
+}
+
+export interface SubscriptionPeriod {
+  readonly id: string;
+  readonly plan: { readonly name: string; readonly slug: string };
+  readonly startsAt: Date;
+  readonly endsAt: Date | null;
+  readonly note: string | null;
+}
+
+export interface BillingOverview {
+  readonly now: Date;
+  readonly plan: StoredTerms & {
+    readonly source: 'subscription' | 'free';
+    readonly description: string | null;
+  };
+  readonly subscriptions: readonly SubscriptionPeriod[];
+  readonly month: {
+    readonly monthStart: Date;
+    readonly requests: bigint;
+    readonly characters: bigint;
+    readonly charges: StoredCharges;
+  };
+  readonly publicPlans: readonly (StoredTerms & {
+    readonly description: string | null;
+  })[];
 }
 
 export const usageRetention = { defaultMonths: 13, minimumMonths: 13 } as const;

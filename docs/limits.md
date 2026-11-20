@@ -69,10 +69,20 @@ unmetered. Monthly statements are closed by `pnpm usage:close-month`; see
 The applicable subscription has status `active`, `startsAt <= database time`,
 and no `endsAt` or `endsAt > database time`. With no such subscription, the
 seeded `free` plan applies (10,000 requests / 1,000,000 characters). Null plan
-limits mean unlimited; zero denies that dimension's consumption. More than one
-applicable subscription, negative limits, a missing Free plan, or a database
-failure returns `503`. No paid plans, prorating, trial/cancellation semantics,
-or billing integrations are invented here.
+limits mean unlimited; zero denies that dimension's consumption. A database
+constraint prevents overlapping active subscriptions, and plan limits cannot be
+negative. A missing Free plan or a database failure returns `503`.
+
+Plan limits are the **allowance**. A plan's overage mode decides what happens
+above it (see [0024](decisions/0024-plans-and-pricing.md)):
+
+- `block` plans, including Free, deny at the allowance;
+- `allow` plans admit usage above the allowance and bill it per started block,
+  denying only at the plan's request or character **ceiling** (or never, with no
+  ceiling).
+
+The quota report shows the `ceiling` and the `overage` used. Plans are assigned
+with `pnpm billing:assign`; see [operations](operations.md#plans-and-pricing).
 
 The quota period is a UTC calendar month, selected using the database
 transaction start time. PostgreSQL atomically reserves both dimensions in

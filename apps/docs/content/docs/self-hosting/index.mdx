@@ -63,7 +63,9 @@ opt-in: set `MYANLEX_QUOTAS_ENABLED=true` consistently across replicas after
 migrations and seeding. Enforcement uses PostgreSQL, not Redis. Bootstrap keys
 bypass metering and quotas; remove a bootstrap key in production if that bypass
 is inappropriate. Run `pnpm usage:close-month` and `pnpm usage:cleanup` daily to
-close monthly statements and apply ledger retention.
+close monthly statements and apply ledger retention. Define plans with
+`pnpm billing:plans` and assign them with `pnpm billing:assign`; closed
+statements are priced on the plan in effect at the end of each month.
 
 ## Readiness and metrics
 

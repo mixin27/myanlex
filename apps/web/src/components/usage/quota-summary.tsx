@@ -5,12 +5,16 @@ function Allowance({
   label,
   dimension,
   enabled,
+  overage,
 }: {
   label: string;
   dimension: QuotaDimension;
   enabled: boolean;
+  /** Overage plans bill usage above the allowance instead of denying it. */
+  overage: boolean;
 }) {
   const exhausted = dimension.remaining === '0';
+  const over = dimension.overage !== '0';
   const ratio =
     dimension.limit === null
       ? null
@@ -51,8 +55,17 @@ function Allowance({
       <p className="mt-3 text-sm font-medium">
         {dimension.remaining === null
           ? 'No monthly cap'
-          : `${formatUsageCount(dimension.remaining)} remaining${enabled && exhausted ? ' · Allowance exhausted' : ''}`}
+          : overage && over
+            ? `${formatUsageCount(dimension.overage)} over the allowance · billed as overage`
+            : `${formatUsageCount(dimension.remaining)} remaining${enabled && exhausted && !overage ? ' · Allowance exhausted' : ''}`}
       </p>
+      {overage && dimension.limit !== null && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {dimension.ceiling === null
+            ? 'Usage above the allowance is billed; no ceiling.'
+            : `Usage above the allowance is billed, up to a ceiling of ${formatUsageCount(dimension.ceiling)}.`}
+        </p>
+      )}
     </div>
   );
 }
@@ -85,11 +98,13 @@ export function QuotaSummary({ report }: { report: QuotaReport }) {
           label="Requests"
           dimension={report.requests}
           enabled={report.enforcementEnabled}
+          overage={report.plan.overageMode === 'allow'}
         />
         <Allowance
           label="Characters"
           dimension={report.characters}
           enabled={report.enforcementEnabled}
+          overage={report.plan.overageMode === 'allow'}
         />
       </div>
       <p className="text-sm text-muted-foreground">
@@ -99,9 +114,8 @@ export function QuotaSummary({ report }: { report: QuotaReport }) {
       <p className="text-xs leading-5 text-muted-foreground">
         Shared by all projects and API keys in this workspace. Batches reserve
         one request and all submitted Unicode code points. Reservations include
-        requests that later fail; they differ from usage analytics and are not a
-        billing statement. Historical traffic before enablement is not
-        backfilled.
+        requests that later fail and match the monthly statement on the Usage
+        page, which prices them on the workspace plan.
       </p>
       <p className="text-xs text-muted-foreground">
         Snapshot: {report.generatedAt.replace('T', ' ').replace('Z', ' UTC')}.

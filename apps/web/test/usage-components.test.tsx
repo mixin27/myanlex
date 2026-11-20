@@ -95,6 +95,26 @@ describe('monthly usage statement', () => {
       monthlyRequestLimit: null,
       monthlyCharacterLimit: null,
     },
+    charges: {
+      currency: 'USD',
+      baseFeeMinor: '2900',
+      requests: {
+        units: '1500',
+        blocks: '2',
+        blockSize: '1000',
+        blockPriceMinor: '150',
+        amountMinor: '300',
+      },
+      characters: {
+        units: '0',
+        blocks: '0',
+        blockSize: '100000',
+        blockPriceMinor: '0',
+        amountMinor: '0',
+      },
+      totalMinor: '3200',
+      estimated: false,
+    },
     lines: [
       {
         projectId: 'p',
@@ -136,6 +156,26 @@ describe('monthly usage statement', () => {
     );
     expect(html).toContain('name="organization" value="org"');
     expect(html).not.toContain('differ from');
+    expect(html).toContain('$29.00');
+    expect(html).toContain(
+      '1,500 requests over the allowance · 2 × $1.50 per 1,000',
+    );
+    expect(html).toContain('$32.00');
+    expect(html).not.toContain('Character overage');
+    expect(html).not.toContain('Estimate');
+  });
+
+  it('labels open-month charges as estimates and old months as not priced', () => {
+    const open = render({
+      ...statement,
+      status: 'open',
+      charges: { ...statement.charges!, estimated: true },
+    });
+    expect(open).toContain('Estimated total');
+    expect(open).toContain('plan in effect at the end of the month');
+    const old = render({ ...statement, charges: null });
+    expect(old).toContain('Not priced');
+    expect(old).not.toContain('Total');
   });
 
   it('explains open months, mismatches and expired ledgers', () => {
