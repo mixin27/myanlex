@@ -8,9 +8,9 @@ import type { OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { createTransport } from 'nodemailer';
 
 import { PrismaClient } from '../../generated/prisma/client.js';
+import { createSmtpSender } from '../../common/mail/smtp-transport.js';
 import { parseAccountAuthConfig } from './account-auth.config.js';
 import { createAccountAuth } from './create-account-auth.js';
 import type { AuthMail, SendAuthMail } from './create-account-auth.js';
@@ -54,18 +54,7 @@ export class AccountAuthService implements OnModuleDestroy {
         connectionTimeoutMillis: 5000,
       }),
     });
-    const mail = createTransport({
-      host: settings.SMTP_HOST,
-      port: settings.SMTP_PORT,
-      secure: settings.SMTP_SECURE === 'true',
-      requireTLS: settings.NODE_ENV === 'production',
-      ...(settings.SMTP_USER
-        ? { auth: { user: settings.SMTP_USER, pass: settings.SMTP_PASSWORD } }
-        : {}),
-    });
-    this.deliver = async (message) => {
-      await mail.sendMail({ from: settings.SMTP_FROM, ...message });
-    };
+    this.deliver = createSmtpSender(settings);
     this.auth = createAccountAuth(
       settings,
       prismaAdapter(this.prisma, { provider: 'postgresql', transaction: true }),

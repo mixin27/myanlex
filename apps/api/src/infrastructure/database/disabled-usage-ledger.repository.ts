@@ -13,4 +13,6 @@ export const disabledUsageLedgerRepository: UsageLedgerRepository = {
   closeFinishedMonths: unavailable,
   cleanup: unavailable,
   billing: unavailable,
+  requestPlanChange: unavailable,
+  cancelPlanChange: unavailable,
 };

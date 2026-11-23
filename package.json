@@ -42,6 +42,7 @@
     "usage:cleanup": "tsx scripts/usage-cleanup.ts",
     "billing:plans": "tsx scripts/billing-plans.ts",
     "billing:assign": "tsx scripts/billing-assign.ts",
+    "billing:changes": "tsx scripts/billing-changes.ts",
     "brand:assets": "pnpm --filter @myanlex/brand assets",
     "playground:verify": "node scripts/playground-integration.mjs",
     "playground:smoke": "pnpm --filter @myanlex/web... build && node scripts/playground-smoke.mjs",

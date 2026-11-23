@@ -1,6 +1,6 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { z } from 'zod';
-import { PrismaClient } from '../../generated/prisma/client.js';
+import { PrismaClient, type Prisma } from '../../generated/prisma/client.js';
 import { databaseTime } from './prisma-quota.repository.js';
 
 /**
@@ -30,9 +30,18 @@ export const planDefinition = z
     characterBlockPriceMinor: count.default(0n),
     requestCeiling: count.nullable().default(null),
     characterCeiling: count.nullable().default(null),
+    /** `self_service` (checkout) needs a payment provider; see ADR 0025. */
+    changePolicy: z.enum(['approval', 'self_service']).default('approval'),
   })
   .strict()
   .superRefine((plan, context) => {
+    if (plan.changePolicy === 'self_service')
+      context.addIssue({
+        code: 'custom',
+        path: ['changePolicy'],
+        message:
+          'self_service needs a payment provider (checkout), which MyanLex does not have yet. Use approval.',
+      });
     for (const [ceiling, limit] of [
       ['requestCeiling', 'monthlyRequestLimit'],
       ['characterCeiling', 'monthlyCharacterLimit'],
@@ -164,78 +173,263 @@ export class PlanAdmin {
         FOR UPDATE`;
       if (!organization)
         throw new PlanAdminError(`No workspace ${input.organizationSlug}.`);
-      const now = await databaseTime(tx);
-      const startsAt = input.startsAt ?? now;
-      if (startsAt < now)
-        throw new PlanAdminError('A plan change cannot start in the past.');
-      const plan = await tx.plan.findUnique({
-        where: { slug: input.planSlug },
+      return assignInTransaction(tx, {
+        organizationId: organization.id,
+        planSlug: input.planSlug,
+        actorEmail,
+        note,
+        startsAt: input.startsAt,
       });
-      if (!plan) throw new PlanAdminError(`No plan ${input.planSlug}.`);
-      if (plan.archivedAt)
-        throw new PlanAdminError(`Plan ${plan.slug} is archived.`);
+    });
+  }
 
-      const active = { organizationId: organization.id, status: 'active' };
-      const previous = await tx.subscription.findFirst({
-        where: {
-          ...active,
-          startsAt: { lte: startsAt },
-          OR: [{ endsAt: null }, { endsAt: { gt: startsAt } }],
+  /** Open and recent plan changes for `pnpm billing:changes list`. */
+  listChanges(all = false) {
+    return this.client.planChange.findMany({
+      where: all ? {} : { status: { in: [...openChangeStatuses] } },
+      orderBy: { createdAt: all ? 'desc' : 'asc' },
+      take: all ? 100 : 500,
+      include: {
+        organization: { select: { slug: true, name: true } },
+        plan: { select: { slug: true, name: true } },
+      },
+    });
+  }
+
+  /** Approves an open approval-channel change and applies it. */
+  async approveChange(input: {
+    changeId: string;
+    actorEmail: string;
+    note?: string | undefined;
+  }) {
+    const actorEmail = z.email().max(320).parse(input.actorEmail);
+    return this.client.$transaction((tx) =>
+      applyPlanChange(tx, input.changeId, {
+        actorEmail,
+        note: input.note?.trim().slice(0, 500) || null,
+      }),
+    );
+  }
+
+  /** Rejects an open approval-channel change with a reason for the requester. */
+  async rejectChange(input: {
+    changeId: string;
+    actorEmail: string;
+    reason: string;
+  }) {
+    const actorEmail = z.email().max(320).parse(input.actorEmail);
+    const reason = input.reason.trim().slice(0, 500);
+    if (!reason) throw new PlanAdminError('Give a reason for the rejection.');
+    return this.client.$transaction(async (tx) => {
+      const change = await lockOpenChange(tx, input.changeId);
+      const now = await databaseTime(tx);
+      const updated = await tx.planChange.update({
+        where: { id: change.id },
+        data: {
+          status: 'rejected',
+          decidedAt: now,
+          decidedBy: actorEmail,
+          decisionNote: reason,
         },
-        include: { plan: { select: { slug: true } } },
+        include: {
+          organization: { select: { slug: true, name: true } },
+          plan: { select: { slug: true, name: true } },
+        },
       });
-      // Later scheduled changes are superseded by this one.
-      const cancelled = await tx.subscription.updateMany({
-        where: { ...active, startsAt: { gt: startsAt } },
-        data: { status: 'canceled' },
-      });
-      // A subscription replaced at its own start never took effect.
-      if (previous)
-        await tx.subscription.update({
-          where: { id: previous.id },
-          data:
-            previous.startsAt.getTime() === startsAt.getTime()
-              ? { status: 'canceled' }
-              : { endsAt: startsAt },
-        });
-      const subscription =
-        plan.slug === 'free'
-          ? null
-          : await tx.subscription.create({
-              data: {
-                organizationId: organization.id,
-                planId: plan.id,
-                status: 'active',
-                startsAt,
-                assignedBy: actorEmail,
-                note,
-              },
-            });
-      const from = previous?.plan.slug ?? 'free';
       await tx.auditEvent.create({
         data: {
-          organizationId: organization.id,
+          organizationId: change.organizationId,
           actorUserId: null,
           actorEmail,
-          action: 'billing.plan_changed',
+          action: 'billing.plan_change_rejected',
           targetType: 'organization',
-          targetId: organization.id,
+          targetId: change.organizationId,
           metadata: {
-            from,
-            to: plan.slug,
-            startsAt: startsAt.toISOString(),
-            cancelledScheduled: cancelled.count,
-            ...(note ? { note } : {}),
+            changeId: change.id,
+            channel: change.channel,
+            from: change.fromPlanSlug,
+            to: updated.plan.slug,
+            reason,
           },
         },
       });
-      return {
-        organizationId: organization.id,
-        from,
-        to: plan.slug,
-        startsAt,
-        subscription,
-      };
+      return updated;
     });
   }
+}
+
+export const openChangeStatuses = ['pending', 'awaiting_payment'] as const;
+
+/** Locks a plan change for a decision; it must still be open. */
+async function lockOpenChange(tx: Prisma.TransactionClient, changeId: string) {
+  if (!z.uuid().safeParse(changeId).success)
+    throw new PlanAdminError(`No plan change ${changeId}.`);
+  const [row] = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM plan_changes WHERE id = ${changeId}::uuid FOR UPDATE`;
+  if (!row) throw new PlanAdminError(`No plan change ${changeId}.`);
+  const change = await tx.planChange.findUniqueOrThrow({
+    where: { id: changeId },
+  });
+  if (!(openChangeStatuses as readonly string[]).includes(change.status))
+    throw new PlanAdminError(
+      `Plan change ${changeId} is already ${change.status}.`,
+    );
+  return change;
+}
+
+/** First instant of the UTC month after `date`. */
+export function nextMonthStart(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+}
+
+/**
+ * The shared step that applies an open plan change, whatever its channel:
+ * the approval script now, a checkout webhook later. `next_month` starts on
+ * its requested date, or now if that has passed (never in the past).
+ */
+export async function applyPlanChange(
+  tx: Prisma.TransactionClient,
+  changeId: string,
+  options: { actorEmail: string; note?: string | null },
+) {
+  const change = await lockOpenChange(tx, changeId);
+  const [organization] = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM organizations WHERE id = ${change.organizationId}::uuid
+    FOR UPDATE`;
+  if (!organization)
+    throw new PlanAdminError('The workspace no longer exists.');
+  const now = await databaseTime(tx);
+  const requested = change.requestedStartsAt;
+  const startsAt = requested && requested > now ? requested : now;
+  const plan = await tx.plan.findUniqueOrThrow({
+    where: { id: change.planId },
+  });
+  const assigned = await assignInTransaction(tx, {
+    organizationId: change.organizationId,
+    planSlug: plan.slug,
+    actorEmail: options.actorEmail,
+    note: options.note ?? change.note,
+    startsAt,
+  });
+  const updated = await tx.planChange.update({
+    where: { id: change.id },
+    data: {
+      status: 'applied',
+      decidedAt: now,
+      decidedBy: options.actorEmail,
+      decisionNote: options.note ?? null,
+      subscriptionId: assigned.subscription?.id ?? null,
+    },
+    include: {
+      organization: { select: { slug: true, name: true } },
+      plan: { select: { slug: true, name: true } },
+    },
+  });
+  await tx.auditEvent.create({
+    data: {
+      organizationId: change.organizationId,
+      actorUserId: null,
+      actorEmail: options.actorEmail,
+      action: 'billing.plan_change_applied',
+      targetType: 'organization',
+      targetId: change.organizationId,
+      metadata: {
+        changeId: change.id,
+        channel: change.channel,
+        from: assigned.from,
+        to: plan.slug,
+        startsAt: startsAt.toISOString(),
+        startedEarly: Boolean(requested && requested <= now),
+        ...(options.note ? { note: options.note } : {}),
+      },
+    },
+  });
+  return {
+    change: updated,
+    startsAt,
+    requestedStartsAt: requested,
+    startedEarly: Boolean(requested && requested <= now),
+  };
+}
+
+/**
+ * Assigns `planSlug` to an organization inside the caller's transaction. The
+ * caller holds the organization row lock. Used by `billing:assign` and by
+ * applyPlanChange, so every channel changes plans the same way.
+ */
+export async function assignInTransaction(
+  tx: Prisma.TransactionClient,
+  input: {
+    organizationId: string;
+    planSlug: string;
+    actorEmail: string;
+    note: string | null;
+    startsAt?: Date | undefined;
+  },
+) {
+  const { organizationId, actorEmail, note } = input;
+  const now = await databaseTime(tx);
+  const startsAt = input.startsAt ?? now;
+  if (startsAt < now)
+    throw new PlanAdminError('A plan change cannot start in the past.');
+  const plan = await tx.plan.findUnique({ where: { slug: input.planSlug } });
+  if (!plan) throw new PlanAdminError(`No plan ${input.planSlug}.`);
+  if (plan.archivedAt)
+    throw new PlanAdminError(`Plan ${plan.slug} is archived.`);
+
+  const active = { organizationId, status: 'active' };
+  const previous = await tx.subscription.findFirst({
+    where: {
+      ...active,
+      startsAt: { lte: startsAt },
+      OR: [{ endsAt: null }, { endsAt: { gt: startsAt } }],
+    },
+    include: { plan: { select: { slug: true } } },
+  });
+  // Later scheduled changes are superseded by this one.
+  const cancelled = await tx.subscription.updateMany({
+    where: { ...active, startsAt: { gt: startsAt } },
+    data: { status: 'canceled' },
+  });
+  // A subscription replaced at its own start never took effect.
+  if (previous)
+    await tx.subscription.update({
+      where: { id: previous.id },
+      data:
+        previous.startsAt.getTime() === startsAt.getTime()
+          ? { status: 'canceled' }
+          : { endsAt: startsAt },
+    });
+  const subscription =
+    plan.slug === 'free'
+      ? null
+      : await tx.subscription.create({
+          data: {
+            organizationId,
+            planId: plan.id,
+            status: 'active',
+            startsAt,
+            assignedBy: actorEmail,
+            note,
+          },
+        });
+  const from = previous?.plan.slug ?? 'free';
+  await tx.auditEvent.create({
+    data: {
+      organizationId,
+      actorUserId: null,
+      actorEmail,
+      action: 'billing.plan_changed',
+      targetType: 'organization',
+      targetId: organizationId,
+      metadata: {
+        from,
+        to: plan.slug,
+        startsAt: startsAt.toISOString(),
+        cancelledScheduled: cancelled.count,
+        ...(note ? { note } : {}),
+      },
+    },
+  });
+  return { organizationId, from, to: plan.slug, startsAt, subscription };
 }

@@ -9,6 +9,16 @@ import {
   storeTerms,
   type StoredCharges,
 } from '../../common/billing/pricing.js';
+import { nextMonthStart } from './plan-admin.js';
+import { recordAudit } from './audit-writer.js';
+import type { AuditActor } from '../../modules/platform/audit.js';
+import {
+  PlanChangeError,
+  type PlanChangeInput,
+  type PlanChangeRecord,
+  type PlanChangeStatus,
+  type PlanChangeTiming,
+} from '../../modules/platform/usage-ledger.js';
 import type {
   BillingOverview,
   ClosedMonth,
@@ -38,6 +48,36 @@ function isSerializationFailure(error: unknown): boolean {
     meta?.code === '40001' ||
     (error instanceof Error && /\b40001\b/.test(error.message))
   );
+}
+
+function toChangeRecord(row: {
+  id: string;
+  channel: string;
+  status: string;
+  fromPlanSlug: string;
+  plan: { name: string; slug: string };
+  timing: string;
+  requestedStartsAt: Date | null;
+  note: string | null;
+  requesterEmail: string;
+  createdAt: Date;
+  decidedAt: Date | null;
+  decisionNote: string | null;
+}): PlanChangeRecord {
+  return {
+    id: row.id,
+    channel: row.channel as PlanChangeRecord['channel'],
+    status: row.status as PlanChangeStatus,
+    fromPlanSlug: row.fromPlanSlug,
+    plan: row.plan,
+    timing: row.timing as PlanChangeTiming,
+    requestedStartsAt: row.requestedStartsAt,
+    note: row.note,
+    requesterEmail: row.requesterEmail,
+    createdAt: row.createdAt,
+    decidedAt: row.decidedAt,
+    decisionNote: row.decisionNote,
+  };
 }
 
 interface LineRow {
@@ -368,11 +408,125 @@ export class PrismaUsageLedgerRepository
               overageMode: row.overageMode === 'allow' ? 'allow' : 'block',
             }),
             description: row.description,
+            changePolicy:
+              row.changePolicy === 'self_service' ? 'self_service' : 'approval',
           })),
+          changes: (
+            await tx.planChange.findMany({
+              where: { organizationId },
+              orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+              take: 10,
+              include: { plan: { select: { name: true, slug: true } } },
+            })
+          ).map(toChangeRecord),
         };
       },
       { isolationLevel: 'RepeatableRead', maxWait: 2_000, timeout: 10_000 },
     );
+  }
+
+  requestPlanChange(
+    organizationId: string,
+    actor: AuditActor,
+    input: PlanChangeInput,
+  ): Promise<PlanChangeRecord> {
+    return this.client
+      .$transaction(async (tx) => {
+        const now = await databaseTime(tx);
+        const plan = await tx.plan.findUnique({
+          where: { slug: input.planSlug },
+        });
+        // Only public plans, or Free to end a paid plan, can be requested.
+        if (!plan || plan.archivedAt || (!plan.public && plan.slug !== 'free'))
+          throw new PlanChangeError(
+            'unknown_plan',
+            'That plan is not available.',
+          );
+        const current = await readPlan(tx, organizationId, now);
+        if (current.slug === plan.slug)
+          throw new PlanChangeError(
+            'current_plan',
+            'The workspace is already on that plan.',
+          );
+        const change = await tx.planChange.create({
+          data: {
+            organizationId,
+            fromPlanSlug: current.slug,
+            planId: plan.id,
+            channel: 'approval',
+            timing: input.timing,
+            requestedStartsAt:
+              input.timing === 'next_month' ? nextMonthStart(now) : null,
+            note: input.note?.trim() || null,
+            requesterUserId: actor.userId,
+            requesterEmail: actor.email,
+            status: 'pending',
+            createdAt: now,
+          },
+          include: { plan: { select: { name: true, slug: true } } },
+        });
+        await recordAudit(tx, organizationId, actor, {
+          action: 'billing.plan_change_requested',
+          targetType: 'organization',
+          targetId: organizationId,
+          metadata: {
+            changeId: change.id,
+            channel: 'approval',
+            from: current.slug,
+            to: plan.slug,
+            timing: input.timing,
+            ...(change.note ? { note: change.note } : {}),
+          },
+        });
+        return toChangeRecord(change);
+      })
+      .catch((error: unknown) => {
+        // The partial unique index allows one open change per workspace.
+        if ((error as { code?: string }).code === 'P2002')
+          throw new PlanChangeError(
+            'open_change',
+            'This workspace already has a plan change waiting. Cancel it first.',
+          );
+        throw error;
+      });
+  }
+
+  cancelPlanChange(
+    organizationId: string,
+    changeId: string,
+    actor: AuditActor,
+  ): Promise<PlanChangeRecord> {
+    return this.client.$transaction(async (tx) => {
+      const [row] = await tx.$queryRaw<{ status: string }[]>`
+        SELECT status FROM plan_changes
+        WHERE id = ${changeId}::uuid AND organization_id = ${organizationId}::uuid
+        FOR UPDATE`;
+      if (!row)
+        throw new PlanChangeError('not_found', 'Plan change not found.');
+      if (row.status !== 'pending')
+        throw new PlanChangeError(
+          'not_open',
+          'Only a change that is waiting for review can be cancelled.',
+        );
+      const now = await databaseTime(tx);
+      const change = await tx.planChange.update({
+        where: { id: changeId },
+        data: { status: 'cancelled', decidedAt: now, decidedBy: actor.email },
+        include: { plan: { select: { name: true, slug: true } } },
+      });
+      await recordAudit(tx, organizationId, actor, {
+        action: 'billing.plan_change_cancelled',
+        targetType: 'organization',
+        targetId: organizationId,
+        metadata: {
+          changeId,
+          channel: change.channel,
+          from: change.fromPlanSlug,
+          to: change.plan.slug,
+        },
+      });
+      return toChangeRecord(change);
+    });
   }
 
   cleanup(before: Date) {

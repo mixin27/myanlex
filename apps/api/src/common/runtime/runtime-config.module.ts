@@ -17,6 +17,7 @@ import {
   QUOTAS_ENABLED,
   METRICS_TOKEN,
   USAGE_RETENTION_MONTHS,
+  BILLING_NOTIFY_EMAIL,
 } from '../tokens.js';
 import { usageRetention } from '../../modules/platform/usage-ledger.js';
 
@@ -61,6 +62,10 @@ const runtimeEnvironmentSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
+    MYANLEX_BILLING_NOTIFY_EMAIL: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.email().max(320).optional(),
+    ),
     MYANLEX_USAGE_RETENTION_MONTHS: z.coerce
       .number()
       .int()
@@ -186,6 +191,12 @@ export class RuntimeConfigModule {
             config.getOrThrow<number>('MYANLEX_USAGE_RETENTION_MONTHS'),
         },
         {
+          provide: BILLING_NOTIFY_EMAIL,
+          inject: [ConfigService],
+          useFactory: (config: ConfigService): string | null =>
+            config.get<string>('MYANLEX_BILLING_NOTIFY_EMAIL') ?? null,
+        },
+        {
           provide: API_KEY,
           inject: [ConfigService],
           useFactory: (config: ConfigService): string | undefined =>
@@ -228,6 +239,7 @@ export class RuntimeConfigModule {
         REDIS_PREFIX,
         QUOTAS_ENABLED,
         USAGE_RETENTION_MONTHS,
+        BILLING_NOTIFY_EMAIL,
         API_KEY,
         DATABASE_URL,
         HTTP_PORT,

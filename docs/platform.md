@@ -185,13 +185,29 @@ The **Billing** page needs `billing.read` (Owners have it). It shows:
 - the plan history;
 - other public plans.
 
-Plans are changed by the operator (see
-[plans and pricing](operations.md#plans-and-pricing)); there is no checkout.
+Members with `billing.manage` (Owners) can **request a plan change**:
 
-- GET `/:organizationId/billing` returns the same overview. Amounts are decimal
-  strings in the currency's minor units (MMK has none, USD has two).
+- choose **Request this plan** on another plan, or **Switch to Free**;
+- pick when it starts: when approved, or from the 1st of next month (the current
+  month is then billed on the current plan);
+- add an optional note for the MyanLex team.
 
-See [0024](decisions/0024-plans-and-pricing.md).
+The request waits for review in a banner at the top of the page, where it can be
+cancelled. One request can be open at a time. The MyanLex team approves or
+rejects it and you're emailed the decision; past requests and their outcomes are
+listed under **Plan change requests**. There is no checkout yet.
+
+- GET `/:organizationId/billing` returns the same overview, with `changes`,
+  `openChange` and `canRequestChange`. Amounts are decimal strings in the
+  currency's minor units (MMK has none, USD has two).
+- POST `/:organizationId/billing/plan-changes`
+  `{ "planSlug", "timing": "now" | "next_month", "note"? }` requests a change;
+  409 if one is open.
+- POST `/:organizationId/billing/plan-changes/:changeId/cancel` cancels a
+  pending change.
+
+See [0024](decisions/0024-plans-and-pricing.md) and
+[0025](decisions/0025-plan-changes.md).
 
 ## Team management
 

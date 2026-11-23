@@ -1184,6 +1184,104 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing/plan-changes:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: requestPlanChange
+      summary: Request a plan change for operator approval (billing.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session and same-origin request required. Opens an
+        approval-channel change in `pending`; an operator applies or rejects it
+        with `pnpm billing:changes`. Recorded as billing.plan_change_requested.
+        The operator billing address (MYANLEX_BILLING_NOTIFY_EMAIL) is emailed
+        on a best-effort basis; `notification` reports the outcome. 409 when
+        the workspace already has an open change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlanChangeInput' }
+      responses:
+        '201':
+          description: The pending change.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PlanChange'
+                type: object
+                required: [notification]
+                properties:
+                  notification: { type: string, enum: [sent, failed, disabled] }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/PlanChangeConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing/plan-changes/{changeId}/cancel:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: changeId
+        in: path
+        required: true
+        description: Plan change identifier.
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: cancelPlanChange
+      summary: Cancel a pending plan change (billing.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Only a `pending` change can be cancelled; others return 409. Recorded
+        as billing.plan_change_cancelled.
+      responses:
+        '200':
+          description: The cancelled change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanChange' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/PlanChangeConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /platform/organizations/{organizationId}/usage-statements:
     parameters:
       - name: organizationId
@@ -2134,6 +2232,14 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    PlanChangeConflict:
+      description:
+        The workspace already has an open plan change, or the change is no
+        longer pending.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     WorkspaceConflict:
       description: The slug is already in use.
       content:
@@ -2417,6 +2523,10 @@ components:
         - invitation.accepted
         - ownership.transferred
         - billing.plan_changed
+        - billing.plan_change_requested
+        - billing.plan_change_cancelled
+        - billing.plan_change_applied
+        - billing.plan_change_rejected
     AuditEvent:
       type: object
       additionalProperties: false
@@ -2731,6 +2841,66 @@ components:
         overage:
           $ref: '#/components/schemas/DecimalCount'
           description: Usage above the allowance.
+    PlanChange:
+      type: object
+      additionalProperties: false
+      description: |
+        A requested plan change. The approval channel waits in `pending` for an
+        operator; the checkout channel (reserved) will wait in
+        `awaiting_payment`. At most one change is open per workspace.
+      required:
+        [
+          id,
+          channel,
+          status,
+          fromPlanSlug,
+          plan,
+          timing,
+          requestedStartsAt,
+          note,
+          requesterEmail,
+          createdAt,
+          decidedAt,
+          decisionNote,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        channel: { type: string, enum: [approval, checkout] }
+        status:
+          type: string
+          enum:
+            [pending, awaiting_payment, applied, rejected, cancelled, expired]
+        fromPlanSlug: { type: string }
+        plan:
+          type: object
+          additionalProperties: false
+          required: [name, slug]
+          properties:
+            name: { type: string }
+            slug: { type: string }
+        timing:
+          type: string
+          enum: [now, next_month]
+          description:
+            now applies on approval; next_month on the 1st of the month after
+            the request (UTC), or on approval if that date has passed.
+        requestedStartsAt: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'] }
+        requesterEmail: { type: string, format: email }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    PlanChangeInput:
+      type: object
+      additionalProperties: false
+      required: [planSlug, timing]
+      properties:
+        planSlug:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{0,79}$'
+          description: A public plan other than the current one, or free.
+        timing: { type: string, enum: [now, next_month] }
+        note: { type: string, maxLength: 500 }
     MinorAmount:
       type: string
       description:
@@ -2845,6 +3015,9 @@ components:
           currentMonth,
           subscriptions,
           publicPlans,
+          changes,
+          openChange,
+          canRequestChange,
         ]
       properties:
         organizationId: { type: string, format: uuid }
@@ -2901,9 +3074,27 @@ components:
             allOf:
               - $ref: '#/components/schemas/PlanTerms'
             type: object
-            required: [description]
+            required: [description, changePolicy]
             properties:
               description: { type: [string, 'null'] }
+              changePolicy:
+                type: string
+                enum: [approval, self_service]
+                description:
+                  How the plan is changed to. self_service (checkout) needs a
+                  payment provider; until then every plan uses approval.
+        changes:
+          type: array
+          description: Latest plan changes, newest first (at most 10).
+          items: { $ref: '#/components/schemas/PlanChange' }
+        openChange:
+          description: The workspace's open change, if any.
+          oneOf:
+            - $ref: '#/components/schemas/PlanChange'
+            - type: 'null'
+        canRequestChange:
+          type: boolean
+          description: Whether the caller holds billing.manage.
     QuotaReport:
       type: object
       additionalProperties: false

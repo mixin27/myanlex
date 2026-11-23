@@ -209,4 +209,32 @@ DATABASE_URL='<database connection>' pnpm billing:assign acme free --actor ops@e
 3. Investigate statements that don't reconcile before invoicing them.
 
 Set `MYANLEX_BILLING_CONTACT` (an email address or short text) on the portal to
-tell customers how to change plan.
+tell customers who to contact with billing questions.
+
+### Plan change requests
+
+Workspace Owners request plan changes on the Billing page (see
+[0025](decisions/0025-plan-changes.md)). Review them with:
+
+```sh
+DATABASE_URL='<database connection>' pnpm billing:changes list
+DATABASE_URL='<database connection>' pnpm billing:changes approve <change-id> --actor ops@example.com
+DATABASE_URL='<database connection>' pnpm billing:changes reject <change-id> --actor ops@example.com --reason "Annual agreement needed first"
+```
+
+- `list` shows open changes; `list --all` shows the latest 100 of any status.
+- **Approving** applies the plan exactly as `billing:assign` would.
+  - A "from next month" change starts on the 1st of the month after the request,
+    or immediately if that date has passed; the output says which.
+  - A plan archived since the request can't be applied: reject the change
+    instead.
+- **Rejecting** needs a reason, which the Owner sees on the Billing page.
+- **Emails:**
+  - Set `MYANLEX_BILLING_NOTIFY_EMAIL` on the API to receive an email for each
+    new request.
+  - With the same `SMTP_*` variables as the API, the script emails the requester
+    the decision; without them it prints `Requester email: skipped`.
+  - Mail failures never undo a decision.
+- **Change policy:** plan files accept `"changePolicy": "approval"` (the
+  default). `self_service` is refused until a payment provider (checkout)
+  exists.

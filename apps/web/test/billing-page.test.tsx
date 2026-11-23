@@ -11,7 +11,11 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/billing',
 }));
 import BillingPage from '../src/app/(portal)/billing/page';
-import type { BillingOverview, PlanTerms } from '../src/lib/platform-types';
+import type {
+  BillingOverview,
+  PlanChange,
+  PlanTerms,
+} from '../src/lib/platform-types';
 
 const organization = '3a450187-fa8b-464f-9564-cb5cae9fcd94';
 const org = { id: organization, name: 'Team', slug: 'team' };
@@ -70,7 +74,7 @@ const overview: BillingOverview = {
     },
   ],
   publicPlans: [
-    { ...pro, description: null },
+    { ...pro, description: null, changePolicy: 'approval' },
     {
       ...pro,
       name: 'Team',
@@ -80,16 +84,45 @@ const overview: BillingOverview = {
       overageMode: 'block',
       requestCeiling: null,
       description: null,
+      changePolicy: 'approval',
     },
   ],
+  changes: [],
+  openChange: null,
+  canRequestChange: false,
 };
+const pending: PlanChange = {
+  id: 'c1',
+  channel: 'approval',
+  status: 'pending',
+  fromPlanSlug: 'pro',
+  plan: { name: 'Team', slug: 'team' },
+  timing: 'next_month',
+  requestedStartsAt: '2026-12-01T00:00:00.000Z',
+  note: null,
+  requesterEmail: 'owner@example.test',
+  createdAt: '2026-11-19T09:00:00.000Z',
+  decidedAt: null,
+  decisionNote: null,
+};
+const rejected: PlanChange = {
+  ...pending,
+  id: 'c0',
+  status: 'rejected',
+  timing: 'now',
+  requestedStartsAt: null,
+  createdAt: '2026-11-10T09:00:00.000Z',
+  decidedAt: '2026-11-11T09:00:00.000Z',
+  decisionNote: 'Annual agreement needed first',
+};
+let current: BillingOverview = overview;
 
 function serve(permissions: string[]) {
   readPlatform.mockImplementation(async (path: string) => {
     if (path === 'organizations') return { items: [org], nextCursor: null };
     if (path === `organizations/${organization}`)
       return { ...org, permissions };
-    if (path === `organizations/${organization}/billing`) return overview;
+    if (path === `organizations/${organization}/billing`) return current;
     throw new Error(`unexpected ${path}`);
   });
 }
@@ -103,6 +136,7 @@ const render = async () =>
 describe('billing page', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    current = overview;
     vi.unstubAllEnvs();
   });
 
@@ -136,6 +170,40 @@ describe('billing page', () => {
     expect(readPlatform.mock.calls.map(([path]) => path)).not.toContain(
       `organizations/${organization}/billing`,
     );
+  });
+
+  it('offers plan requests only to members who can manage billing', async () => {
+    serve(['billing.read', 'billing.manage']);
+    current = { ...overview, canRequestChange: true };
+    const html = await render();
+    // The current plan (Pro) is not offered; only Team is.
+    expect(html.match(/Request this plan/g)).toHaveLength(1);
+    expect(html).toContain('Switch to Free');
+    expect(html).toContain('reviewed by the MyanLex team');
+
+    current = overview;
+    const readOnly = await render();
+    expect(readOnly).not.toContain('Request this plan');
+    expect(readOnly).not.toContain('Switch to Free');
+    expect(readOnly).toContain('Ask a workspace Owner to change the plan.');
+  });
+
+  it('shows the open change instead of new requests, and the history', async () => {
+    serve(['billing.read', 'billing.manage']);
+    current = {
+      ...overview,
+      canRequestChange: true,
+      openChange: pending,
+      changes: [pending, rejected],
+    };
+    const html = await render();
+    expect(html).toContain('Waiting for review: move to Team');
+    expect(html).toContain('from 1 December 2026');
+    expect(html).toContain('Cancel request');
+    expect(html).not.toContain('Request this plan');
+    expect(html).toContain('Plan change requests');
+    expect(html).toContain('Not approved');
+    expect(html).toContain('Annual agreement needed first');
   });
 
   it('rejects malformed workspace ids', async () => {

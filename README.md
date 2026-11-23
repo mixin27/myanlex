@@ -75,6 +75,9 @@ tests is not a measured linguistic accuracy score or release approval.
 - Plans with a monthly fee, allowances and per-block overage in any currency,
   assigned by operators, with priced statements and a portal Billing page;
   [plans and pricing](docs/operations.md#plans-and-pricing)
+- Plan change requests from the portal, approved by operators, on a plan-change
+  model ready for a future checkout channel;
+  [0025](docs/decisions/0025-plan-changes.md)
 - Team management: member roles, custom roles with permission editing, and email
   invitations with an in-portal pending list;
   [team workflow](docs/platform.md#team-management)
@@ -86,7 +89,7 @@ tests is not a measured linguistic accuracy score or release approval.
 
 Planned next:
 
-- Payment collection and self-service plan changes on top of priced statements
+- Payment collection: a checkout channel for self-service plan changes
 
 ## Repository layout
 
