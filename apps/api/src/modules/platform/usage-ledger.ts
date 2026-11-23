@@ -2,6 +2,7 @@ import type {
   StoredCharges,
   StoredTerms,
 } from '../../common/billing/pricing.js';
+import type { AuditActor } from './audit.js';
 
 /** Billing-grade usage ledger types. See docs/decisions/0023. */
 export const USAGE_LEDGER_REPOSITORY = Symbol('USAGE_LEDGER_REPOSITORY');
@@ -94,6 +95,63 @@ export interface UsageLedgerRepository {
   cleanup(before: Date): Promise<number>;
   /** Current plan, subscription history, this month's estimate and public plans. */
   billing(organizationId: string): Promise<BillingOverview>;
+  /** Opens an approval-channel plan change (ADR 0025). */
+  requestPlanChange(
+    organizationId: string,
+    actor: AuditActor,
+    input: PlanChangeInput,
+  ): Promise<PlanChangeRecord>;
+  /** Cancels the organization's pending change. */
+  cancelPlanChange(
+    organizationId: string,
+    changeId: string,
+    actor: AuditActor,
+  ): Promise<PlanChangeRecord>;
+}
+
+export type PlanChangeTiming = 'now' | 'next_month';
+export type PlanChangeStatus =
+  | 'pending'
+  | 'awaiting_payment'
+  | 'applied'
+  | 'rejected'
+  | 'cancelled'
+  | 'expired';
+
+export interface PlanChangeInput {
+  readonly planSlug: string;
+  readonly timing: PlanChangeTiming;
+  readonly note?: string | undefined;
+}
+
+export interface PlanChangeRecord {
+  readonly id: string;
+  readonly channel: 'approval' | 'checkout';
+  readonly status: PlanChangeStatus;
+  readonly fromPlanSlug: string;
+  readonly plan: { readonly name: string; readonly slug: string };
+  readonly timing: PlanChangeTiming;
+  readonly requestedStartsAt: Date | null;
+  readonly note: string | null;
+  readonly requesterEmail: string;
+  readonly createdAt: Date;
+  readonly decidedAt: Date | null;
+  readonly decisionNote: string | null;
+}
+
+/** Why a plan change was refused; mapped to HTTP by the billing service. */
+export class PlanChangeError extends Error {
+  constructor(
+    readonly code:
+      | 'unknown_plan'
+      | 'current_plan'
+      | 'open_change'
+      | 'not_found'
+      | 'not_open',
+    message: string,
+  ) {
+    super(message);
+  }
 }
 
 export interface SubscriptionPeriod {
@@ -119,7 +177,10 @@ export interface BillingOverview {
   };
   readonly publicPlans: readonly (StoredTerms & {
     readonly description: string | null;
+    readonly changePolicy: 'approval' | 'self_service';
   })[];
+  /** Latest plan changes, newest first. */
+  readonly changes: readonly PlanChangeRecord[];
 }
 
 export const usageRetention = { defaultMonths: 13, minimumMonths: 13 } as const;

@@ -19,7 +19,11 @@ import {
   storeTerms,
   type PlanTerms,
 } from '../src/common/billing/pricing.js';
-import type { BillingOverview } from '../src/modules/platform/usage-ledger.js';
+import {
+  PlanChangeError,
+  type BillingOverview,
+  type PlanChangeRecord,
+} from '../src/modules/platform/usage-ledger.js';
 import type { WorkspaceRepository } from '../src/modules/platform/workspace.repository.js';
 
 const userId = randomUUID();
@@ -73,11 +77,35 @@ const overview: BillingOverview = {
     characters: 9n,
     charges: storeCharges(priceUsage(pro, { requests: 111n, characters: 9n })),
   },
-  publicPlans: [{ ...storeTerms(pro), description: null }],
+  publicPlans: [
+    { ...storeTerms(pro), description: null, changePolicy: 'approval' },
+  ],
+  changes: [],
+};
+
+const changeId = randomUUID();
+const change: PlanChangeRecord = {
+  id: changeId,
+  channel: 'approval',
+  status: 'pending',
+  fromPlanSlug: 'pro',
+  plan: { name: 'Team', slug: 'team' },
+  timing: 'next_month',
+  requestedStartsAt: new Date('2026-12-01T00:00:00.000Z'),
+  note: 'PO 42',
+  requesterEmail: 'o@example.com',
+  createdAt: now,
+  decidedAt: null,
+  decisionNote: null,
 };
 
 const workspace = { getOrganization: vi.fn() };
-const ledger = { billing: vi.fn() };
+const ledger = {
+  billing: vi.fn(),
+  requestPlanChange: vi.fn(),
+  cancelPlanChange: vi.fn(),
+};
+const sendMail = vi.fn();
 const actsWith = (permissions: string[] | null) =>
   workspace.getOrganization.mockImplementation(
     async (_u: string, id: string) =>
@@ -106,10 +134,12 @@ describe('billing HTTP contract', () => {
     Object.defineProperties(app.get(BillingService), {
       workspace: { value: workspace as unknown as WorkspaceRepository },
       ledger: { value: ledger },
+      notifyEmail: { value: 'billing@myanlex.test', writable: true },
     });
     Object.defineProperties(app.get(AccountAuthService), {
       auth: { value: { api: { getSession } } },
       publicURL: { value: origin },
+      sendMail: { value: sendMail },
     });
   });
   afterAll(async () => {
@@ -125,6 +155,152 @@ describe('billing HTTP contract', () => {
     );
     actsWith(['billing.read']);
     ledger.billing.mockResolvedValue(overview);
+    ledger.requestPlanChange.mockResolvedValue(change);
+    ledger.cancelPlanChange.mockResolvedValue({
+      ...change,
+      status: 'cancelled',
+      decidedAt: now,
+    });
+    sendMail.mockResolvedValue('sent');
+    app.get(BillingService)['notifyEmail' as never] =
+      'billing@myanlex.test' as never;
+  });
+  const post = (
+    path: string,
+    payload?: object,
+    headers: Record<string, string> = {},
+  ) =>
+    app.inject({
+      method: 'POST',
+      url: `/v1/platform/organizations/${organizationId}/billing/${path}`,
+      headers: { cookie: 'session=valid', origin, ...headers },
+      ...(payload ? { payload } : {}),
+    });
+
+  it('requests plan changes with billing.manage only, and notifies the operator', async () => {
+    const body = { planSlug: 'team', timing: 'next_month', note: 'PO 42' };
+    expect((await post('plan-changes', body, { cookie: '' })).statusCode).toBe(
+      401,
+    );
+    expect(
+      (await post('plan-changes', body, { origin: 'https://evil.example' }))
+        .statusCode,
+    ).toBe(403);
+    const forbidden = await post('plan-changes', body);
+    expect(forbidden.statusCode).toBe(403);
+    expect(ledger.requestPlanChange).not.toHaveBeenCalled();
+
+    expect((await get()).json()).toMatchObject({
+      canRequestChange: false,
+      openChange: null,
+      changes: [],
+    });
+    actsWith(['billing.read', 'billing.manage']);
+    ledger.billing.mockResolvedValueOnce({ ...overview, changes: [change] });
+    expect((await get()).json()).toMatchObject({
+      canRequestChange: true,
+      openChange: {
+        id: changeId,
+        requestedStartsAt: '2026-12-01T00:00:00.000Z',
+      },
+    });
+    const created = await post('plan-changes', body);
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      id: changeId,
+      status: 'pending',
+      timing: 'next_month',
+      requestedStartsAt: '2026-12-01T00:00:00.000Z',
+      notification: 'sent',
+    });
+    expect(ledger.requestPlanChange).toHaveBeenCalledWith(
+      organizationId,
+      expect.objectContaining({ userId, email: 'o@example.com' }),
+      body,
+    );
+    const mail = sendMail.mock.calls[0]![0] as {
+      to: string;
+      subject: string;
+      text: string;
+    };
+    expect(mail.to).toBe('billing@myanlex.test');
+    expect(mail.subject).toBe('Plan change request: Acme → Team');
+    expect(mail.text).toContain('pnpm billing:changes list');
+    expect(mail.text).toContain('Note: PO 42');
+  });
+
+  it('keeps the request when mail is off or fails', async () => {
+    actsWith(['billing.manage']);
+    sendMail.mockResolvedValue('failed');
+    const failed = await post('plan-changes', {
+      planSlug: 'team',
+      timing: 'now',
+    });
+    expect(failed.json().notification).toBe('failed');
+    app.get(BillingService)['notifyEmail' as never] = null as never;
+    sendMail.mockClear();
+    const disabled = await post('plan-changes', {
+      planSlug: 'team',
+      timing: 'now',
+    });
+    expect(disabled.json().notification).toBe('disabled');
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it('validates the request and maps domain errors', async () => {
+    actsWith(['billing.manage']);
+    for (const payload of [
+      { planSlug: 'Team!', timing: 'now' },
+      { planSlug: 'team', timing: 'tomorrow' },
+      { planSlug: 'team', timing: 'now', note: 'x'.repeat(501) },
+      { planSlug: 'team', timing: 'now', extra: true },
+    ])
+      expect((await post('plan-changes', payload)).statusCode).toBe(400);
+    for (const [code, status] of [
+      ['unknown_plan', 400],
+      ['current_plan', 400],
+      ['open_change', 409],
+    ] as const) {
+      ledger.requestPlanChange.mockRejectedValueOnce(
+        new PlanChangeError(code, `refused: ${code}`),
+      );
+      const response = await post('plan-changes', {
+        planSlug: 'team',
+        timing: 'now',
+      });
+      expect(response.statusCode, code).toBe(status);
+      expect(response.json().detail).toBe(`refused: ${code}`);
+    }
+    ledger.requestPlanChange.mockRejectedValueOnce(new Error('db down'));
+    const down = await post('plan-changes', {
+      planSlug: 'team',
+      timing: 'now',
+    });
+    expect(down.statusCode).toBe(503);
+    expect(down.body).not.toContain('db down');
+  });
+
+  it('cancels only with billing.manage, mapping missing and closed changes', async () => {
+    expect((await post(`plan-changes/${changeId}/cancel`)).statusCode).toBe(
+      403,
+    );
+    actsWith(['billing.manage']);
+    const cancelled = await post(`plan-changes/${changeId}/cancel`);
+    expect(cancelled.statusCode).toBe(200);
+    expect(cancelled.json()).toMatchObject({ status: 'cancelled' });
+    ledger.cancelPlanChange.mockRejectedValueOnce(
+      new PlanChangeError('not_found', 'Plan change not found.'),
+    );
+    expect((await post(`plan-changes/${changeId}/cancel`)).statusCode).toBe(
+      404,
+    );
+    ledger.cancelPlanChange.mockRejectedValueOnce(
+      new PlanChangeError('not_open', 'Only waiting changes.'),
+    );
+    expect((await post(`plan-changes/${changeId}/cancel`)).statusCode).toBe(
+      409,
+    );
+    expect((await post('plan-changes/not-a-uuid/cancel')).statusCode).toBe(400);
   });
 
   it('requires a session, membership and billing.read', async () => {

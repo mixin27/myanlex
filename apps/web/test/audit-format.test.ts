@@ -16,6 +16,28 @@ const event = (
 });
 
 describe('audit event sentences', () => {
+  it('describes plan changes by plan slug', () => {
+    expect(
+      describeAuditEvent(
+        event('billing.plan_change_requested', {
+          from: 'pro',
+          to: 'team',
+          timing: 'next_month',
+        }),
+      ),
+    ).toBe(
+      'olivia@example.com requested a move from pro to team from next month.',
+    );
+    expect(
+      describeAuditEvent(
+        event('billing.plan_changed', { from: 'free', to: 'pro' }),
+      ),
+    ).toBe('olivia@example.com changed the plan from free to pro.');
+    expect(
+      describeAuditEvent(event('billing.plan_change_rejected', { to: 'team' })),
+    ).toBe('olivia@example.com rejected the move to team.');
+  });
+
   it('names the actor, target and change', () => {
     expect(
       describeAuditEvent(

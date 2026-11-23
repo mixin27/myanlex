@@ -126,7 +126,38 @@ export interface BillingOverview {
     status: 'current' | 'scheduled' | 'ended';
     note: string | null;
   }[];
-  publicPlans: (PlanTerms & { description: string | null })[];
+  publicPlans: (PlanTerms & {
+    description: string | null;
+    changePolicy: 'approval' | 'self_service';
+  })[];
+  /** Latest plan changes, newest first. */
+  changes: PlanChange[];
+  openChange: PlanChange | null;
+  /** Whether the viewer holds billing.manage. */
+  canRequestChange: boolean;
+}
+
+export type PlanChangeStatus =
+  | 'pending'
+  | 'awaiting_payment'
+  | 'applied'
+  | 'rejected'
+  | 'cancelled'
+  | 'expired';
+/** A requested plan change (ADR 0025). */
+export interface PlanChange {
+  id: string;
+  channel: 'approval' | 'checkout';
+  status: PlanChangeStatus;
+  fromPlanSlug: string;
+  plan: { name: string; slug: string };
+  timing: 'now' | 'next_month';
+  requestedStartsAt: string | null;
+  note: string | null;
+  requesterEmail: string;
+  createdAt: string;
+  decidedAt: string | null;
+  decisionNote: string | null;
 }
 
 export interface UsageStatementLine {
@@ -226,7 +257,11 @@ export type AuditAction =
   | 'invitation.revoked'
   | 'invitation.accepted'
   | 'ownership.transferred'
-  | 'billing.plan_changed';
+  | 'billing.plan_changed'
+  | 'billing.plan_change_requested'
+  | 'billing.plan_change_cancelled'
+  | 'billing.plan_change_applied'
+  | 'billing.plan_change_rejected';
 export interface AuditEvent {
   id: string;
   action: AuditAction;

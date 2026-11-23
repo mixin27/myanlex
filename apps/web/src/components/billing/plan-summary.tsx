@@ -1,4 +1,9 @@
-import type { BillingOverview, PlanTerms } from '@/lib/platform-types';
+import type * as React from 'react';
+import type {
+  BillingOverview,
+  PlanChange,
+  PlanTerms,
+} from '@/lib/platform-types';
 import { formatMoney } from '@/lib/money';
 import { formatUsageCount } from '@/lib/usage-range';
 
@@ -27,9 +32,12 @@ function overageTerm(
 export function PlanCard({
   plan,
   compact = false,
+  action,
 }: {
   plan: PlanTerms & { description: string | null; source?: string };
   compact?: boolean;
+  /** A request or switch button, for members who can change the plan. */
+  action?: React.ReactNode;
 }) {
   const terms = [
     overageTerm(
@@ -94,6 +102,7 @@ export function PlanCard({
           ))}
         </ul>
       )}
+      {action && <div>{action}</div>}
       {!compact && plan.source === 'free' && (
         <p className="text-xs text-muted-foreground">
           Default plan for workspaces without a subscription.
@@ -163,6 +172,76 @@ export function PlanHistory({
       <p className="text-xs text-muted-foreground">
         When no plan period covers a date, the default Free plan applied.
       </p>
+    </section>
+  );
+}
+
+const changeStatus: Record<PlanChange['status'], string> = {
+  pending: 'Waiting for review',
+  awaiting_payment: 'Waiting for payment',
+  applied: 'Approved',
+  rejected: 'Not approved',
+  cancelled: 'Cancelled',
+  expired: 'Expired',
+};
+
+/** Requested plan changes, newest first. */
+export function ChangeHistory({ changes }: { changes: PlanChange[] }) {
+  if (changes.length === 0) return null;
+  return (
+    <section
+      aria-labelledby="changes-heading"
+      className="space-y-3 rounded-xl border bg-white p-5"
+    >
+      <h2 id="changes-heading" className="font-semibold">
+        Plan change requests
+      </h2>
+      <table className="w-full text-sm">
+        <caption className="sr-only">
+          Plan change requests, newest first, UTC
+        </caption>
+        <thead>
+          <tr className="border-b text-left text-muted-foreground">
+            <th className="py-2 font-medium">Plan</th>
+            <th className="py-2 font-medium">Requested</th>
+            <th className="py-2 font-medium">Start</th>
+            <th className="py-2 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {changes.map((change) => (
+            <tr key={change.id} className="border-b last:border-0 align-top">
+              <td className="py-2">
+                {change.fromPlanSlug} → {change.plan.name}
+                <span className="block text-xs text-muted-foreground">
+                  by {change.requesterEmail}
+                </span>
+              </td>
+              <td className="py-2 tabular-nums">
+                {change.createdAt.slice(0, 10)}
+              </td>
+              <td className="py-2 tabular-nums">
+                {change.requestedStartsAt
+                  ? change.requestedStartsAt.slice(0, 10)
+                  : 'On approval'}
+              </td>
+              <td className="py-2">
+                {changeStatus[change.status]}
+                {change.decidedAt && (
+                  <span className="block text-xs text-muted-foreground">
+                    {change.decidedAt.slice(0, 10)}
+                  </span>
+                )}
+                {change.decisionNote && (
+                  <span className="block text-xs text-muted-foreground">
+                    {change.decisionNote}
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }

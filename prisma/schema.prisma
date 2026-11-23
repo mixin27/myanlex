@@ -26,6 +26,7 @@ model User {
   invitationsSent OrganizationInvitation[] @relation("InvitationInviter")
   invitationsUsed OrganizationInvitation[] @relation("InvitationAcceptor")
   auditEvents     AuditEvent[]
+  planChanges     PlanChange[]
 
   @@map("users")
 }
@@ -102,6 +103,7 @@ model Organization {
   auditEvents   AuditEvent[]
   usageEvents   UsageEvent[]
   statements    UsageStatement[]
+  planChanges   PlanChange[]
 
   @@map("organizations")
 }
@@ -301,9 +303,12 @@ model Plan {
   public                   Boolean        @default(false)
   description              String?        @db.VarChar(500)
   archivedAt               DateTime?      @map("archived_at") @db.Timestamptz(3)
+  /// `approval` (operator reviews) or `self_service` (checkout, once a payment provider exists).
+  changePolicy             String         @default("approval") @map("change_policy") @db.VarChar(16)
   createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
   subscriptions            Subscription[]
+  planChanges              PlanChange[]
 
   @@map("plans")
 }
@@ -321,6 +326,8 @@ model Subscription {
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   plan           Plan         @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  planChanges PlanChange[]
 
   @@index([organizationId, status])
   @@index([planId])
@@ -409,4 +416,40 @@ model UsageStatement {
   @@id([organizationId, monthStart])
   @@index([monthStart])
   @@map("usage_statements")
+}
+
+/// A requested plan change, whatever its channel. See docs/decisions/0025.
+model PlanChange {
+  id                String        @id @default(uuid()) @db.Uuid
+  organizationId    String        @map("organization_id") @db.Uuid
+  fromPlanSlug      String        @map("from_plan_slug") @db.VarChar(80)
+  planId            String        @map("plan_id") @db.Uuid
+  /// `approval` now; `checkout` once a payment provider exists.
+  channel           String        @db.VarChar(16)
+  /// `now` (on approval or payment) or `next_month`.
+  timing            String        @db.VarChar(16)
+  requestedStartsAt DateTime?     @map("requested_starts_at") @db.Timestamptz(3)
+  note              String?       @db.VarChar(500)
+  requesterUserId   String?       @map("requester_user_id") @db.Uuid
+  requesterEmail    String        @map("requester_email") @db.VarChar(320)
+  /// pending | awaiting_payment (open); applied | rejected | cancelled | expired.
+  status            String        @db.VarChar(24)
+  decidedAt         DateTime?     @map("decided_at") @db.Timestamptz(3)
+  decidedBy         String?       @map("decided_by") @db.VarChar(320)
+  decisionNote      String?       @map("decision_note") @db.VarChar(500)
+  subscriptionId    String?       @map("subscription_id") @db.Uuid
+  /// A future payment provider's checkout or session id.
+  externalRef       String?       @map("external_ref") @db.VarChar(200)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan              Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
+  requester         User?         @relation(fields: [requesterUserId], references: [id], onDelete: SetNull)
+  subscription      Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([planId])
+  @@index([requesterUserId])
+  @@index([subscriptionId])
+  @@map("plan_changes")
 }

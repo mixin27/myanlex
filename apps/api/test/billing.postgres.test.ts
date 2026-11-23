@@ -291,4 +291,236 @@ describe.skipIf(!databaseUrl)('Plan pricing and assignment', () => {
     expect(statement.status).toBe('closed');
     expect(statement.charges?.totalMinor).toBe('50000');
   });
+
+  async function requester() {
+    const user = await client.user.create({
+      data: {
+        name: 'Owner',
+        email: `owner-${randomUUID()}@example.test`,
+        emailVerified: true,
+      },
+    });
+    return { userId: user.id, email: user.email };
+  }
+  async function paidWorkspace() {
+    const pro = plan({ public: true });
+    const team = plan({
+      public: true,
+      overageMode: 'block',
+      requestCeiling: null,
+    });
+    await admin.upsert(pro);
+    await admin.upsert(team);
+    const ws = await workspace();
+    await admin.assign({
+      organizationSlug: ws.organization.slug,
+      planSlug: pro.slug,
+      actorEmail: operator,
+    });
+    return { ...ws, pro, team, actor: await requester() };
+  }
+
+  it('allows one open change per workspace, even under concurrent requests', async () => {
+    const { organization, team, actor } = await paidWorkspace();
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () =>
+        ledger.requestPlanChange(organization.id, actor, {
+          planSlug: team.slug,
+          timing: 'now',
+        }),
+      ),
+    );
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    for (const result of results.filter((r) => r.status === 'rejected'))
+      expect((result as PromiseRejectedResult).reason).toMatchObject({
+        code: 'open_change',
+      });
+    const open = await client.planChange.findMany({
+      where: { organizationId: organization.id },
+    });
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({
+      channel: 'approval',
+      status: 'pending',
+      requesterUserId: actor.userId,
+    });
+  });
+
+  it('refuses unavailable and current plans', async () => {
+    const { organization, pro, actor } = await paidWorkspace();
+    const hidden = plan();
+    await admin.upsert(hidden);
+    for (const planSlug of [pro.slug, hidden.slug, 'no-such-plan'])
+      await expect(
+        ledger.requestPlanChange(organization.id, actor, {
+          planSlug,
+          timing: 'now',
+        }),
+      ).rejects.toMatchObject({
+        code: planSlug === pro.slug ? 'current_plan' : 'unknown_plan',
+      });
+  });
+
+  it('applies approved changes now or from next month, never in the past', async () => {
+    const { organization, team, actor } = await paidWorkspace();
+    const later = await ledger.requestPlanChange(organization.id, actor, {
+      planSlug: team.slug,
+      timing: 'next_month',
+      note: 'PO 42',
+    });
+    const nextMonth = new Date(
+      Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1),
+    );
+    expect(later.requestedStartsAt).toEqual(nextMonth);
+    const applied = await admin.approveChange({
+      changeId: later.id,
+      actorEmail: operator,
+    });
+    expect(applied.startsAt).toEqual(nextMonth);
+    expect(applied.startedEarly).toBe(false);
+    const stored = await client.planChange.findUniqueOrThrow({
+      where: { id: later.id },
+      include: { subscription: true },
+    });
+    expect(stored).toMatchObject({ status: 'applied', decidedBy: operator });
+    expect(stored.subscription?.startsAt).toEqual(nextMonth);
+    // Approving twice is refused.
+    await expect(
+      admin.approveChange({ changeId: later.id, actorEmail: operator }),
+    ).rejects.toThrow('already applied');
+
+    // A next-month request approved after its date starts on approval.
+    const other = await paidWorkspace();
+    const late = await ledger.requestPlanChange(
+      other.organization.id,
+      other.actor,
+      {
+        planSlug: other.team.slug,
+        timing: 'next_month',
+      },
+    );
+    await client.$executeRaw`
+      UPDATE plan_changes SET requested_starts_at = now() - interval '1 day'
+      WHERE id = ${late.id}::uuid`;
+    const early = await admin.approveChange({
+      changeId: late.id,
+      actorEmail: operator,
+    });
+    expect(early.startedEarly).toBe(true);
+    expect(early.startsAt.getTime()).toBeGreaterThan(Date.now() - 60_000);
+
+    const audit = await client.auditEvent.findMany({
+      where: { organizationId: organization.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(audit.map((event) => event.action)).toEqual(
+      expect.arrayContaining([
+        'billing.plan_change_requested',
+        'billing.plan_changed',
+        'billing.plan_change_applied',
+      ]),
+    );
+  });
+
+  it('rejects and cancels pending changes, and keeps archived plans pending', async () => {
+    const { organization, team, actor } = await paidWorkspace();
+    const first = await ledger.requestPlanChange(organization.id, actor, {
+      planSlug: team.slug,
+      timing: 'now',
+    });
+    const cancelled = await ledger.cancelPlanChange(
+      organization.id,
+      first.id,
+      actor,
+    );
+    expect(cancelled.status).toBe('cancelled');
+    await expect(
+      ledger.cancelPlanChange(organization.id, first.id, actor),
+    ).rejects.toMatchObject({ code: 'not_open' });
+    await expect(
+      ledger.cancelPlanChange(randomUUID(), first.id, actor),
+    ).rejects.toMatchObject({ code: 'not_found' });
+
+    const second = await ledger.requestPlanChange(organization.id, actor, {
+      planSlug: team.slug,
+      timing: 'now',
+    });
+    await expect(
+      admin.rejectChange({
+        changeId: second.id,
+        actorEmail: operator,
+        reason: ' ',
+      }),
+    ).rejects.toThrow('reason');
+    const rejected = await admin.rejectChange({
+      changeId: second.id,
+      actorEmail: operator,
+      reason: 'Annual agreement needed first',
+    });
+    expect(rejected).toMatchObject({
+      status: 'rejected',
+      decisionNote: 'Annual agreement needed first',
+    });
+
+    const third = await ledger.requestPlanChange(organization.id, actor, {
+      planSlug: team.slug,
+      timing: 'now',
+    });
+    await admin.archive(team.slug);
+    await expect(
+      admin.approveChange({ changeId: third.id, actorEmail: operator }),
+    ).rejects.toThrow('archived');
+    expect(
+      (await client.planChange.findUniqueOrThrow({ where: { id: third.id } }))
+        .status,
+    ).toBe('pending');
+    const overview = await ledger.billing(organization.id);
+    expect(overview.changes.map((change) => change.status)).toEqual([
+      'pending',
+      'rejected',
+      'cancelled',
+    ]);
+  });
+
+  it('enforces channel, status and change-policy rules in the database', async () => {
+    const { organization, pro } = await paidWorkspace();
+    const planId = (
+      await client.plan.findUniqueOrThrow({ where: { slug: pro.slug } })
+    ).id;
+    const base = {
+      organizationId: organization.id,
+      fromPlanSlug: 'free',
+      planId,
+      timing: 'now',
+      requesterEmail: 'x@example.test',
+    };
+    await expect(
+      client.planChange.create({
+        data: { ...base, channel: 'approval', status: 'awaiting_payment' },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      client.planChange.create({
+        data: { ...base, channel: 'approval', status: 'applied' },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      client.planChange.create({
+        data: {
+          ...base,
+          channel: 'approval',
+          status: 'pending',
+          timing: 'next_month',
+        },
+      }),
+    ).rejects.toThrow();
+    // change_policy is descriptive: editable on a used plan.
+    await client.plan.update({
+      where: { slug: pro.slug },
+      data: { changePolicy: 'self_service' },
+    });
+    await expect(
+      admin.upsert({ ...pro, changePolicy: 'self_service' }),
+    ).rejects.toThrow('payment provider');
+  });
 });

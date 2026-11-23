@@ -9,7 +9,15 @@ import type {
   Page,
 } from '@/lib/platform-types';
 import { OrganizationPicker } from '@/components/workspace/organization-picker';
-import { PlanCard, PlanHistory } from '@/components/billing/plan-summary';
+import {
+  ChangeHistory,
+  PlanCard,
+  PlanHistory,
+} from '@/components/billing/plan-summary';
+import {
+  OpenChangeBanner,
+  RequestPlanButton,
+} from '@/components/billing/plan-change';
 import { ChargesTable } from '@/components/billing/charges';
 import { formatUsageCount } from '@/lib/usage-range';
 
@@ -44,6 +52,24 @@ export default async function BillingPage({
   const others = billing?.publicPlans.filter(
     (plan) => plan.slug !== billing.plan.slug,
   );
+  // Requests are allowed for members with billing.manage and no open change.
+  const canRequest = Boolean(billing?.canRequestChange && !billing.openChange);
+  const generated = billing ? new Date(billing.generatedAt) : new Date();
+  const nextMonthStart = new Date(
+    Date.UTC(generated.getUTCFullYear(), generated.getUTCMonth() + 1, 1),
+  ).toISOString();
+  const requestButton = (
+    plan: { slug: string; name: string },
+    label?: string,
+  ) =>
+    organization && canRequest ? (
+      <RequestPlanButton
+        organizationId={organization.id}
+        plan={plan}
+        nextMonthStart={nextMonthStart}
+        {...(label ? { label } : {})}
+      />
+    ) : null;
   return (
     <div className="space-y-6">
       <header className="page-heading">
@@ -84,7 +110,24 @@ export default async function BillingPage({
         </section>
       ) : (
         <>
-          <PlanCard plan={billing.plan} />
+          {billing.openChange && (
+            <OpenChangeBanner
+              organizationId={organization.id}
+              change={billing.openChange}
+              canManage={billing.canRequestChange}
+            />
+          )}
+          <PlanCard
+            plan={billing.plan}
+            action={
+              billing.plan.slug !== 'free'
+                ? requestButton(
+                    { slug: 'free', name: 'Free' },
+                    'Switch to Free',
+                  )
+                : null
+            }
+          />
           <section
             aria-labelledby="month-heading"
             className="space-y-3 rounded-xl border bg-white p-5"
@@ -115,6 +158,7 @@ export default async function BillingPage({
             </p>
           </section>
           <PlanHistory periods={billing.subscriptions} />
+          <ChangeHistory changes={billing.changes} />
           {others && others.length > 0 && (
             <section aria-labelledby="plans-heading" className="space-y-3">
               <h2 id="plans-heading" className="font-semibold">
@@ -122,24 +166,35 @@ export default async function BillingPage({
               </h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {others.map((plan) => (
-                  <PlanCard key={plan.slug} plan={plan} compact />
+                  <PlanCard
+                    key={plan.slug}
+                    plan={plan}
+                    compact
+                    action={requestButton(plan)}
+                  />
                 ))}
               </div>
             </section>
           )}
           <p className="text-sm text-muted-foreground">
-            Plans are changed by the MyanLex team.{' '}
-            {contact ? (
-              /^[^@\s]+@[^@\s]+$/.test(contact) ? (
-                <a className="font-medium underline" href={`mailto:${contact}`}>
-                  Contact {contact} to change plan.
-                </a>
+            {billing.canRequestChange
+              ? 'Plan changes are reviewed by the MyanLex team before they apply.'
+              : 'Ask a workspace Owner to change the plan.'}{' '}
+            {contact &&
+              (/^[^@\s]+@[^@\s]+$/.test(contact) ? (
+                <>
+                  Questions?{' '}
+                  <a
+                    className="font-medium underline"
+                    href={`mailto:${contact}`}
+                  >
+                    Contact {contact}
+                  </a>
+                  .
+                </>
               ) : (
-                <>Contact {contact} to change plan.</>
-              )
-            ) : (
-              'Contact your operator to change plan.'
-            )}
+                <>Questions? Contact {contact}.</>
+              ))}
           </p>
         </>
       )}

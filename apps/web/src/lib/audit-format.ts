@@ -7,6 +7,10 @@ export const auditActionLabels: Record<AuditAction, string> = {
   'member.left': 'Member left',
   'ownership.transferred': 'Ownership transferred',
   'billing.plan_changed': 'Plan changed',
+  'billing.plan_change_requested': 'Plan change requested',
+  'billing.plan_change_cancelled': 'Plan change cancelled',
+  'billing.plan_change_applied': 'Plan change approved',
+  'billing.plan_change_rejected': 'Plan change rejected',
   'invitation.created': 'Invitation sent',
   'invitation.resent': 'Invitation resent',
   'invitation.revoked': 'Invitation revoked',
@@ -79,8 +83,16 @@ export function describeAuditEvent(event: AuditEvent): string {
       return `${who} accepted an invitation and joined as ${named(meta.role)}.`;
     case 'ownership.transferred':
       return `${who} transferred ownership to ${email} and became ${named(meta.previousOwnerRole)}.`;
+    case 'billing.plan_change_requested':
+      return `${who} requested a move from ${text(meta.from, 'a plan')} to ${text(meta.to, 'a plan')}${meta.timing === 'next_month' ? ' from next month' : ''}.`;
+    case 'billing.plan_change_cancelled':
+      return `${who} cancelled the request to move to ${text(meta.to, 'a plan')}.`;
+    case 'billing.plan_change_applied':
+      return `${who} approved the move from ${text(meta.from, 'a plan')} to ${text(meta.to, 'a plan')}.`;
+    case 'billing.plan_change_rejected':
+      return `${who} rejected the move to ${text(meta.to, 'a plan')}.`;
     case 'billing.plan_changed':
-      return `${who} changed the plan from ${named(meta.from, 'a plan')} to ${named(meta.to, 'a plan')}.`;
+      return `${who} changed the plan from ${text(meta.from, 'a plan')} to ${text(meta.to, 'a plan')}.`;
     default:
       return `${who} made a change (${String(event.action)}).`;
   }
