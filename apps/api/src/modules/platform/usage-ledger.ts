@@ -1,3 +1,4 @@
+import type { BillTo } from './billing-profile.js';
 import type {
   StoredCharges,
   StoredTerms,
@@ -237,6 +238,8 @@ export interface OutstandingBalance {
 
 export interface InvoiceRecord {
   readonly number: string;
+  /** Bill-to details as issued; null on invoices issued before they existed. */
+  readonly billTo: BillTo | null;
   readonly kind: 'monthly' | 'proration';
   readonly status: 'open' | 'paid' | 'void';
   readonly periodStart: Date;

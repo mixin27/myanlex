@@ -15,6 +15,9 @@
 - Unpublished TypeScript and Dart HTTP SDKs with cancellation and typed errors.
 - Dedicated public MDX site with search, code highlighting, language tabs,
   generated OpenAPI reference, and executable request examples.
+- Billing details: bill-to fields printed on invoices and kept as issued, and up
+  to three billing emails, confirmed by link, that receive invoice mail instead
+  of every billing manager.
 - Production preparation (not deployed): a Dokploy Compose stack with Postgres
   and Redis on the host, an `ops` image, a release workflow that builds, scans
   and tags GHCR images and runs a smoke check, `ops:daily` with nightly backups,

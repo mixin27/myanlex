@@ -262,7 +262,9 @@ DATABASE_URL='<database connection>' MYANLEX_USAGE_RETENTION_MONTHS=13 pnpm usag
     listed, and the script exits with status 2. Run `usage:close-month` first.
   - Use `--month YYYY-MM` to issue a past month that was missed.
 - **`billing:dunning`** emails new invoices and reminders (on the day of issue
-  and days 3 and 6) to members with `billing.manage`.
+  and days 3 and 6) to the workspace's confirmed billing emails, or to members
+  with `billing.manage` when it has none (set on the Billing page; see
+  [billing details](platform.md#billing-details)).
   - Invoices are due 7 days after issue.
   - On day 7 an unpaid invoice moves its workspace to Free, so Free limits
     apply. It records `billing.suspended_for_nonpayment` and emails the
@@ -278,6 +280,10 @@ DATABASE_URL='<database connection>' MYANLEX_USAGE_RETENTION_MONTHS=13 pnpm usag
   - Marking an invoice paid emails a receipt, and if dunning had moved the
     workspace to Free, restores the plan immediately.
 
+- **Wrong recipient or bill-to:** workspaces fix their own billing details on
+  the Billing page. Details apply to invoices issued afterwards;
+  `billing:invoices show <number>` shows what an issued invoice was billed to.
+  To correct an open invoice, void it and issue a new one.
 - **Voiding:** `void <number> --reason … --actor …` cancels an open invoice
   issued in error. Issued invoices can't be edited or deleted; the database
   enforces this.

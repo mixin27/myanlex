@@ -79,15 +79,30 @@ mid-month upgrades, and what happens when an invoice goes unpaid.
 
 ## Dunning
 
-- Invoices are due 7 days after issue. `pnpm billing:dunning` (daily) emails
-  members with `billing.manage`: the invoice on the day of issue, then reminders
-  on days 3 and 6.
+- Invoices are due 7 days after issue. `pnpm billing:dunning` (daily) emails the
+  billing contacts (see Billing details below): the invoice on the day of issue,
+  then reminders on days 3 and 6.
 - Once overdue, the workspace moves to Free (its limits apply), recorded as
   `billing.suspended_for_nonpayment`, and the invoice remembers the plan. Paying
   it restores that plan immediately (`billing.plan_restored`) unless the
   workspace has since chosen another plan or the plan was archived. A month
   already invoiced isn't charged again.
 - Each reminder and the suspension happen once, so the job is safe to rerun.
+
+## Billing details (addendum)
+
+Added after the first release of invoicing:
+
+- **Bill-to snapshot:** each invoice stores the bill-to details in effect when
+  it is issued (`invoices.bill_to`: legal name or workspace name, address, tax
+  ID and a PO or reference note). It is part of the immutable record, so
+  `invoices_guard()` refuses changes to it like the amounts. Later edits apply
+  only to new invoices.
+- **Recipients:** invoice mail goes to the workspace's confirmed billing emails
+  (at most three), or to members with `billing.manage` when there are none. An
+  address must be confirmed from an emailed link first. A typo can't then
+  silently swallow invoices, and MyanLex can't be used to mail arbitrary
+  addresses.
 
 ## Adapters
 

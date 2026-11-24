@@ -14,6 +14,7 @@ import {
 import type { PlanTerms, StoredCharges } from '../../common/billing/pricing.js';
 import { databaseTime, readPlan } from './prisma-quota.repository.js';
 import { PlanAdminError, assignInTransaction } from './plan-admin.js';
+import type { BillTo } from '../../modules/platform/billing-profile.js';
 
 /**
  * Invoices and payments (ADR 0026). Used by the operator scripts and by
@@ -89,6 +90,7 @@ export async function createInvoice(
   const total = sumLines(input.lines);
   const invoice = await tx.invoice.create({
     data: {
+      billTo: await billToSnapshot(tx, input.organizationId),
       number: await nextNumber(tx, now.getUTCFullYear()),
       organizationId: input.organizationId,
       kind: input.kind,
@@ -159,11 +161,40 @@ export async function issueProration(
   });
 }
 
-/** Members who can manage billing receive invoice email. */
+/** The bill-to details in effect now, kept on the invoice as issued. */
+async function billToSnapshot(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+): Promise<BillTo & Prisma.InputJsonObject> {
+  const organization = await tx.organization.findUniqueOrThrow({
+    where: { id: organizationId },
+    select: { name: true },
+  });
+  const profile = await tx.billingProfile.findUnique({
+    where: { organizationId },
+  });
+  return {
+    name: profile?.legalName ?? organization.name,
+    address: profile?.address ?? null,
+    taxId: profile?.taxId ?? null,
+    note: profile?.invoiceNote ?? null,
+  };
+}
+
+/**
+ * Invoice mail recipients: the workspace's confirmed billing emails when it
+ * has any, otherwise members who can manage billing.
+ */
 export async function billingContacts(
   tx: Prisma.TransactionClient | PrismaClient,
   organizationId: string,
 ) {
+  const confirmed = await tx.billingEmail.findMany({
+    where: { organizationId, verifiedAt: { not: null } },
+    select: { email: true },
+    orderBy: { email: 'asc' },
+  });
+  if (confirmed.length > 0) return confirmed.map((row) => row.email);
   const rows = await tx.$queryRaw<{ email: string }[]>`
     SELECT DISTINCT u.email FROM organization_members m
     JOIN users u ON u.id = m.user_id

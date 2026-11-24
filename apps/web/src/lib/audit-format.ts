@@ -16,6 +16,10 @@ export const auditActionLabels: Record<AuditAction, string> = {
   'billing.invoice_voided': 'Invoice voided',
   'billing.suspended_for_nonpayment': 'Moved to Free for non-payment',
   'billing.plan_restored': 'Plan restored',
+  'billing.profile_updated': 'Billing details updated',
+  'billing.email_added': 'Billing email added',
+  'billing.email_confirmed': 'Billing email confirmed',
+  'billing.email_removed': 'Billing email removed',
   'invitation.created': 'Invitation sent',
   'invitation.resent': 'Invitation resent',
   'invitation.revoked': 'Invitation revoked',
@@ -110,6 +114,26 @@ export function describeAuditEvent(event: AuditEvent): string {
       return `${who} moved the workspace from ${text(meta.plan, 'its plan')} to Free because invoice ${text(meta.number)} is overdue.`;
     case 'billing.plan_restored':
       return `${who} restored the ${text(meta.plan, 'previous')} plan after invoice ${text(meta.number)} was paid.`;
+    case 'billing.profile_updated': {
+      const labels: Record<string, string> = {
+        legalName: 'legal name',
+        address: 'address',
+        taxId: 'tax ID',
+        invoiceNote: 'invoice note',
+      };
+      const fields = list(meta.fields)
+        .map((field) => labels[field])
+        .filter(Boolean);
+      return fields.length
+        ? `${who} updated the billing details: ${fields.join(', ')}.`
+        : `${who} updated the billing details.`;
+    }
+    case 'billing.email_added':
+      return `${who} added ${text(meta.email, 'an address')} as a billing email.`;
+    case 'billing.email_confirmed':
+      return `${who} confirmed ${text(meta.email, 'an address')} as a billing email.`;
+    case 'billing.email_removed':
+      return `${who} removed ${text(meta.email, 'an address')} as a billing email.`;
     case 'billing.plan_changed':
       return `${who} changed the plan from ${text(meta.from, 'a plan')} to ${text(meta.to, 'a plan')}.`;
     default:

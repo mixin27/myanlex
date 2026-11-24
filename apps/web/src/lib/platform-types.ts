@@ -148,6 +148,36 @@ export interface BillingOverview {
   openChange: PlanChange | null;
   /** Whether the viewer holds billing.manage. */
   canRequestChange: boolean;
+  profile: BillingProfile;
+}
+
+export interface BillingEmail {
+  id: string;
+  email: string;
+  status: 'confirmed' | 'pending' | 'expired';
+  /** When the address was added or its confirmation link last sent. */
+  sentAt: string;
+  confirmedAt: string | null;
+}
+
+/** Bill-to details printed on invoices issued after a change. */
+export interface BillingDetails {
+  legalName: string | null;
+  address: string | null;
+  taxId: string | null;
+  invoiceNote: string | null;
+}
+
+export interface BillingProfile extends BillingDetails {
+  emails: BillingEmail[];
+}
+
+/** The bill-to details as they were when an invoice was issued. */
+export interface BillTo {
+  name: string;
+  address: string | null;
+  taxId: string | null;
+  note: string | null;
 }
 
 export type PlanChangeStatus =
@@ -279,7 +309,11 @@ export type AuditAction =
   | 'billing.invoice_paid'
   | 'billing.invoice_voided'
   | 'billing.suspended_for_nonpayment'
-  | 'billing.plan_restored';
+  | 'billing.plan_restored'
+  | 'billing.profile_updated'
+  | 'billing.email_added'
+  | 'billing.email_confirmed'
+  | 'billing.email_removed';
 export interface AuditEvent {
   id: string;
   action: AuditAction;
@@ -308,6 +342,8 @@ export interface ChangePreview {
 
 export interface Invoice {
   number: string;
+  /** Null on invoices issued before billing details existed. */
+  billTo: BillTo | null;
   kind: 'monthly' | 'proration';
   status: 'open' | 'paid' | 'void';
   periodStart: string;

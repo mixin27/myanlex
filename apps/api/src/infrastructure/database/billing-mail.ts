@@ -2,6 +2,7 @@ import type {
   MailMessage,
   SendMail,
 } from '../../common/mail/smtp-transport.js';
+import { readBillTo } from '../../modules/platform/billing-profile.js';
 
 /** Invoice email (ADR 0026). Plain text; no secrets or usage content. */
 
@@ -16,6 +17,8 @@ export interface InvoiceForMail {
     readonly description: string;
     readonly amountMinor: bigint;
   }[];
+  /** Bill-to snapshot (JSON); null on invoices issued before it existed. */
+  readonly billTo?: unknown;
 }
 
 export interface MailContext {
@@ -49,6 +52,26 @@ export function money(minor: bigint, currency: string) {
 
 const day = (date: Date) => date.toISOString().slice(0, 10);
 
+/** Asks the holder of a new billing address to confirm it (link, then a button). */
+export function billingEmailConfirmation(
+  organizationName: string,
+  token: string,
+  portalUrl: string,
+): Omit<MailMessage, 'to'> {
+  const url = new URL('/billing-email/confirm', portalUrl);
+  url.searchParams.set('token', token);
+  return {
+    subject: `Confirm billing email for ${organizationName} on MyanLex`,
+    text: [
+      `"${organizationName}" on MyanLex wants to send its invoices and payment receipts to this address.`,
+      '',
+      `Confirm it: ${url.toString()}`,
+      '',
+      'The link works for 7 days. If you did not expect this, ignore this email and nothing will be sent here.',
+    ].join('\n'),
+  };
+}
+
 function link(invoice: InvoiceForMail, context: MailContext) {
   if (!context.portalUrl) return [];
   const url = new URL(`/billing/invoices/${invoice.number}`, context.portalUrl);
@@ -60,6 +83,28 @@ function howToPay(context: MailContext) {
   return context.paymentInstructions
     ? ['', 'How to pay:', context.paymentInstructions]
     : ['', 'Reply to this email if you need payment details.'];
+}
+
+/** "Billed to" lines from the invoice's snapshot; empty fields are left out. */
+function billedTo(invoice: InvoiceForMail) {
+  if (invoice.billTo === null || invoice.billTo === undefined) return [];
+  const billTo = readBillTo(invoice.billTo, invoice.organization.name);
+  return [
+    'Billed to:',
+    ...[billTo.name, ...(billTo.address?.split(/\r?\n/) ?? [])]
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => `  ${line}`),
+    ...(billTo.taxId ? [`  Tax ID: ${billTo.taxId}`] : []),
+    ...(billTo.note ? [`  Reference: ${billTo.note}`] : []),
+    '',
+  ];
+}
+
+/** The customer's PO or reference line, when the invoice has one. */
+function reference(invoice: InvoiceForMail) {
+  const note = readBillTo(invoice.billTo, '').note;
+  return note ? [`Reference: ${note}`] : [];
 }
 
 function summary(invoice: InvoiceForMail) {
@@ -81,6 +126,7 @@ export function invoiceIssued(
     text: [
       `MyanLex has issued invoice ${invoice.number} for "${invoice.organization.name}".`,
       '',
+      ...billedTo(invoice),
       ...summary(invoice),
       '',
       `Please pay by ${day(invoice.dueAt)} (UTC). Include the invoice number with your payment.`,
@@ -99,6 +145,7 @@ export function invoiceReminder(
     text: [
       `Invoice ${invoice.number} for "${invoice.organization.name}" (${money(invoice.totalMinor, invoice.currency)}) is still unpaid and due on ${day(invoice.dueAt)} (UTC).`,
       'If it is not paid by then, the workspace moves to the Free plan until it is.',
+      ...reference(invoice),
       ...howToPay(context),
       ...link(invoice, context),
     ].join('\n'),
