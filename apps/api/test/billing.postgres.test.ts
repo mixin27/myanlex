@@ -304,10 +304,12 @@ describe.skipIf(!databaseUrl)('Plan pricing and assignment', () => {
   }
   async function paidWorkspace() {
     const pro = plan({ public: true });
+    // Dearer than Pro, so it is an upgrade that may start now (ADR 0026).
     const team = plan({
       public: true,
       overageMode: 'block',
       requestCeiling: null,
+      baseFeeMinor: 90_000,
     });
     await admin.upsert(pro);
     await admin.upsert(team);

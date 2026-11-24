@@ -101,6 +101,8 @@ const ledger: { [K in keyof UsageLedgerRepository]: ReturnType<typeof vi.fn> } =
     billing: vi.fn(),
     requestPlanChange: vi.fn(),
     cancelPlanChange: vi.fn(),
+    invoices: vi.fn(),
+    invoice: vi.fn(),
   };
 
 function actsWith(permissions: string[] | null) {

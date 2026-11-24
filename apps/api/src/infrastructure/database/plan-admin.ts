@@ -1,7 +1,14 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { z } from 'zod';
 import { PrismaClient, type Prisma } from '../../generated/prisma/client.js';
-import { databaseTime } from './prisma-quota.repository.js';
+import { databaseTime, readPlan } from './prisma-quota.repository.js';
+import { issueProration } from './billing-invoices.js';
+import {
+  changeKind,
+  monthStartOf,
+  nextMonthStartOf,
+} from '../../common/billing/invoicing.js';
+import type { PlanTerms } from '../../common/billing/pricing.js';
 
 /**
  * Operator plan management behind `pnpm billing:plans` and `pnpm
@@ -300,10 +307,20 @@ export async function applyPlanChange(
     throw new PlanAdminError('The workspace no longer exists.');
   const now = await databaseTime(tx);
   const requested = change.requestedStartsAt;
-  const startsAt = requested && requested > now ? requested : now;
   const plan = await tx.plan.findUniqueOrThrow({
     where: { id: change.planId },
   });
+  const current = await readPlan(tx, change.organizationId, now);
+  const terms = planTerms(plan);
+  const kind = changeKind(current, terms);
+  let startsAt = requested && requested > now ? requested : now;
+  // Downgrades, Free and currency changes start on the 1st: no refunds or
+  // cross-currency proration (ADR 0026).
+  if (
+    kind !== 'upgrade' &&
+    startsAt.getTime() !== monthStartOf(startsAt).getTime()
+  )
+    startsAt = nextMonthStartOf(now);
   const assigned = await assignInTransaction(tx, {
     organizationId: change.organizationId,
     planSlug: plan.slug,
@@ -339,16 +356,34 @@ export async function applyPlanChange(
         from: assigned.from,
         to: plan.slug,
         startsAt: startsAt.toISOString(),
-        startedEarly: Boolean(requested && requested <= now),
+        startedEarly: Boolean(
+          requested && startsAt.getTime() !== requested.getTime(),
+        ),
         ...(options.note ? { note: options.note } : {}),
       },
     },
   });
+  // Upgrades applied mid-month are invoiced for the rest of the month.
+  const invoice =
+    kind === 'upgrade'
+      ? await issueProration(tx, {
+          organizationId: change.organizationId,
+          from: current,
+          to: terms,
+          startsAt,
+          planChangeId: change.id,
+          actorEmail: options.actorEmail,
+        })
+      : null;
   return {
     change: updated,
     startsAt,
     requestedStartsAt: requested,
-    startedEarly: Boolean(requested && requested <= now),
+    /** True when the start differs from the requested date (it had passed). */
+    startedEarly: Boolean(
+      requested && startsAt.getTime() !== requested.getTime(),
+    ),
+    invoice,
   };
 }
 
@@ -432,4 +467,37 @@ export async function assignInTransaction(
     },
   });
   return { organizationId, from, to: plan.slug, startsAt, subscription };
+}
+
+/** Plan terms from a plans row (as readPlan returns them). */
+export function planTerms(row: {
+  name: string;
+  slug: string;
+  monthlyRequestLimit: bigint | null;
+  monthlyCharacterLimit: bigint | null;
+  currency: string;
+  baseFeeMinor: bigint;
+  overageMode: string;
+  requestBlock: bigint;
+  requestBlockPriceMinor: bigint;
+  characterBlock: bigint;
+  characterBlockPriceMinor: bigint;
+  requestCeiling: bigint | null;
+  characterCeiling: bigint | null;
+}): PlanTerms {
+  return {
+    name: row.name,
+    slug: row.slug,
+    monthlyRequestLimit: row.monthlyRequestLimit,
+    monthlyCharacterLimit: row.monthlyCharacterLimit,
+    currency: row.currency.trim(),
+    baseFeeMinor: row.baseFeeMinor,
+    overageMode: row.overageMode === 'allow' ? 'allow' : 'block',
+    requestBlock: row.requestBlock,
+    requestBlockPriceMinor: row.requestBlockPriceMinor,
+    characterBlock: row.characterBlock,
+    characterBlockPriceMinor: row.characterBlockPriceMinor,
+    requestCeiling: row.requestCeiling,
+    characterCeiling: row.characterCeiling,
+  };
 }

@@ -129,7 +129,20 @@ export interface BillingOverview {
   publicPlans: (PlanTerms & {
     description: string | null;
     changePolicy: 'approval' | 'self_service';
+    change: ChangePreview;
   })[];
+  freeChange: ChangePreview;
+  /** Open invoices per currency. */
+  outstanding: {
+    currency: string;
+    totalMinor: string;
+    invoices: number;
+    oldestDueAt: string;
+    overdue: boolean;
+  }[];
+  /** Set when an overdue invoice moved the workspace to Free. */
+  suspended: { invoiceNumber: string; plan: string } | null;
+  paymentInstructions: string | null;
   /** Latest plan changes, newest first. */
   changes: PlanChange[];
   openChange: PlanChange | null;
@@ -261,7 +274,12 @@ export type AuditAction =
   | 'billing.plan_change_requested'
   | 'billing.plan_change_cancelled'
   | 'billing.plan_change_applied'
-  | 'billing.plan_change_rejected';
+  | 'billing.plan_change_rejected'
+  | 'billing.invoice_issued'
+  | 'billing.invoice_paid'
+  | 'billing.invoice_voided'
+  | 'billing.suspended_for_nonpayment'
+  | 'billing.plan_restored';
 export interface AuditEvent {
   id: string;
   action: AuditAction;
@@ -278,4 +296,47 @@ export interface AuditEventPage {
 export interface OwnershipTransfer {
   owner: Member;
   previousOwner: Member;
+}
+
+/** How moving to a plan would be billed (ADR 0026). */
+export interface ChangePreview {
+  kind: 'upgrade' | 'downgrade' | 'currency';
+  nowAllowed: boolean;
+  prorationMinor: string | null;
+  currency: string;
+}
+
+export interface Invoice {
+  number: string;
+  kind: 'monthly' | 'proration';
+  status: 'open' | 'paid' | 'void';
+  periodStart: string;
+  periodEnd: string;
+  currency: string;
+  subtotalMinor: string;
+  totalMinor: string;
+  issuedAt: string;
+  dueAt: string;
+  paidAt: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+  overdue: boolean;
+  suspended: boolean;
+  lines: {
+    kind: string;
+    description: string;
+    quantity: string;
+    unitMinor: string;
+    amountMinor: string;
+  }[];
+  payments: {
+    method: string;
+    provider: string | null;
+    amountMinor: string;
+    receivedAt: string;
+  }[];
+}
+export interface InvoicePage {
+  items: Invoice[];
+  nextCursor: string | null;
 }

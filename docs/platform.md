@@ -192,10 +192,12 @@ Members with `billing.manage` (Owners) can **request a plan change**:
   month is then billed on the current plan);
 - add an optional note for the MyanLex team.
 
-The request waits for review in a banner at the top of the page, where it can be
-cancelled. One request can be open at a time. The MyanLex team approves or
-rejects it and you're emailed the decision; past requests and their outcomes are
-listed under **Plan change requests**. There is no checkout yet.
+Only upgrades can start when approved; they're invoiced for the rest of the
+month. Downgrades, moves to Free and currency changes start on the 1st of next
+month. The request waits for review in a banner at the top of the page, where it
+can be cancelled. One request can be open at a time. The MyanLex team approves
+or rejects it and you're emailed the decision; past requests and their outcomes
+are listed under **Plan change requests**. There is no checkout yet.
 
 - GET `/:organizationId/billing` returns the same overview, with `changes`,
   `openChange` and `canRequestChange`. Amounts are decimal strings in the
@@ -206,8 +208,25 @@ listed under **Plan change requests**. There is no checkout yet.
 - POST `/:organizationId/billing/plan-changes/:changeId/cancel` cancels a
   pending change.
 
-See [0024](decisions/0024-plans-and-pricing.md) and
-[0025](decisions/0025-plan-changes.md).
+### Invoices
+
+Base fees are invoiced in advance at the start of each month, and overage after
+the month closes. **Invoices** on the Billing page lists them with their status.
+Each opens as a printable page (use **Print or save as PDF**) with lines,
+payments and how to pay. Invoices are due 7 days after issue; if one goes
+unpaid, a banner warns you, and after 7 days the workspace moves to the Free
+plan until it's paid. Paying restores the plan straight away.
+
+- GET `/:organizationId/billing/invoices?limit=20&before=<number>` lists
+  invoices, newest first.
+- GET `/:organizationId/billing/invoices/:number` returns one with lines,
+  payments and payment instructions.
+- The billing overview includes `outstanding`, `suspended` and, for each plan,
+  how a change to it would be billed (`change`).
+
+See [0024](decisions/0024-plans-and-pricing.md),
+[0025](decisions/0025-plan-changes.md) and
+[0026](decisions/0026-invoices-and-payments.md).
 
 ## Team management
 

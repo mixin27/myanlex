@@ -1,6 +1,7 @@
 # 0024 — Plans, prices and charges
 
-Status: accepted.
+Status: accepted. Billing timing superseded by
+[0026](0026-invoices-and-payments.md).
 
 [0023](0023-billing-grade-usage-metering.md) made usage billable: an append-only
 ledger and immutable monthly statements. This decision puts prices on those

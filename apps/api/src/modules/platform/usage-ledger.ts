@@ -101,6 +101,17 @@ export interface UsageLedgerRepository {
     actor: AuditActor,
     input: PlanChangeInput,
   ): Promise<PlanChangeRecord>;
+  /** The organization's invoices, newest first (keyset by number). */
+  invoices(
+    organizationId: string,
+    before: string | null,
+    limit: number,
+  ): Promise<InvoiceRecord[]>;
+  /** One invoice with lines and payments, or null. */
+  invoice(
+    organizationId: string,
+    number: string,
+  ): Promise<InvoiceRecord | null>;
   /** Cancels the organization's pending change. */
   cancelPlanChange(
     organizationId: string,
@@ -110,6 +121,15 @@ export interface UsageLedgerRepository {
 }
 
 export type PlanChangeTiming = 'now' | 'next_month';
+
+/** How a plan change is billed (ADR 0026): only upgrades may start now. */
+export interface ChangePreview {
+  readonly kind: 'upgrade' | 'downgrade' | 'currency';
+  readonly nowAllowed: boolean;
+  /** Invoiced for the rest of the month if it started now; null if nothing. */
+  readonly prorationMinor: string | null;
+  readonly currency: string;
+}
 export type PlanChangeStatus =
   | 'pending'
   | 'awaiting_payment'
@@ -147,7 +167,8 @@ export class PlanChangeError extends Error {
       | 'current_plan'
       | 'open_change'
       | 'not_found'
-      | 'not_open',
+      | 'not_open'
+      | 'timing_not_allowed',
     message: string,
   ) {
     super(message);
@@ -178,7 +199,17 @@ export interface BillingOverview {
   readonly publicPlans: readonly (StoredTerms & {
     readonly description: string | null;
     readonly changePolicy: 'approval' | 'self_service';
+    /** How moving to this plan would be billed. */
+    readonly change: ChangePreview;
   })[];
+  /** How moving to Free would be billed. */
+  readonly freeChange: ChangePreview;
+  /** Open invoices by currency, and whether dunning moved the workspace to Free. */
+  readonly outstanding: readonly OutstandingBalance[];
+  readonly suspended: {
+    readonly invoiceNumber: string;
+    readonly plan: string;
+  } | null;
   /** Latest plan changes, newest first. */
   readonly changes: readonly PlanChangeRecord[];
 }
@@ -194,4 +225,42 @@ export function retainedSince(currentMonth: Date, months: number): Date {
       1,
     ),
   );
+}
+
+export interface OutstandingBalance {
+  readonly currency: string;
+  readonly totalMinor: bigint;
+  readonly invoices: number;
+  readonly oldestDueAt: Date;
+  readonly overdue: boolean;
+}
+
+export interface InvoiceRecord {
+  readonly number: string;
+  readonly kind: 'monthly' | 'proration';
+  readonly status: 'open' | 'paid' | 'void';
+  readonly periodStart: Date;
+  readonly periodEnd: Date;
+  readonly currency: string;
+  readonly subtotalMinor: bigint;
+  readonly totalMinor: bigint;
+  readonly issuedAt: Date;
+  readonly dueAt: Date;
+  readonly paidAt: Date | null;
+  readonly voidedAt: Date | null;
+  readonly voidReason: string | null;
+  readonly suspended: boolean;
+  readonly lines: readonly {
+    readonly kind: string;
+    readonly description: string;
+    readonly quantity: bigint;
+    readonly unitMinor: bigint;
+    readonly amountMinor: bigint;
+  }[];
+  readonly payments: readonly {
+    readonly method: string;
+    readonly provider: string | null;
+    readonly amountMinor: bigint;
+    readonly receivedAt: Date;
+  }[];
 }

@@ -22,6 +22,7 @@ import {
 import {
   PlanChangeError,
   type BillingOverview,
+  type InvoiceRecord,
   type PlanChangeRecord,
 } from '../src/modules/platform/usage-ledger.js';
 import type { WorkspaceRepository } from '../src/modules/platform/workspace.repository.js';
@@ -78,9 +79,69 @@ const overview: BillingOverview = {
     charges: storeCharges(priceUsage(pro, { requests: 111n, characters: 9n })),
   },
   publicPlans: [
-    { ...storeTerms(pro), description: null, changePolicy: 'approval' },
+    {
+      ...storeTerms(pro),
+      description: null,
+      changePolicy: 'approval',
+      change: {
+        kind: 'upgrade',
+        nowAllowed: true,
+        prorationMinor: '20000',
+        currency: 'MMK',
+      },
+    },
   ],
+  freeChange: {
+    kind: 'downgrade',
+    nowAllowed: false,
+    prorationMinor: null,
+    currency: 'MMK',
+  },
+  outstanding: [
+    {
+      currency: 'MMK',
+      totalMinor: 55_000n,
+      invoices: 1,
+      oldestDueAt: new Date('2026-11-08T00:00:00.000Z'),
+      overdue: true,
+    },
+  ],
+  suspended: { invoiceNumber: 'MLX-2026-000007', plan: 'pro' },
   changes: [],
+};
+
+const invoice: InvoiceRecord = {
+  number: 'MLX-2026-000007',
+  kind: 'monthly',
+  status: 'open',
+  periodStart: new Date('2026-11-01T00:00:00.000Z'),
+  periodEnd: new Date('2026-12-01T00:00:00.000Z'),
+  currency: 'MMK',
+  subtotalMinor: 55_000n,
+  totalMinor: 55_000n,
+  issuedAt: new Date('2026-11-01T02:00:00.000Z'),
+  dueAt: new Date('2026-11-08T02:00:00.000Z'),
+  paidAt: null,
+  voidedAt: null,
+  voidReason: null,
+  suspended: true,
+  lines: [
+    {
+      kind: 'base_fee',
+      description: 'Pro plan, November 2026',
+      quantity: 1n,
+      unitMinor: 50_000n,
+      amountMinor: 50_000n,
+    },
+    {
+      kind: 'request_overage',
+      description: '60 requests over the allowance in October 2026 (2 × 50)',
+      quantity: 2n,
+      unitMinor: 2_500n,
+      amountMinor: 5_000n,
+    },
+  ],
+  payments: [],
 };
 
 const changeId = randomUUID();
@@ -104,6 +165,8 @@ const ledger = {
   billing: vi.fn(),
   requestPlanChange: vi.fn(),
   cancelPlanChange: vi.fn(),
+  invoices: vi.fn(),
+  invoice: vi.fn(),
 };
 const sendMail = vi.fn();
 const actsWith = (permissions: string[] | null) =>
@@ -135,6 +198,7 @@ describe('billing HTTP contract', () => {
       workspace: { value: workspace as unknown as WorkspaceRepository },
       ledger: { value: ledger },
       notifyEmail: { value: 'billing@myanlex.test', writable: true },
+      paymentInstructions: { value: 'KBZ Bank 123-456, MyanLex Co.' },
     });
     Object.defineProperties(app.get(AccountAuthService), {
       auth: { value: { api: { getSession } } },
@@ -162,6 +226,10 @@ describe('billing HTTP contract', () => {
       decidedAt: now,
     });
     sendMail.mockResolvedValue('sent');
+    ledger.invoices.mockResolvedValue([invoice]);
+    ledger.invoice.mockImplementation(async (_org: string, number: string) =>
+      number === invoice.number ? invoice : null,
+    );
     app.get(BillingService)['notifyEmail' as never] =
       'billing@myanlex.test' as never;
   });
@@ -247,6 +315,51 @@ describe('billing HTTP contract', () => {
     expect(sendMail).not.toHaveBeenCalled();
   });
 
+  it('lists and shows invoices with billing.read, with payment instructions', async () => {
+    const list = (query = '') =>
+      app.inject({
+        method: 'GET',
+        url: `/v1/platform/organizations/${organizationId}/billing/invoices${query}`,
+        headers: { cookie: 'session=valid', origin },
+      });
+    actsWith(['usage.read']);
+    expect((await list()).statusCode).toBe(403);
+    actsWith(['billing.read']);
+    const page = await list('?limit=1');
+    expect(page.statusCode).toBe(200);
+    expect(ledger.invoices).toHaveBeenCalledWith(organizationId, null, 2);
+    expect(page.json()).toMatchObject({
+      items: [
+        {
+          number: 'MLX-2026-000007',
+          totalMinor: '55000',
+          overdue: true,
+          suspended: true,
+          lines: [
+            { kind: 'base_fee', amountMinor: '50000' },
+            { kind: 'request_overage' },
+          ],
+        },
+      ],
+      nextCursor: null,
+    });
+    expect((await list('?before=bad')).statusCode).toBe(400);
+    const one = await list('/MLX-2026-000007');
+    expect(one.statusCode).toBe(200);
+    expect(one.json().paymentInstructions).toBe(
+      'KBZ Bank 123-456, MyanLex Co.',
+    );
+    expect((await list('/MLX-2026-000099')).statusCode).toBe(404);
+    expect((await list('/not-a-number')).statusCode).toBe(400);
+    const overview = (await get()).json();
+    expect(overview).toMatchObject({
+      outstanding: [{ currency: 'MMK', totalMinor: '55000', overdue: true }],
+      suspended: { invoiceNumber: 'MLX-2026-000007', plan: 'pro' },
+      freeChange: { nowAllowed: false },
+      paymentInstructions: 'KBZ Bank 123-456, MyanLex Co.',
+    });
+  });
+
   it('validates the request and maps domain errors', async () => {
     actsWith(['billing.manage']);
     for (const payload of [
@@ -260,6 +373,7 @@ describe('billing HTTP contract', () => {
       ['unknown_plan', 400],
       ['current_plan', 400],
       ['open_change', 409],
+      ['timing_not_allowed', 400],
     ] as const) {
       ledger.requestPlanChange.mockRejectedValueOnce(
         new PlanChangeError(code, `refused: ${code}`),

@@ -1,7 +1,8 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import type { PlanChange } from '@/lib/platform-types';
+import type { ChangePreview, PlanChange } from '@/lib/platform-types';
+import { formatMoney } from '@/lib/money';
 import { writePlatform } from '@/lib/platform-client';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,12 +30,15 @@ export function RequestPlanButton({
   organizationId,
   plan,
   nextMonthStart,
+  change,
   label = 'Request this plan',
 }: {
   organizationId: string;
   plan: { slug: string; name: string };
   /** ISO start of next month (UTC), from the API's clock. */
   nextMonthStart: string;
+  /** How the change is billed: only upgrades can start before the 1st. */
+  change: ChangePreview;
   label?: string;
 }) {
   const router = useRouter();
@@ -82,7 +86,8 @@ export function RequestPlanButton({
             <DialogTitle>Request the {plan.name} plan</DialogTitle>
             <DialogDescription>
               The MyanLex team reviews plan changes and emails you when it’s
-              decided. Each month is billed on the plan in effect at its end.
+              decided. Base fees are billed in advance each month; overage is
+              billed after the month closes.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-5">
@@ -93,13 +98,19 @@ export function RequestPlanButton({
                   [
                     'next_month',
                     `From ${day(nextMonthStart)}`,
-                    'The current month is billed on your current plan.',
+                    `Invoiced with your monthly invoice on ${day(nextMonthStart)}.`,
                   ],
-                  [
-                    'now',
-                    'When approved',
-                    'The month of approval is billed on the new plan.',
-                  ],
+                  ...(change.nowAllowed
+                    ? ([
+                        [
+                          'now',
+                          'When approved',
+                          change.prorationMinor
+                            ? `You’ll be invoiced about ${formatMoney(change.prorationMinor, change.currency)} for the rest of this month (the exact amount depends on the approval day).`
+                            : 'Nothing extra is invoiced this month.',
+                        ],
+                      ] as const)
+                    : []),
                 ] as const
               ).map(([value, title, hint]) => (
                 <label
@@ -120,6 +131,13 @@ export function RequestPlanButton({
                   </span>
                 </label>
               ))}
+              {!change.nowAllowed && (
+                <p className="text-xs text-muted-foreground">
+                  {change.kind === 'currency'
+                    ? 'A change of currency starts on the 1st of a month.'
+                    : 'Downgrades and moves to Free start on the 1st of next month; the current month is already paid.'}
+                </p>
+              )}
             </fieldset>
             <label className="grid gap-1 text-sm font-medium">
               Note for the MyanLex team (optional)
