@@ -21,6 +21,8 @@ EXPECT_VERSION="${EXPECT_VERSION:-}"
 
 pass() { printf '  ok   %s\n' "$1"; }
 fail() { printf '  FAIL %s\n' "$1" >&2; exit 1; }
+# expect_ok <code> <success message> <failure message>
+expect_ok() { if [ "$1" = 200 ]; then pass "$2"; else fail "$3"; fi; }
 status() { curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$@" || true; }
 
 echo "Smoke check: $CONSOLE_URL and $API_URL"
@@ -41,18 +43,18 @@ done
 
 # 2. Readiness: PostgreSQL and Redis reachable from the API.
 code=$(status "$API_URL/v1/health/ready")
-[ "$code" = 200 ] && pass "API ready (database, redis)" || fail "GET /v1/health/ready returned $code"
+expect_ok "$code" "API ready (database, redis)" "GET /v1/health/ready returned $code"
 
 # 3. The console renders and its auth proxy reaches the API.
 code=$(status "$CONSOLE_URL/login")
-[ "$code" = 200 ] && pass "Sign-in page renders" || fail "GET $CONSOLE_URL/login returned $code"
+expect_ok "$code" "Sign-in page renders" "GET $CONSOLE_URL/login returned $code"
 code=$(status -H "Origin: $CONSOLE_URL" "$CONSOLE_URL/api/auth/get-session")
-[ "$code" = 200 ] && pass "Auth answers through the console" || fail "GET /api/auth/get-session returned $code"
+expect_ok "$code" "Auth answers through the console" "GET /api/auth/get-session returned $code"
 
 # 4. Docs, when deployed.
 if [ -n "$DOCS_URL" ]; then
   code=$(status "$DOCS_URL/")
-  [ "$code" = 200 ] && pass "Docs render" || fail "GET $DOCS_URL/ returned $code"
+  expect_ok "$code" "Docs render" "GET $DOCS_URL/ returned $code"
 fi
 
 # 5. Operator metrics are not public: no token means no data.
@@ -68,7 +70,7 @@ if [ -n "${SMOKE_API_KEY:-}" ]; then
     -H "Authorization: Bearer $SMOKE_API_KEY" -H 'Content-Type: application/json' \
     --data '{"text":"မြန်မာ"}')
   code=${body##*$'\n'}
-  [ "$code" = 200 ] && pass "Normalize request succeeds" || fail "POST /v1/text/normalize returned $code"
+  expect_ok "$code" "Normalize request succeeds" "POST /v1/text/normalize returned $code"
 else
   echo "  -    Normalize request skipped (SMOKE_API_KEY not set)"
 fi
