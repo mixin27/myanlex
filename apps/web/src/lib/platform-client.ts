@@ -1,6 +1,6 @@
 export async function writePlatform<T>(
   path: string,
-  method: 'POST' | 'PATCH' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   body?: object,
 ): Promise<T> {
   const response = await fetch(`/v1/platform/${path}`, {

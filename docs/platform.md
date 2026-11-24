@@ -228,6 +228,38 @@ See [0024](decisions/0024-plans-and-pricing.md),
 [0025](decisions/0025-plan-changes.md) and
 [0026](decisions/0026-invoices-and-payments.md).
 
+### Billing details
+
+**Billing details** on the Billing page holds what appears in an invoice's
+**Bill to** block and who receives invoice mail. Members with `billing.read` see
+it; `billing.manage` edits it.
+
+- **Bill to:** a legal name (defaults to the workspace name), an address, a tax
+  ID and an invoice note such as a purchase order number. They apply to invoices
+  issued **after** a change; issued invoices keep the details they were issued
+  with, and the database refuses to change them.
+- **Billing emails:** up to three addresses. Each receives a link (valid for 7
+  days) and must be confirmed before invoice mail goes to it; the link page
+  needs no account and confirms only when its button is pressed.
+  - With at least one confirmed address, invoices, reminders, suspension notices
+    and receipts go only to the confirmed addresses.
+  - With none, they go to members with `billing.manage`, as before.
+  - **Resend** sends a new link (at most once a minute); the old one stops
+    working.
+
+Routes, under `/v1/platform/organizations`:
+
+- PUT `/:organizationId/billing/profile` sets the four details (null clears).
+- POST `/:organizationId/billing/emails`, POST
+  `/:organizationId/billing/emails/:id/resend` and DELETE
+  `/:organizationId/billing/emails/:id` manage addresses.
+- POST `/v1/platform/billing-emails/confirm` `{ token }` confirms (public).
+- The billing overview includes `profile`, and each invoice its `billTo`.
+
+Changes are audited as `billing.profile_updated` (field names only),
+`billing.email_added`, `billing.email_confirmed` (by the address itself) and
+`billing.email_removed`.
+
 ## Team management
 
 Open **Team**, choose a workspace, and use the Members, Invitations and Roles

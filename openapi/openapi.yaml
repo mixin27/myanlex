@@ -1279,6 +1279,224 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing/profile:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    put:
+      operationId: updateBillingDetails
+      summary: Set the bill-to details printed on invoices (billing.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Replaces all four fields; send null or an empty string to clear one.
+        Details apply to invoices issued after the change: issued invoices
+        keep the details they were issued with. Control characters are
+        refused (the address may contain line breaks). Recorded as
+        billing.profile_updated with the names of the changed fields.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BillingDetailsInput' }
+      responses:
+        '200':
+          description: The workspace's billing details and emails.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingProfile' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing/emails:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: addBillingEmail
+      summary:
+        Add a billing email and send its confirmation link (billing.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        At most three per workspace. The address receives invoice mail only
+        after it is confirmed from the emailed link (valid for 7 days). While a
+        workspace has no confirmed billing email, invoice mail goes to members
+        with billing.manage. `delivery` reports the confirmation email; the
+        address is kept when it fails so it can be re-sent. Recorded as
+        billing.email_added. 409 for a duplicate address or the limit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 320 }
+      responses:
+        '201':
+          description: The pending billing email.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingEmailDelivery' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/BillingEmailConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing/emails/{emailId}/resend:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: emailId
+        in: path
+        required: true
+        description: Billing email identifier.
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: resendBillingEmail
+      summary: Send a new confirmation link (billing.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Replaces the link (the old one stops working). At most once a minute
+        per address; 409 when too soon or already confirmed.
+      responses:
+        '200':
+          description: The pending billing email.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingEmailDelivery' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '409':
+          $ref: '#/components/responses/BillingEmailConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing/emails/{emailId}:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: emailId
+        in: path
+        required: true
+        description: Billing email identifier.
+        schema:
+          type: string
+          format: uuid
+    delete:
+      operationId: removeBillingEmail
+      summary: Remove a billing email (billing.manage)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: Recorded as billing.email_removed.
+      responses:
+        '204':
+          description: Removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/billing-emails/confirm:
+    post:
+      operationId: confirmBillingEmail
+      summary: Confirm a billing email from its emailed link
+      tags: [Platform]
+      security: []
+      description: |
+        Public: the holder of the mailbox may not have an account. The portal's
+        /billing-email/confirm page calls this when the button is pressed, so
+        link scanners that fetch the URL do not confirm addresses. A used,
+        replaced or expired token returns 400. Recorded as
+        billing.email_confirmed with the address as the actor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+      responses:
+        '200':
+          description: The confirmed address and its workspace.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [workspace, email]
+                properties:
+                  workspace: { type: string }
+                  email: { type: string, format: email }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /platform/organizations/{organizationId}/billing/plan-changes:
     parameters:
       - name: organizationId
@@ -2328,6 +2546,14 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    BillingEmailConflict:
+      description:
+        The address is already a billing email, the workspace has three, the
+        address is already confirmed, or a link was sent less than a minute ago.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     PlanChangeConflict:
       description:
         The workspace already has an open plan change, or the change is no
@@ -2628,6 +2854,10 @@ components:
         - billing.invoice_voided
         - billing.suspended_for_nonpayment
         - billing.plan_restored
+        - billing.profile_updated
+        - billing.email_added
+        - billing.email_confirmed
+        - billing.email_removed
     AuditEvent:
       type: object
       additionalProperties: false
@@ -3008,6 +3238,61 @@ components:
             - $ref: '#/components/schemas/MinorAmount'
             - type: 'null'
         currency: { type: string, pattern: '^[A-Z]{3}$' }
+    BillingDetailsInput:
+      type: object
+      additionalProperties: false
+      required: [legalName, address, taxId, invoiceNote]
+      properties:
+        legalName: { type: [string, 'null'], maxLength: 200 }
+        address:
+          type: [string, 'null']
+          maxLength: 500
+          description: May contain line breaks.
+        taxId: { type: [string, 'null'], maxLength: 64 }
+        invoiceNote:
+          type: [string, 'null']
+          maxLength: 500
+          description: A purchase order number or reference for every invoice.
+    BillingEmail:
+      type: object
+      additionalProperties: false
+      required: [id, email, status, sentAt, confirmedAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        status: { type: string, enum: [confirmed, pending, expired] }
+        sentAt:
+          type: string
+          format: date-time
+          description: When the address was added or its link last sent.
+        confirmedAt: { type: [string, 'null'], format: date-time }
+    BillingEmailDelivery:
+      allOf:
+        - $ref: '#/components/schemas/BillingEmail'
+      type: object
+      required: [delivery]
+      properties:
+        delivery: { type: string, enum: [sent, failed, disabled] }
+    BillingProfile:
+      allOf:
+        - $ref: '#/components/schemas/BillingDetailsInput'
+      type: object
+      required: [emails]
+      properties:
+        emails:
+          type: array
+          maxItems: 3
+          items: { $ref: '#/components/schemas/BillingEmail' }
+    BillTo:
+      type: object
+      additionalProperties: false
+      description: The bill-to details as they were when the invoice was issued.
+      required: [name, address, taxId, note]
+      properties:
+        name: { type: string }
+        address: { type: [string, 'null'] }
+        taxId: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
     Invoice:
       type: object
       additionalProperties: false
@@ -3019,6 +3304,7 @@ components:
       required:
         [
           number,
+          billTo,
           kind,
           status,
           periodStart,
@@ -3038,6 +3324,11 @@ components:
         ]
       properties:
         number: { type: string, pattern: '^MLX-[0-9]{4}-[0-9]{6}$' }
+        billTo:
+          description: Null on invoices issued before billing details existed.
+          oneOf:
+            - $ref: '#/components/schemas/BillTo'
+            - type: 'null'
         kind: { type: string, enum: [monthly, proration] }
         status: { type: string, enum: [open, paid, void] }
         periodStart: { type: string, format: date-time }
@@ -3214,6 +3505,7 @@ components:
           outstanding,
           suspended,
           paymentInstructions,
+          profile,
         ]
       properties:
         organizationId: { type: string, format: uuid }
@@ -3292,6 +3584,7 @@ components:
         canRequestChange:
           type: boolean
           description: Whether the caller holds billing.manage.
+        profile: { $ref: '#/components/schemas/BillingProfile' }
         freeChange: { $ref: '#/components/schemas/ChangePreview' }
         outstanding:
           type: array

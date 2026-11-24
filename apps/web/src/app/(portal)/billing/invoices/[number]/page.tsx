@@ -6,6 +6,7 @@ import type { Invoice, OrganizationAccess } from '@/lib/platform-types';
 import { formatMoney } from '@/lib/money';
 import { invoiceStatus } from '@/components/billing/invoices';
 import { PrintButton } from '@/components/billing/print-button';
+import { BillToBlock } from '@/components/billing/billing-details';
 
 const day = (iso: string) => iso.slice(0, 10);
 const methodLabel: Record<string, string> = {
@@ -61,8 +62,6 @@ export default async function InvoicePage({
             </p>
           </div>
           <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-muted-foreground">Billed to</dt>
-            <dd className="font-medium">{organization.name}</dd>
             <dt className="text-muted-foreground">Issued</dt>
             <dd className="tabular-nums">{day(invoice.issuedAt)}</dd>
             <dt className="text-muted-foreground">Due</dt>
@@ -71,6 +70,21 @@ export default async function InvoicePage({
             <dd className={status.tone}>{status.label}</dd>
           </dl>
         </header>
+        <section aria-labelledby="bill-to-heading">
+          <h2
+            id="bill-to-heading"
+            className="text-xs font-medium uppercase text-muted-foreground"
+          >
+            Bill to
+          </h2>
+          {/* As issued: later changes to billing details do not apply. */}
+          <BillToBlock
+            name={invoice.billTo?.name ?? organization.name}
+            address={invoice.billTo?.address ?? null}
+            taxId={invoice.billTo?.taxId ?? null}
+            note={invoice.billTo?.note ?? null}
+          />
+        </section>
         <table className="w-full text-sm">
           <caption className="sr-only">Invoice lines</caption>
           <thead>

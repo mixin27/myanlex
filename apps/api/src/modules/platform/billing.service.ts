@@ -26,11 +26,28 @@ import {
   type PlanChangeRecord,
   type UsageLedgerRepository,
 } from './usage-ledger.js';
-import type { PlanChangeBody } from './billing.schemas.js';
+import type { BillingDetailsBody, PlanChangeBody } from './billing.schemas.js';
+import {
+  BILLING_PROFILE_REPOSITORY,
+  BillingProfileError,
+  type BillingProfileRecord,
+  type BillingProfileRepository,
+  type PendingBillingEmail,
+} from './billing-profile.js';
+import { billingEmailConfirmation } from '../../infrastructure/database/billing-mail.js';
 import { monthLabel } from './usage-statement.schemas.js';
 
 function unavailable(cause: unknown): never {
   if (cause instanceof HttpException) throw cause;
+  if (cause instanceof BillingProfileError)
+    switch (cause.code) {
+      case 'not_found':
+        throw new NotFoundException(cause.message);
+      case 'invalid_or_expired':
+        throw new BadRequestException(cause.message);
+      default:
+        throw new ConflictException(cause.message);
+    }
   if (cause instanceof PlanChangeError)
     switch (cause.code) {
       case 'open_change':
@@ -47,6 +64,7 @@ function unavailable(cause: unknown): never {
 
 const presentInvoice = (invoice: InvoiceRecord) => ({
   number: invoice.number,
+  billTo: invoice.billTo,
   kind: invoice.kind,
   status: invoice.status,
   periodStart: invoice.periodStart.toISOString(),
@@ -73,6 +91,17 @@ const presentInvoice = (invoice: InvoiceRecord) => ({
     provider: payment.provider,
     amountMinor: payment.amountMinor.toString(),
     receivedAt: payment.receivedAt.toISOString(),
+  })),
+});
+
+const presentProfile = (profile: BillingProfileRecord) => ({
+  ...profile.details,
+  emails: profile.emails.map((email) => ({
+    id: email.id,
+    email: email.email,
+    status: email.status,
+    sentAt: email.sentAt.toISOString(),
+    confirmedAt: email.verifiedAt?.toISOString() ?? null,
   })),
 });
 
@@ -108,6 +137,8 @@ export class BillingService {
     private readonly notifyEmail: string | null,
     @Inject(BILLING_PAYMENT_INSTRUCTIONS)
     private readonly paymentInstructions: string | null,
+    @Inject(BILLING_PROFILE_REPOSITORY)
+    private readonly profiles: BillingProfileRepository,
   ) {}
 
   async overview(userId: string, organizationId: string) {
@@ -119,6 +150,9 @@ export class BillingService {
     );
     const billing = await this.ledger
       .billing(organizationId)
+      .catch(unavailable);
+    const profile = await this.profiles
+      .profile(organizationId)
       .catch(unavailable);
     const now = billing.now.getTime();
     const changes = billing.changes.map(presentChange);
@@ -166,6 +200,83 @@ export class BillingService {
             change.status === 'pending' || change.status === 'awaiting_payment',
         ) ?? null,
       canRequestChange: access.permissions.includes('billing.manage'),
+      profile: presentProfile(profile),
+    };
+  }
+
+  async updateDetails(
+    actor: AuditActor,
+    organizationId: string,
+    body: BillingDetailsBody,
+  ) {
+    await this.manage(actor, organizationId);
+    return presentProfile(
+      await this.profiles
+        .updateDetails(organizationId, actor, body)
+        .catch(unavailable),
+    );
+  }
+
+  async addEmail(actor: AuditActor, organizationId: string, email: string) {
+    await this.manage(actor, organizationId);
+    return this.sendConfirmation(
+      await this.profiles
+        .addEmail(organizationId, actor, email)
+        .catch(unavailable),
+    );
+  }
+
+  async resendEmail(actor: AuditActor, organizationId: string, id: string) {
+    await this.manage(actor, organizationId);
+    return this.sendConfirmation(
+      await this.profiles.resendEmail(organizationId, id).catch(unavailable),
+    );
+  }
+
+  async removeEmail(actor: AuditActor, organizationId: string, id: string) {
+    await this.manage(actor, organizationId);
+    await this.profiles
+      .removeEmail(organizationId, actor, id)
+      .catch(unavailable);
+  }
+
+  /** Public: whoever holds the mailbox confirms with the emailed token. */
+  async confirmEmail(token: string) {
+    const confirmed = await this.profiles
+      .confirmEmail(token)
+      .catch(unavailable);
+    return { workspace: confirmed.organizationName, email: confirmed.email };
+  }
+
+  private manage(actor: AuditActor, organizationId: string) {
+    return requireOrganizationPermission(
+      this.workspace,
+      actor.userId,
+      organizationId,
+      'billing.manage',
+    );
+  }
+
+  /** Best-effort: the address stays pending if mail fails; resend later. */
+  private async sendConfirmation(pending: PendingBillingEmail) {
+    const base = this.accounts.publicURL;
+    const delivery: MailDelivery = base
+      ? await this.accounts.sendMail({
+          to: pending.email.email,
+          ...billingEmailConfirmation(
+            pending.organizationName,
+            pending.token,
+            base,
+          ),
+        })
+      : 'disabled';
+    return {
+      id: pending.email.id,
+      email: pending.email.email,
+      status: pending.email.status,
+      sentAt: pending.email.sentAt.toISOString(),
+      confirmedAt: null,
+      delivery,
     };
   }
 

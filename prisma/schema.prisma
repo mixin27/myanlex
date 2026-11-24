@@ -8,25 +8,27 @@ datasource db {
 }
 
 model User {
-  id              String                   @id @default(uuid()) @db.Uuid
-  email           String                   @unique @db.VarChar(320)
+  id                     String                   @id @default(uuid()) @db.Uuid
+  email                  String                   @unique @db.VarChar(320)
   /// Legacy only. Better Auth credential hashes are stored in Account.password.
-  passwordHash    String?                  @map("password_hash")
-  name            String                   @db.VarChar(120)
+  passwordHash           String?                  @map("password_hash")
+  name                   String                   @db.VarChar(120)
   /// Legacy only. Runtime verification uses emailVerified, not this timestamp.
-  emailVerifiedAt DateTime?                @map("email_verified_at") @db.Timestamptz(3)
-  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
-  memberships     OrganizationMember[]
-  emailVerified   Boolean                  @default(false) @map("email_verified")
-  image           String?
-  sessions        Session[]
-  accounts        Account[]
-  playgroundRuns  PlaygroundRun[]
-  invitationsSent OrganizationInvitation[] @relation("InvitationInviter")
-  invitationsUsed OrganizationInvitation[] @relation("InvitationAcceptor")
-  auditEvents     AuditEvent[]
-  planChanges     PlanChange[]
+  emailVerifiedAt        DateTime?                @map("email_verified_at") @db.Timestamptz(3)
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  memberships            OrganizationMember[]
+  emailVerified          Boolean                  @default(false) @map("email_verified")
+  image                  String?
+  sessions               Session[]
+  accounts               Account[]
+  playgroundRuns         PlaygroundRun[]
+  invitationsSent        OrganizationInvitation[] @relation("InvitationInviter")
+  invitationsUsed        OrganizationInvitation[] @relation("InvitationAcceptor")
+  billingProfilesUpdated BillingProfile[]         @relation("BillingProfileUpdater")
+  billingEmailsAdded     BillingEmail[]           @relation("BillingEmailCreator")
+  auditEvents            AuditEvent[]
+  planChanges            PlanChange[]
 
   @@map("users")
 }
@@ -89,22 +91,24 @@ model RateLimit {
 }
 
 model Organization {
-  id            String                   @id @default(uuid()) @db.Uuid
-  name          String                   @db.VarChar(120)
-  slug          String                   @unique @db.VarChar(80)
-  createdAt     DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
-  members       OrganizationMember[]
-  roles         Role[]
-  projects      Project[]
-  subscriptions Subscription[]
-  quotas        OrganizationQuota[]
-  invitations   OrganizationInvitation[]
-  auditEvents   AuditEvent[]
-  usageEvents   UsageEvent[]
-  statements    UsageStatement[]
-  planChanges   PlanChange[]
-  invoices      Invoice[]
+  id             String                   @id @default(uuid()) @db.Uuid
+  name           String                   @db.VarChar(120)
+  slug           String                   @unique @db.VarChar(80)
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  members        OrganizationMember[]
+  roles          Role[]
+  projects       Project[]
+  subscriptions  Subscription[]
+  quotas         OrganizationQuota[]
+  invitations    OrganizationInvitation[]
+  auditEvents    AuditEvent[]
+  usageEvents    UsageEvent[]
+  statements     UsageStatement[]
+  planChanges    PlanChange[]
+  invoices       Invoice[]
+  billingProfile BillingProfile?
+  billingEmails  BillingEmail[]
 
   @@map("organizations")
 }
@@ -488,6 +492,8 @@ model Invoice {
   /// Set when dunning moved the workspace to Free; payment restores this plan.
   restoresPlanSlug String?       @map("restores_plan_slug") @db.VarChar(80)
   remindersSent    Int           @default(0) @map("reminders_sent")
+  /// Bill-to details when issued ({ name, address, taxId, note }); immutable.
+  billTo           Json?         @map("bill_to")
   organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   planChange       PlanChange?   @relation(fields: [planChangeId], references: [id], onDelete: SetNull)
   lines            InvoiceLine[]
@@ -534,4 +540,36 @@ model Payment {
   @@unique([provider, externalRef])
   @@index([invoiceId])
   @@map("payments")
+}
+
+/// Bill-to details printed on invoices issued after a change (ADR 0026).
+model BillingProfile {
+  organizationId  String       @id @map("organization_id") @db.Uuid
+  legalName       String?      @map("legal_name") @db.VarChar(200)
+  address         String?      @db.VarChar(500)
+  taxId           String?      @map("tax_id") @db.VarChar(64)
+  invoiceNote     String?      @map("invoice_note") @db.VarChar(500)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedByUserId String?      @map("updated_by_user_id") @db.Uuid
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  updatedBy       User?        @relation("BillingProfileUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@map("billing_profiles")
+}
+
+/// Addresses that receive invoice mail once confirmed by link; at most three.
+model BillingEmail {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  email           String       @db.VarChar(320)
+  tokenHash       String?      @unique @map("token_hash") @db.Char(64)
+  tokenExpiresAt  DateTime?    @map("token_expires_at") @db.Timestamptz(3)
+  verifiedAt      DateTime?    @map("verified_at") @db.Timestamptz(3)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  createdByUserId String?      @map("created_by_user_id") @db.Uuid
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User?        @relation("BillingEmailCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, email])
+  @@map("billing_emails")
 }

@@ -117,6 +117,21 @@ const overview: BillingOverview = {
   changes: [],
   openChange: null,
   canRequestChange: false,
+  profile: {
+    legalName: 'Team Media Co., Ltd.',
+    address: 'No. 1, Pyay Road\nYangon',
+    taxId: null,
+    invoiceNote: null,
+    emails: [
+      {
+        id: 'e1',
+        email: 'ap@team.test',
+        status: 'pending',
+        sentAt: '2026-11-19T09:00:00.000Z',
+        confirmedAt: null,
+      },
+    ],
+  },
 };
 const pending: PlanChange = {
   id: 'c1',
@@ -157,6 +172,7 @@ const invoice: Invoice = {
   paidAt: null,
   voidedAt: null,
   voidReason: null,
+  billTo: null,
   overdue: true,
   suspended: true,
   lines: [
@@ -178,6 +194,7 @@ const invoice: Invoice = {
   payments: [],
 };
 let invoices: Invoice[] = [];
+let invoiceOverride: Invoice | null = null;
 
 function serve(permissions: string[]) {
   readPlatform.mockImplementation(async (path: string) => {
@@ -191,7 +208,10 @@ function serve(permissions: string[]) {
       path ===
       `organizations/${organization}/billing/invoices/${invoice.number}`
     )
-      return { ...invoice, paymentInstructions: 'KBZ Bank 123-456' };
+      return {
+        ...(invoiceOverride ?? invoice),
+        paymentInstructions: 'KBZ Bank 123-456',
+      };
     throw new Error(`unexpected ${path}`);
   });
 }
@@ -215,6 +235,11 @@ describe('billing page', () => {
     vi.stubEnv('MYANLEX_BILLING_CONTACT', 'billing@example.test');
     const html = await render();
     for (const text of [
+      'Billing details',
+      'Team Media Co., Ltd.',
+      'ap@team.test',
+      'Waiting for confirmation',
+      'Until an address is confirmed, invoices go to members who can manage billing.',
       'Current plan',
       'MMK 50,000',
       'For production apps',
@@ -337,7 +362,7 @@ describe('billing page', () => {
     for (const text of [
       'invoice-print',
       'Print or save as PDF',
-      'Billed to',
+      'Bill to',
       'Team',
       'Pro plan, November 2026',
       'Total (MMK)',
@@ -347,6 +372,30 @@ describe('billing page', () => {
       'restores the workspace’s plan',
     ])
       expect(html).toContain(text);
+    // Issued invoices show the bill-to as it was when issued.
+    invoiceOverride = {
+      ...invoice,
+      billTo: {
+        name: 'Team Media Co., Ltd.',
+        address: 'No. 1, Pyay Road\nYangon',
+        taxId: '123456789',
+        note: 'PO 42',
+      },
+    };
+    const detailed = renderToStaticMarkup(
+      (await InvoicePage({
+        params: Promise.resolve({ number: invoice.number }),
+        searchParams: Promise.resolve({ organization }),
+      })) as ReactElement,
+    );
+    for (const text of [
+      'Team Media Co., Ltd.',
+      'No. 1, Pyay Road\nYangon',
+      'Tax ID: 123456789',
+      'Reference: PO 42',
+    ])
+      expect(detailed).toContain(text);
+    invoiceOverride = null;
     await expect(
       InvoicePage({
         params: Promise.resolve({ number: 'bad' }),

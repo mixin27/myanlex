@@ -22,6 +22,7 @@ import {
 } from '@/components/billing/plan-change';
 import { BillingAlerts, InvoiceList } from '@/components/billing/invoices';
 import { ChargesTable } from '@/components/billing/charges';
+import { BillingDetailsCard } from '@/components/billing/billing-details';
 import { formatUsageCount } from '@/lib/usage-range';
 
 export default async function BillingPage({
@@ -181,6 +182,12 @@ export default async function BillingPage({
               invoices={invoices.items}
             />
           )}
+          <BillingDetailsCard
+            organizationId={organization.id}
+            organizationName={organization.name}
+            profile={billing.profile}
+            canManage={billing.canRequestChange}
+          />
           <PlanHistory periods={billing.subscriptions} />
           <ChangeHistory changes={billing.changes} />
           {others && others.length > 0 && (

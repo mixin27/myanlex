@@ -26,6 +26,10 @@ import {
   type PlanChangeRecord,
 } from '../src/modules/platform/usage-ledger.js';
 import type { WorkspaceRepository } from '../src/modules/platform/workspace.repository.js';
+import {
+  BillingProfileError,
+  type BillingProfileRecord,
+} from '../src/modules/platform/billing-profile.js';
 
 const userId = randomUUID();
 const organizationId = randomUUID();
@@ -124,6 +128,12 @@ const invoice: InvoiceRecord = {
   paidAt: null,
   voidedAt: null,
   voidReason: null,
+  billTo: {
+    name: 'Acme Trading Co., Ltd.',
+    address: 'No. 1, Pyay Road\nYangon',
+    taxId: '123456789',
+    note: 'PO 42',
+  },
   suspended: true,
   lines: [
     {
@@ -169,6 +179,32 @@ const ledger = {
   invoice: vi.fn(),
 };
 const sendMail = vi.fn();
+const profiles = {
+  profile: vi.fn(),
+  updateDetails: vi.fn(),
+  addEmail: vi.fn(),
+  resendEmail: vi.fn(),
+  removeEmail: vi.fn(),
+  confirmEmail: vi.fn(),
+};
+const emailId = randomUUID();
+const profile: BillingProfileRecord = {
+  details: {
+    legalName: 'Acme Trading Co., Ltd.',
+    address: 'No. 1, Pyay Road\nYangon',
+    taxId: null,
+    invoiceNote: 'PO 42',
+  },
+  emails: [
+    {
+      id: emailId,
+      email: 'finance@acme.test',
+      status: 'pending',
+      sentAt: now,
+      verifiedAt: null,
+    },
+  ],
+};
 const actsWith = (permissions: string[] | null) =>
   workspace.getOrganization.mockImplementation(
     async (_u: string, id: string) =>
@@ -197,6 +233,7 @@ describe('billing HTTP contract', () => {
     Object.defineProperties(app.get(BillingService), {
       workspace: { value: workspace as unknown as WorkspaceRepository },
       ledger: { value: ledger },
+      profiles: { value: profiles },
       notifyEmail: { value: 'billing@myanlex.test', writable: true },
       paymentInstructions: { value: 'KBZ Bank 123-456, MyanLex Co.' },
     });
@@ -219,6 +256,7 @@ describe('billing HTTP contract', () => {
     );
     actsWith(['billing.read']);
     ledger.billing.mockResolvedValue(overview);
+    profiles.profile.mockResolvedValue(profile);
     ledger.requestPlanChange.mockResolvedValue(change);
     ledger.cancelPlanChange.mockResolvedValue({
       ...change,
@@ -463,5 +501,222 @@ describe('billing HTTP contract', () => {
     const response = await get();
     expect(response.statusCode).toBe(503);
     expect(response.body).not.toContain('database down');
+  });
+
+  describe('billing details', () => {
+    const base = `/v1/platform/organizations/${organizationId}/billing`;
+    const send = (
+      method: 'PUT' | 'POST' | 'DELETE',
+      path: string,
+      payload?: object,
+      headers: Record<string, string> = {},
+    ) =>
+      app.inject({
+        method,
+        url: `${base}/${path}`,
+        headers: { cookie: 'session=valid', origin, ...headers },
+        ...(payload ? { payload } : {}),
+      });
+    const details = {
+      legalName: '  Acme Trading Co., Ltd. ',
+      address: 'No. 1, Pyay Road\r\nYangon',
+      taxId: '',
+      invoiceNote: 'PO 42',
+    };
+
+    it('shows details and email status in the overview with billing.read', async () => {
+      const body = (await get()).json();
+      expect(body.profile).toEqual({
+        legalName: 'Acme Trading Co., Ltd.',
+        address: 'No. 1, Pyay Road\nYangon',
+        taxId: null,
+        invoiceNote: 'PO 42',
+        emails: [
+          {
+            id: emailId,
+            email: 'finance@acme.test',
+            status: 'pending',
+            sentAt: now.toISOString(),
+            confirmedAt: null,
+          },
+        ],
+      });
+    });
+
+    it('edits details with billing.manage only, trimmed and blank as null', async () => {
+      profiles.updateDetails.mockResolvedValue(profile);
+      expect(
+        (await send('PUT', 'profile', details, { cookie: '' })).statusCode,
+      ).toBe(401);
+      expect((await send('PUT', 'profile', details)).statusCode).toBe(403);
+      expect(profiles.updateDetails).not.toHaveBeenCalled();
+      actsWith(['billing.read', 'billing.manage']);
+      const response = await send('PUT', 'profile', details);
+      expect(response.statusCode).toBe(200);
+      expect(profiles.updateDetails).toHaveBeenCalledWith(
+        organizationId,
+        expect.objectContaining({ userId, email: 'o@example.com' }),
+        {
+          legalName: 'Acme Trading Co., Ltd.',
+          address: 'No. 1, Pyay Road\r\nYangon',
+          taxId: null,
+          invoiceNote: 'PO 42',
+        },
+      );
+    });
+
+    it('rejects control characters, long values and unknown fields', async () => {
+      actsWith(['billing.manage']);
+      for (const payload of [
+        { ...details, legalName: 'Acme\u0007' },
+        { ...details, invoiceNote: 'PO\n42' },
+        { ...details, taxId: 'x'.repeat(65) },
+        { ...details, address: 'x'.repeat(501) },
+        { ...details, extra: true },
+        { legalName: 'Acme' },
+      ])
+        expect((await send('PUT', 'profile', payload)).statusCode).toBe(400);
+      expect(profiles.updateDetails).not.toHaveBeenCalled();
+    });
+
+    it('adds an email, sends a confirmation link and maps conflicts', async () => {
+      actsWith(['billing.manage']);
+      profiles.addEmail.mockResolvedValue({
+        email: profile.emails[0],
+        token: 't'.repeat(43),
+        organizationName: 'Acme',
+      });
+      const response = await send('POST', 'emails', {
+        email: ' Finance@Acme.test ',
+      });
+      expect(response.statusCode).toBe(201);
+      expect(response.json()).toMatchObject({
+        email: 'finance@acme.test',
+        status: 'pending',
+        delivery: 'sent',
+      });
+      expect(profiles.addEmail).toHaveBeenCalledWith(
+        organizationId,
+        expect.objectContaining({ userId }),
+        'finance@acme.test',
+      );
+      expect(sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'finance@acme.test',
+          subject: 'Confirm billing email for Acme on MyanLex',
+          text: expect.stringContaining(
+            `${origin}/billing-email/confirm?token=${'t'.repeat(43)}`,
+          ),
+        }),
+      );
+      expect(
+        (await send('POST', 'emails', { email: 'not-an-email' })).statusCode,
+      ).toBe(400);
+      for (const code of ['duplicate_email', 'email_limit'] as const) {
+        profiles.addEmail.mockRejectedValueOnce(
+          new BillingProfileError(code, 'conflict'),
+        );
+        expect(
+          (await send('POST', 'emails', { email: 'a@acme.test' })).statusCode,
+        ).toBe(409);
+      }
+      profiles.addEmail.mockRejectedValueOnce(new Error('database down'));
+      expect(
+        (await send('POST', 'emails', { email: 'a@acme.test' })).statusCode,
+      ).toBe(503);
+    });
+
+    it('keeps a pending email when the confirmation cannot be sent', async () => {
+      actsWith(['billing.manage']);
+      profiles.addEmail.mockResolvedValue({
+        email: profile.emails[0],
+        token: 't'.repeat(43),
+        organizationName: 'Acme',
+      });
+      sendMail.mockResolvedValue('failed');
+      const response = await send('POST', 'emails', { email: 'a@acme.test' });
+      expect(response.statusCode).toBe(201);
+      expect(response.json().delivery).toBe('failed');
+    });
+
+    it('resends and removes with billing.manage, mapping errors', async () => {
+      expect((await send('POST', `emails/${emailId}/resend`)).statusCode).toBe(
+        403,
+      );
+      expect((await send('DELETE', `emails/${emailId}`)).statusCode).toBe(403);
+      actsWith(['billing.manage']);
+      profiles.resendEmail.mockResolvedValue({
+        email: profile.emails[0],
+        token: 'u'.repeat(43),
+        organizationName: 'Acme',
+      });
+      expect((await send('POST', `emails/${emailId}/resend`)).statusCode).toBe(
+        200,
+      );
+      expect(profiles.resendEmail).toHaveBeenCalledWith(
+        organizationId,
+        emailId,
+      );
+      profiles.resendEmail.mockRejectedValueOnce(
+        new BillingProfileError('too_soon', 'wait'),
+      );
+      expect((await send('POST', `emails/${emailId}/resend`)).statusCode).toBe(
+        409,
+      );
+      profiles.removeEmail.mockResolvedValue(undefined);
+      const removed = await send('DELETE', `emails/${emailId}`);
+      expect(removed.statusCode).toBe(204);
+      profiles.removeEmail.mockRejectedValueOnce(
+        new BillingProfileError('not_found', 'gone'),
+      );
+      expect((await send('DELETE', `emails/${emailId}`)).statusCode).toBe(404);
+      expect((await send('DELETE', 'emails/not-a-uuid')).statusCode).toBe(400);
+    });
+
+    it('confirms by token without a session, by POST only', async () => {
+      const url = '/v1/platform/billing-emails/confirm';
+      profiles.confirmEmail.mockResolvedValue({
+        organizationName: 'Acme',
+        email: 'finance@acme.test',
+      });
+      const token = 'A'.repeat(43);
+      const confirmed = await app.inject({
+        method: 'POST',
+        url,
+        payload: { token },
+      });
+      expect(confirmed.statusCode).toBe(200);
+      expect(confirmed.json()).toEqual({
+        workspace: 'Acme',
+        email: 'finance@acme.test',
+      });
+      expect(profiles.confirmEmail).toHaveBeenCalledWith(token);
+      expect((await app.inject({ method: 'GET', url })).statusCode).toBe(404);
+      expect(
+        (await app.inject({ method: 'POST', url, payload: { token: 'short' } }))
+          .statusCode,
+      ).toBe(400);
+      profiles.confirmEmail.mockRejectedValueOnce(
+        new BillingProfileError('invalid_or_expired', 'expired'),
+      );
+      const expired = await app.inject({
+        method: 'POST',
+        url,
+        payload: { token },
+      });
+      expect(expired.statusCode).toBe(400);
+      expect(expired.json().detail).toBe('expired');
+    });
+
+    it('returns the bill-to snapshot with an invoice', async () => {
+      const body = (
+        await app.inject({
+          method: 'GET',
+          url: `${base}/invoices/${invoice.number}`,
+          headers: { cookie: 'session=valid', origin },
+        })
+      ).json();
+      expect(body.billTo).toEqual(invoice.billTo);
+    });
   });
 });

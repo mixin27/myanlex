@@ -23,10 +23,32 @@ import {
 import { PrismaQuotaRepository } from './prisma-quota.repository.js';
 import { PLAYGROUND_REPOSITORY } from '../../modules/playground/playground.repository.js';
 import { PrismaPlaygroundRepository } from './prisma-playground.repository.js';
+import {
+  BILLING_PROFILE_REPOSITORY,
+  type BillingProfileRepository,
+} from '../../modules/platform/billing-profile.js';
+import { PrismaBillingProfileRepository } from './prisma-billing-profile.repository.js';
 
 @Global()
 @Module({
   providers: [
+    {
+      provide: BILLING_PROFILE_REPOSITORY,
+      inject: [DATABASE_URL],
+      useFactory: (url: string | undefined): BillingProfileRepository => {
+        if (url) return new PrismaBillingProfileRepository(url);
+        const unavailable = () =>
+          Promise.reject(new Error('Database unavailable.'));
+        return {
+          profile: unavailable,
+          updateDetails: unavailable,
+          addEmail: unavailable,
+          resendEmail: unavailable,
+          removeEmail: unavailable,
+          confirmEmail: unavailable,
+        };
+      },
+    },
     {
       provide: PLAYGROUND_REPOSITORY,
       inject: [DATABASE_URL],
@@ -89,6 +111,7 @@ import { PrismaPlaygroundRepository } from './prisma-playground.repository.js';
     },
   ],
   exports: [
+    BILLING_PROFILE_REPOSITORY,
     PLATFORM_REPOSITORY,
     WORKSPACE_REPOSITORY,
     TEAM_REPOSITORY,

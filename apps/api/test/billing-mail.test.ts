@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  billingEmailConfirmation,
   deliverDunning,
+  invoiceReminder,
   invoiceIssued,
   money,
   paymentReceived,
@@ -108,5 +110,63 @@ describe('invoice email', () => {
       'Reminder: invoice MLX-2026-000007 is due 2026-11-08',
       'Lotus Media moved to the Free plan: invoice MLX-2026-000007 is overdue',
     ]);
+  });
+});
+
+describe('billing details in email', () => {
+  const billed = {
+    ...invoice,
+    billTo: {
+      name: 'Lotus Media Co., Ltd.',
+      address: 'No. 1, Pyay Road\r\n\nYangon',
+      taxId: '123456789',
+      note: 'PO 42',
+    },
+  };
+
+  it('prints the bill-to block and reference, skipping blank lines', () => {
+    const text = invoiceIssued(billed, context).text;
+    expect(text).toContain(
+      [
+        'Billed to:',
+        '  Lotus Media Co., Ltd.',
+        '  No. 1, Pyay Road',
+        '  Yangon',
+        '  Tax ID: 123456789',
+        '  Reference: PO 42',
+        '',
+        '  Pro plan',
+      ].join('\n'),
+    );
+    expect(invoiceReminder(billed, context).text).toContain('Reference: PO 42');
+  });
+
+  it('leaves the block out when the invoice has no snapshot or fields', () => {
+    expect(invoiceIssued(invoice, context).text).not.toContain('Billed to');
+    const minimal = invoiceIssued(
+      {
+        ...invoice,
+        billTo: { name: 'Lotus Media', address: null, taxId: null, note: null },
+      },
+      context,
+    ).text;
+    expect(minimal).toContain('Billed to:\n  Lotus Media\n\n');
+    expect(minimal).not.toContain('Tax ID');
+    expect(invoiceReminder(invoice, context).text).not.toContain('Reference');
+  });
+
+  it('asks the address holder to confirm with a portal link', () => {
+    const mail = billingEmailConfirmation(
+      'Lotus Media',
+      'tok_en-123',
+      'https://console.myanlex.test',
+    );
+    expect(mail.subject).toBe(
+      'Confirm billing email for Lotus Media on MyanLex',
+    );
+    expect(mail.text).toContain(
+      'https://console.myanlex.test/billing-email/confirm?token=tok_en-123',
+    );
+    expect(mail.text).toContain('ignore this email');
   });
 });

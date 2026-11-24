@@ -13,6 +13,7 @@ import { nextMonthStart, planTerms } from './plan-admin.js';
 import { changeKind, prorationLine } from '../../common/billing/invoicing.js';
 import type { PlanTerms } from '../../common/billing/pricing.js';
 import { recordAudit } from './audit-writer.js';
+import { readBillTo } from '../../modules/platform/billing-profile.js';
 import type { AuditActor } from '../../modules/platform/audit.js';
 import {
   PlanChangeError,
@@ -91,6 +92,7 @@ const toInvoiceRecord = (
   row: Prisma.InvoiceGetPayload<{ include: { lines: true; payments: true } }>,
 ): InvoiceRecord => ({
   number: row.number,
+  billTo: row.billTo === null ? null : readBillTo(row.billTo, ''),
   kind: row.kind as InvoiceRecord['kind'],
   status: row.status as InvoiceRecord['status'],
   periodStart: row.periodStart,

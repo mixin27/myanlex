@@ -59,6 +59,34 @@ describe('audit event sentences', () => {
     ).toBe('MyanLex billing issued invoice MLX-2026-000008.');
   });
 
+  it('describes billing details and billing emails', () => {
+    expect(
+      describeAuditEvent(
+        event('billing.profile_updated', {
+          fields: ['legalName', 'taxId', 'unknown'],
+        }),
+      ),
+    ).toBe(
+      'olivia@example.com updated the billing details: legal name, tax ID.',
+    );
+    expect(
+      describeAuditEvent(
+        event('billing.email_added', { email: 'ap@lotus.test' }),
+      ),
+    ).toBe('olivia@example.com added ap@lotus.test as a billing email.');
+    expect(
+      describeAuditEvent({
+        ...event('billing.email_confirmed', { email: 'ap@lotus.test' }),
+        actor: { userId: null, email: 'ap@lotus.test' },
+      }),
+    ).toBe('ap@lotus.test confirmed ap@lotus.test as a billing email.');
+    expect(
+      describeAuditEvent(
+        event('billing.email_removed', { email: 'ap@lotus.test' }),
+      ),
+    ).toBe('olivia@example.com removed ap@lotus.test as a billing email.');
+  });
+
   it('names the actor, target and change', () => {
     expect(
       describeAuditEvent(

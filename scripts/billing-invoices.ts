@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import { ZodError } from 'zod';
 import { smtpSenderFromEnv } from '../apps/api/src/common/mail/smtp-transport.js';
 import { PlanAdminError } from '../apps/api/src/infrastructure/database/plan-admin.js';
+import { readBillTo } from '../apps/api/src/modules/platform/billing-profile.js';
 import {
   InvoiceAdmin,
   type InvoiceWithLines,
@@ -107,6 +108,12 @@ async function main() {
     } else if (command === 'show' && number) {
       const invoice = await admin.show(number);
       console.table([row(invoice)]);
+      if (invoice.billTo !== null) {
+        const billTo = readBillTo(invoice.billTo, invoice.organization.name);
+        console.log(
+          `Billed to: ${[billTo.name, billTo.address?.replace(/\s*\n\s*/g, ', '), billTo.taxId && `Tax ID ${billTo.taxId}`, billTo.note && `Reference ${billTo.note}`].filter(Boolean).join('; ')}`,
+        );
+      }
       console.table(
         invoice.lines.map((line) => ({
           line: line.description,

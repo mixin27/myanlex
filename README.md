@@ -84,6 +84,9 @@ tests is not a measured linguistic accuracy score or release approval.
 - Invoices with prepaid, day-prorated base fees and overage in arrears, recorded
   payments, reminders and suspension for non-payment;
   [0026](docs/decisions/0026-invoices-and-payments.md)
+- Billing details: a bill-to block (legal name, address, tax ID, PO note) kept
+  on each invoice as issued, and up to three confirmed billing emails that
+  receive invoice mail; [billing details](docs/platform.md#billing-details)
 - Production preparation for one Dokploy VPS: a production Compose stack, a
   release workflow with GHCR images and smoke checks, a daily jobs runner with
   backups and a heartbeat, and production configuration checks;
