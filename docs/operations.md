@@ -339,6 +339,34 @@ once a day after midnight UTC.
   docker exec myanlex-production-jobs-1 pnpm billing:invoices list --status open
   ```
 
+### Usage alerts
+
+The `jobs` container also runs `pnpm usage:alerts` every 15 minutes
+(`infra/crontab`). It records each threshold a workspace crosses in the current
+month and emails it to the workspace's billing contacts (confirmed billing
+emails, otherwise members with `billing.manage`):
+
+| Alert           | When                                                                                      |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| `allowance_80`  | 80% of the monthly request or character allowance                                         |
+| `allowance_100` | the whole allowance: block plans now refuse requests; overage plans start billing overage |
+| `ceiling_90`    | 90% of an overage plan's ceiling, where requests will be refused                          |
+
+- Each alert is recorded once per workspace, month and kind (a unique index), so
+  overlapping or repeated runs never send it twice. A workspace that moves to a
+  larger plan mid-month isn't alerted again for kinds already sent.
+- Unsent alerts (no contacts, SMTP off or failing) are retried on later runs, up
+  to three attempts, and only within the same month. The Billing page shows the
+  alert either way.
+- Logs: one `usage_alert` line per email (kind, dimension, outcome) and a
+  `usage_alerts` summary. No addresses are logged. The script exits with `1`
+  only when the scan itself fails.
+- Heartbeat: optional `MYANLEX_USAGE_ALERTS_HEARTBEAT_URL` (period 15 minutes).
+- `usage:cleanup` deletes alerts with the usage ledger after the retention
+  period.
+- Run it by hand with `docker exec myanlex-production-jobs-1 pnpm usage:alerts`,
+  or schedule it every 15 minutes elsewhere.
+
 ### Backups
 
 When `BACKUP_S3_*` is set, `ops:backup`:

@@ -196,6 +196,13 @@ try {
     ],
   );
 
+  const usageAlerts = ops(productionEnv, 'pnpm', '--silent', 'usage:alerts');
+  assert.equal(usageAlerts.status, 0, usageAlerts.output);
+  assert.match(
+    usageAlerts.output,
+    /"event":"usage_alerts","created":0,"sent":0/,
+  );
+
   const sql = (db, query) =>
     docker(
       'exec',
@@ -358,7 +365,7 @@ try {
   for (const id of [api, web, docs])
     assert.notEqual(docker('exec', id, 'id', '-u'), '0');
   log(
-    'Deployment smoke passed: non-root runtime images, readiness, build version, conversion, portal proxy, docs/search/assets, migration replay, seed, ops image (crontab, pg_dump, config check, daily run) and isolated backup/restore.',
+    'Deployment smoke passed: non-root runtime images, readiness, build version, conversion, portal proxy, docs/search/assets, migration replay, seed, ops image (crontab, pg_dump, config check, daily run, usage alerts) and isolated backup/restore.',
   );
 } finally {
   for (const id of owned.reverse()) {

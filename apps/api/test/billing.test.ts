@@ -112,6 +112,15 @@ const overview: BillingOverview = {
   ],
   suspended: { invoiceNumber: 'MLX-2026-000007', plan: 'pro' },
   changes: [],
+  usageAlerts: [
+    {
+      kind: 'allowance_80',
+      dimension: 'requests',
+      used: 160n,
+      limit: 200n,
+      createdAt: now,
+    },
+  ],
 };
 
 const invoice: InvoiceRecord = {
@@ -523,6 +532,18 @@ describe('billing HTTP contract', () => {
       taxId: '',
       invoiceNote: 'PO 42',
     };
+
+    it('lists this month’s usage alerts in the overview', async () => {
+      expect((await get()).json().usageAlerts).toEqual([
+        {
+          kind: 'allowance_80',
+          dimension: 'requests',
+          used: '160',
+          limit: '200',
+          createdAt: now.toISOString(),
+        },
+      ]);
+    });
 
     it('shows details and email status in the overview with billing.read', async () => {
       const body = (await get()).json();

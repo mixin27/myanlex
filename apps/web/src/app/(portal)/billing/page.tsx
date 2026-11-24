@@ -23,6 +23,7 @@ import {
 import { BillingAlerts, InvoiceList } from '@/components/billing/invoices';
 import { ChargesTable } from '@/components/billing/charges';
 import { BillingDetailsCard } from '@/components/billing/billing-details';
+import { UsageAlertNotice } from '@/components/billing/usage-alert-notice';
 import { formatUsageCount } from '@/lib/usage-range';
 
 export default async function BillingPage({
@@ -135,6 +136,11 @@ export default async function BillingPage({
               canManage={billing.canRequestChange}
             />
           )}
+          <UsageAlertNotice
+            alerts={billing.usageAlerts}
+            overage={billing.plan.overageMode === 'allow'}
+            resetsAt={nextMonthStart}
+          />
           <PlanCard
             plan={billing.plan}
             action={

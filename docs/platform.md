@@ -260,6 +260,20 @@ Changes are audited as `billing.profile_updated` (field names only),
 `billing.email_added`, `billing.email_confirmed` (by the address itself) and
 `billing.email_removed`.
 
+### Usage alerts
+
+MyanLex emails a workspace's billing contacts (the same people who receive
+invoices) when its monthly usage crosses a threshold, within about 15 minutes:
+
+- **80% of the allowance**, of requests or characters, whichever comes first;
+- **100% of the allowance**: on block plans (including Free) requests are now
+  refused until the 1st; on overage plans, further usage is billed as overage;
+- **90% of the overage ceiling**, on overage plans that have one.
+
+Each alert is sent once per month. The Billing page shows the month's most
+severe alert with what happens next, and the billing overview lists them as
+`usageAlerts`.
+
 ## Team management
 
 Open **Team**, choose a workspace, and use the Members, Invitations and Roles

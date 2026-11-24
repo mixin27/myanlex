@@ -117,6 +117,7 @@ const overview: BillingOverview = {
   changes: [],
   openChange: null,
   canRequestChange: false,
+  usageAlerts: [],
   profile: {
     legalName: 'Team Media Co., Ltd.',
     address: 'No. 1, Pyay Road\nYangon',
@@ -402,6 +403,48 @@ describe('billing page', () => {
         searchParams: Promise.resolve({ organization }),
       }),
     ).rejects.toThrow('not-found');
+  });
+
+  it('shows the most severe usage alert of the month', async () => {
+    serve(['billing.read']);
+    expect(await render()).not.toContain('Usage alert');
+    const alert = (kind: 'allowance_80' | 'allowance_100' | 'ceiling_90') => ({
+      kind,
+      dimension: 'requests' as const,
+      used: kind === 'allowance_80' ? '8000' : '10000',
+      limit: '10000',
+      createdAt: '2026-11-19T09:00:00.000Z',
+    });
+    current = { ...overview, usageAlerts: [alert('allowance_80')] };
+    const early = await render();
+    expect(early).toContain('aria-label="Usage alert"');
+    expect(early).toContain('role="status"');
+    expect(early).toContain(
+      'You’ve used 80% of this month’s requests (8,000 of 10,000).',
+    );
+    // The overview plan bills overage: reaching 100% is a notice, not an error.
+    current = {
+      ...overview,
+      usageAlerts: [alert('allowance_80'), alert('allowance_100')],
+    };
+    const used = await render();
+    expect(used).toContain('This month’s requests allowance is used up');
+    expect(used).toContain('billed as overage');
+    current = {
+      ...overview,
+      usageAlerts: [alert('allowance_100'), alert('ceiling_90')],
+    };
+    const ceiling = await render();
+    expect(ceiling).toContain('role="alert"');
+    expect(ceiling).toContain('close to this month’s overage ceiling');
+    current = {
+      ...overview,
+      plan: { ...overview.plan, overageMode: 'block' },
+      usageAlerts: [alert('allowance_80'), alert('allowance_100')],
+    };
+    const blocked = await render();
+    expect(blocked).toContain('role="alert"');
+    expect(blocked).toContain('API requests are refused until 1 December');
   });
 
   it('rejects malformed workspace ids', async () => {

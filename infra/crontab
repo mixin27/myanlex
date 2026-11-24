@@ -3,3 +3,6 @@
 # the new month on the 1st. ops:daily takes a lock, so a manual run at the
 # same time is skipped, not doubled.
 30 0 * * * pnpm --silent ops:daily
+# Every 15 minutes: usage alerts (80% and 100% of the allowance, 90% of the
+# overage ceiling), each sent once per workspace and month.
+*/15 * * * * pnpm --silent usage:alerts

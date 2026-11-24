@@ -1,3 +1,7 @@
+import type {
+  UsageAlertKind,
+  UsageDimension,
+} from '../../common/billing/usage-alerts.js';
 import type { BillTo } from './billing-profile.js';
 import type {
   StoredCharges,
@@ -213,6 +217,14 @@ export interface BillingOverview {
   } | null;
   /** Latest plan changes, newest first. */
   readonly changes: readonly PlanChangeRecord[];
+  /** Usage thresholds crossed this month, oldest first. */
+  readonly usageAlerts: readonly {
+    readonly kind: UsageAlertKind;
+    readonly dimension: UsageDimension;
+    readonly used: bigint;
+    readonly limit: bigint;
+    readonly createdAt: Date;
+  }[];
 }
 
 export const usageRetention = { defaultMonths: 13, minimumMonths: 13 } as const;

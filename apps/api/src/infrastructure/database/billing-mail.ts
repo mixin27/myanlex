@@ -3,6 +3,11 @@ import type {
   SendMail,
 } from '../../common/mail/smtp-transport.js';
 import { readBillTo } from '../../modules/platform/billing-profile.js';
+import type { PlanTerms } from '../../common/billing/pricing.js';
+import type {
+  UsageAlertKind,
+  UsageDimension,
+} from '../../common/billing/usage-alerts.js';
 
 /** Invoice email (ADR 0026). Plain text; no secrets or usage content. */
 
@@ -240,4 +245,109 @@ export async function deliverDunning(
     });
   }
   return results;
+}
+
+const count = (value: bigint) => value.toLocaleString('en-US');
+const longDay = (date: Date) =>
+  date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+
+/** A usage threshold crossed this month (docs/platform.md#usage-alerts). */
+export function usageAlert(
+  input: {
+    readonly organizationId: string;
+    readonly organizationName: string;
+    readonly kind: UsageAlertKind;
+    readonly dimension: UsageDimension;
+    readonly used: bigint;
+    readonly limit: bigint;
+    readonly plan: Pick<
+      PlanTerms,
+      | 'name'
+      | 'overageMode'
+      | 'currency'
+      | 'monthlyRequestLimit'
+      | 'monthlyCharacterLimit'
+      | 'requestBlock'
+      | 'requestBlockPriceMinor'
+      | 'characterBlock'
+      | 'characterBlockPriceMinor'
+      | 'requestCeiling'
+      | 'characterCeiling'
+    >;
+    /** When the monthly counters reset (the 1st, UTC). */
+    readonly resetsAt: Date;
+  },
+  context: MailContext,
+): Omit<MailMessage, 'to'> {
+  const { organizationName: name, dimension, plan } = input;
+  const usage = `${count(input.used)} of ${count(input.limit)} ${dimension}`;
+  const resets = `${longDay(input.resetsAt)} (UTC)`;
+  const requests = dimension === 'requests';
+  const block = requests ? plan.requestBlock : plan.characterBlock;
+  const price = requests
+    ? plan.requestBlockPriceMinor
+    : plan.characterBlockPriceMinor;
+  const ceiling = requests ? plan.requestCeiling : plan.characterCeiling;
+  const refused = `Requests are refused${requests ? '' : ' when they would go over'}`;
+  let subject: string;
+  let body: string[];
+  switch (input.kind) {
+    case 'allowance_80':
+      subject = `${name} has used 80% of its monthly ${dimension}`;
+      body = [
+        `"${name}" has used ${usage} included in the ${plan.name} plan this month.`,
+        plan.overageMode === 'allow'
+          ? `Usage above the allowance is billed as overage: ${money(price, plan.currency)} per ${count(block)} ${dimension}.`
+          : `When the allowance is used up, API requests are refused until it resets on ${resets}.`,
+      ];
+      break;
+    case 'allowance_100':
+      if (plan.overageMode === 'allow') {
+        subject = `${name} is now using overage`;
+        body = [
+          `"${name}" has used all ${count(input.limit)} ${dimension} included in the ${plan.name} plan this month.`,
+          `Further usage is billed as overage: ${money(price, plan.currency)} per ${count(block)} ${dimension}, on next month's invoice.`,
+          ...(ceiling !== null
+            ? [
+                `${refused} at the plan's ceiling of ${count(ceiling)} ${dimension}.`,
+              ]
+            : []),
+        ];
+      } else {
+        subject = `${name} has reached its monthly ${dimension.slice(0, -1)} allowance`;
+        body = [
+          `"${name}" has used all ${count(input.limit)} ${dimension} included in the ${plan.name} plan this month.`,
+          `API requests are now refused until the allowance resets on ${resets}, or until the workspace moves to a larger plan.`,
+        ];
+      }
+      break;
+    case 'ceiling_90':
+      subject = `${name} is close to its overage ceiling`;
+      body = [
+        `"${name}" has used ${usage} allowed this month, including overage.`,
+        `${refused} at the ceiling of ${count(input.limit)} ${dimension} until it resets on ${resets}.`,
+      ];
+      break;
+  }
+  const link = context.portalUrl
+    ? (() => {
+        const url = new URL('/billing', context.portalUrl);
+        url.searchParams.set('organization', input.organizationId);
+        return ['', `Billing page: ${url.toString()}`];
+      })()
+    : [];
+  return {
+    subject,
+    text: [
+      ...body,
+      '',
+      'Upgrade or change your plan on the Billing page.',
+      ...link,
+    ].join('\n'),
+  };
 }

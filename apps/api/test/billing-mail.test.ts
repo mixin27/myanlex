@@ -7,6 +7,7 @@ import {
   money,
   paymentReceived,
   sendToAll,
+  usageAlert,
   workspaceSuspended,
 } from '../src/infrastructure/database/billing-mail.js';
 
@@ -168,5 +169,104 @@ describe('billing details in email', () => {
       'https://console.myanlex.test/billing-email/confirm?token=tok_en-123',
     );
     expect(mail.text).toContain('ignore this email');
+  });
+});
+
+describe('usage alert email', () => {
+  const plan = {
+    name: 'Pro',
+    overageMode: 'block' as const,
+    currency: 'MMK',
+    monthlyRequestLimit: 10_000n,
+    monthlyCharacterLimit: 1_000_000n,
+    requestBlock: 1_000n,
+    requestBlockPriceMinor: 500n,
+    characterBlock: 100_000n,
+    characterBlockPriceMinor: 300n,
+    requestCeiling: null,
+    characterCeiling: null,
+  };
+  const base = {
+    organizationId: invoice.organizationId,
+    organizationName: 'Lotus Media',
+    dimension: 'requests' as const,
+    plan,
+    resetsAt: new Date('2026-12-01T00:00:00Z'),
+  };
+
+  it('warns at 80% with what happens next, by plan mode', () => {
+    const mail = usageAlert(
+      { ...base, kind: 'allowance_80', used: 8_000n, limit: 10_000n },
+      context,
+    );
+    expect(mail.subject).toBe(
+      'Lotus Media has used 80% of its monthly requests',
+    );
+    expect(mail.text).toContain(
+      'has used 8,000 of 10,000 requests included in the Pro plan',
+    );
+    expect(mail.text).toContain(
+      'refused until it resets on 1 December 2026 (UTC)',
+    );
+    expect(mail.text).toContain(
+      'https://console.myanlex.test/billing?organization=3a450187',
+    );
+    const overage = usageAlert(
+      {
+        ...base,
+        plan: { ...plan, overageMode: 'allow' },
+        kind: 'allowance_80',
+        used: 8_000n,
+        limit: 10_000n,
+      },
+      context,
+    );
+    expect(overage.text).toContain(
+      'billed as overage: MMK 500 per 1,000 requests',
+    );
+  });
+
+  it('explains reaching the allowance and the ceiling', () => {
+    expect(
+      usageAlert(
+        { ...base, kind: 'allowance_100', used: 10_000n, limit: 10_000n },
+        context,
+      ),
+    ).toMatchObject({
+      subject: 'Lotus Media has reached its monthly request allowance',
+      text: expect.stringContaining('API requests are now refused'),
+    });
+    const billed = usageAlert(
+      {
+        ...base,
+        dimension: 'characters',
+        plan: { ...plan, overageMode: 'allow', characterCeiling: 2_000_000n },
+        kind: 'allowance_100',
+        used: 1_000_000n,
+        limit: 1_000_000n,
+      },
+      {},
+    );
+    expect(billed.subject).toBe('Lotus Media is now using overage');
+    expect(billed.text).toContain('MMK 300 per 100,000 characters');
+    expect(billed.text).toContain('ceiling of 2,000,000 characters');
+    expect(billed.text).not.toContain('Billing page:');
+    expect(
+      usageAlert(
+        {
+          ...base,
+          plan: { ...plan, overageMode: 'allow', requestCeiling: 20_000n },
+          kind: 'ceiling_90',
+          used: 18_000n,
+          limit: 20_000n,
+        },
+        context,
+      ),
+    ).toMatchObject({
+      subject: 'Lotus Media is close to its overage ceiling',
+      text: expect.stringContaining(
+        'refused at the ceiling of 20,000 requests',
+      ),
+    });
   });
 });

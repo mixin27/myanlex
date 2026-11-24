@@ -3283,6 +3283,27 @@ components:
           type: array
           maxItems: 3
           items: { $ref: '#/components/schemas/BillingEmail' }
+    UsageAlert:
+      type: object
+      additionalProperties: false
+      required: [kind, dimension, used, limit, createdAt]
+      properties:
+        kind:
+          type: string
+          enum: [allowance_80, allowance_100, ceiling_90]
+          description:
+            80% or 100% of the monthly allowance, or 90% of an overage plan's
+            ceiling.
+        dimension: { type: string, enum: [requests, characters] }
+        used:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+          description: Requests or characters used when the alert was recorded.
+        limit:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+          description: The allowance or ceiling the percentage refers to.
+        createdAt: { type: string, format: date-time }
     BillTo:
       type: object
       additionalProperties: false
@@ -3506,6 +3527,7 @@ components:
           suspended,
           paymentInstructions,
           profile,
+          usageAlerts,
         ]
       properties:
         organizationId: { type: string, format: uuid }
@@ -3585,6 +3607,12 @@ components:
           type: boolean
           description: Whether the caller holds billing.manage.
         profile: { $ref: '#/components/schemas/BillingProfile' }
+        usageAlerts:
+          type: array
+          description:
+            Usage thresholds crossed this month, oldest first. Each is emailed
+            once to the billing contacts.
+          items: { $ref: '#/components/schemas/UsageAlert' }
         freeChange: { $ref: '#/components/schemas/ChangePreview' }
         outstanding:
           type: array

@@ -1,4 +1,5 @@
 import { PrismaUsageLedgerRepository } from '../apps/api/src/infrastructure/database/prisma-usage-ledger.repository.js';
+import { UsageAlerts } from '../apps/api/src/infrastructure/database/usage-alerts.js';
 import {
   retainedSince,
   usageRetention,
@@ -30,8 +31,12 @@ async function main() {
       deleted += count;
       if (count < 500) break;
     }
+    const alerts = new UsageAlerts(url);
+    const removedAlerts = await alerts
+      .cleanup(before)
+      .finally(() => alerts.close());
     console.log(
-      `Removed ${deleted} usage ledger rows from closed months before ${before.toISOString().slice(0, 7)} (retention ${months} months).`,
+      `Removed ${deleted} usage ledger rows and ${removedAlerts.count} usage alerts from months before ${before.toISOString().slice(0, 7)} (retention ${months} months).`,
     );
   } finally {
     await repository.onApplicationShutdown();
