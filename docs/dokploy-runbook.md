@@ -123,6 +123,9 @@ losing it.
 2. Add your email (or Telegram) as an integration.
 3. Copy the ping URL into `MYANLEX_HEARTBEAT_URL`. Treat it as a secret: anyone
    with it can mark runs as healthy.
+4. Optionally, create a second check, `myanlex-production usage alerts`, with
+   **Period 15 minutes** and **Grace 30 minutes**, and copy its URL into
+   `MYANLEX_USAGE_ALERTS_HEARTBEAT_URL`. The free plan allows 20 checks.
 
 ## 7. GitHub: registry, environments, variables
 

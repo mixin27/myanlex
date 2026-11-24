@@ -13,6 +13,10 @@ import { nextMonthStart, planTerms } from './plan-admin.js';
 import { changeKind, prorationLine } from '../../common/billing/invoicing.js';
 import type { PlanTerms } from '../../common/billing/pricing.js';
 import { recordAudit } from './audit-writer.js';
+import type {
+  UsageAlertKind,
+  UsageDimension,
+} from '../../common/billing/usage-alerts.js';
 import { readBillTo } from '../../modules/platform/billing-profile.js';
 import type { AuditActor } from '../../modules/platform/audit.js';
 import {
@@ -520,6 +524,18 @@ export class PrismaUsageLedgerRepository
               include: { plan: { select: { name: true, slug: true } } },
             })
           ).map(toChangeRecord),
+          usageAlerts: (
+            await tx.usageAlert.findMany({
+              where: { organizationId, monthStart },
+              orderBy: { createdAt: 'asc' },
+            })
+          ).map((alert) => ({
+            kind: alert.kind as UsageAlertKind,
+            dimension: alert.dimension as UsageDimension,
+            used: alert.used,
+            limit: alert.limitValue,
+            createdAt: alert.createdAt,
+          })),
         };
       },
       { isolationLevel: 'RepeatableRead', maxWait: 2_000, timeout: 10_000 },

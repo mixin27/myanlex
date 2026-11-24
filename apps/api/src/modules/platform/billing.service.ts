@@ -192,6 +192,13 @@ export class BillingService {
         overdue: balance.overdue,
       })),
       suspended: billing.suspended,
+      usageAlerts: billing.usageAlerts.map((alert) => ({
+        kind: alert.kind,
+        dimension: alert.dimension,
+        used: alert.used.toString(),
+        limit: alert.limit.toString(),
+        createdAt: alert.createdAt.toISOString(),
+      })),
       paymentInstructions: this.paymentInstructions,
       changes,
       openChange:

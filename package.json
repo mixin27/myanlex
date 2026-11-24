@@ -40,6 +40,7 @@
     "audit:cleanup": "tsx scripts/audit-cleanup.ts",
     "usage:close-month": "tsx scripts/usage-close-month.ts",
     "usage:cleanup": "tsx scripts/usage-cleanup.ts",
+    "usage:alerts": "tsx scripts/usage-alerts.ts",
     "billing:plans": "tsx scripts/billing-plans.ts",
     "billing:assign": "tsx scripts/billing-assign.ts",
     "billing:changes": "tsx scripts/billing-changes.ts",

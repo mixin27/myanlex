@@ -81,10 +81,13 @@ above it (see [0024](decisions/0024-plans-and-pricing.md)):
   denying only at the plan's request or character **ceiling** (or never, with no
   ceiling).
 
-The quota report shows the `ceiling` and the `overage` used. A workspace with an
-invoice more than 7 days overdue is moved to Free, so Free limits apply until it
-pays ([0026](decisions/0026-invoices-and-payments.md)). Plans are assigned with
-`pnpm billing:assign`; see [operations](operations.md#plans-and-pricing).
+The quota report shows the `ceiling` and the `overage` used. Billing contacts
+are emailed at 80% and 100% of the allowance and, on overage plans with a
+ceiling, at 90% of the ceiling; see [usage alerts](platform.md#usage-alerts). A
+workspace with an invoice more than 7 days overdue is moved to Free, so Free
+limits apply until it pays ([0026](decisions/0026-invoices-and-payments.md)).
+Plans are assigned with `pnpm billing:assign`; see
+[operations](operations.md#plans-and-pricing).
 
 The quota period is a UTC calendar month, selected using the database
 transaction start time. PostgreSQL atomically reserves both dimensions in

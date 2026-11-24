@@ -109,6 +109,7 @@ model Organization {
   invoices       Invoice[]
   billingProfile BillingProfile?
   billingEmails  BillingEmail[]
+  usageAlerts    UsageAlert[]
 
   @@map("organizations")
 }
@@ -572,4 +573,26 @@ model BillingEmail {
 
   @@unique([organizationId, email])
   @@map("billing_emails")
+}
+
+/// A usage threshold crossed in a month, emailed once to billing contacts.
+model UsageAlert {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  monthStart     DateTime     @map("month_start") @db.Timestamptz(3)
+  /// allowance_80 | allowance_100 | ceiling_90
+  kind           String       @db.VarChar(16)
+  /// requests | characters
+  dimension      String       @db.VarChar(16)
+  used           BigInt
+  thresholdValue BigInt       @map("threshold_value")
+  limitValue     BigInt       @map("limit_value")
+  planSlug       String       @map("plan_slug") @db.VarChar(80)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  sentAt         DateTime?    @map("sent_at") @db.Timestamptz(3)
+  attempts       Int          @default(0)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, monthStart, kind])
+  @@map("usage_alerts")
 }

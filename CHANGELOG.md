@@ -15,6 +15,9 @@
 - Unpublished TypeScript and Dart HTTP SDKs with cancellation and typed errors.
 - Dedicated public MDX site with search, code highlighting, language tabs,
   generated OpenAPI reference, and executable request examples.
+- Usage alerts: 80% and 100% of the allowance and 90% of the overage ceiling,
+  scanned every 15 minutes, emailed once a month to billing contacts with
+  retries, and shown on the Billing page.
 - Billing details: bill-to fields printed on invoices and kept as issued, and up
   to three billing emails, confirmed by link, that receive invoice mail instead
   of every billing manager.

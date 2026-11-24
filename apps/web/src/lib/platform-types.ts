@@ -149,6 +149,17 @@ export interface BillingOverview {
   /** Whether the viewer holds billing.manage. */
   canRequestChange: boolean;
   profile: BillingProfile;
+  /** Usage thresholds crossed this month, oldest first. */
+  usageAlerts: UsageAlert[];
+}
+
+export interface UsageAlert {
+  kind: 'allowance_80' | 'allowance_100' | 'ceiling_90';
+  dimension: 'requests' | 'characters';
+  used: string;
+  /** The allowance or ceiling the percentage refers to. */
+  limit: string;
+  createdAt: string;
 }
 
 export interface BillingEmail {

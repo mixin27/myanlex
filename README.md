@@ -87,6 +87,9 @@ tests is not a measured linguistic accuracy score or release approval.
 - Billing details: a bill-to block (legal name, address, tax ID, PO note) kept
   on each invoice as issued, and up to three confirmed billing emails that
   receive invoice mail; [billing details](docs/platform.md#billing-details)
+- Usage alerts at 80% and 100% of the monthly allowance and near the overage
+  ceiling, emailed once a month to billing contacts and shown on the Billing
+  page; [usage alerts](docs/platform.md#usage-alerts)
 - Production preparation for one Dokploy VPS: a production Compose stack, a
   release workflow with GHCR images and smoke checks, a daily jobs runner with
   backups and a heartbeat, and production configuration checks;
