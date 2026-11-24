@@ -105,6 +105,97 @@ try {
   migrate('pnpm', 'db:deploy');
   migrate('pnpm', 'db:deploy'); // Migration replay must be safe.
   migrate('pnpm', 'db:seed');
+
+  // Operations image: crontab, pg_dump, production config check, daily run.
+  const ops = (env, ...command) => {
+    try {
+      const stdout = execFileSync(
+        'docker',
+        [
+          'run',
+          '--rm',
+          '--read-only',
+          '--tmpfs',
+          '/tmp',
+          '--network',
+          network,
+          ...env.flatMap((entry) => ['-e', entry]),
+          'myanlex-ops:packaging-test',
+          ...command,
+        ],
+        {
+          encoding: 'utf8',
+          timeout: 180_000,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
+      return { status: 0, output: stdout };
+    } catch (error) {
+      return {
+        status: error.status,
+        output: `${error.stdout ?? ''}${error.stderr ?? ''}`,
+      };
+    }
+  };
+  assert.equal(ops([], 'supercronic', '-test', '/app/infra/crontab').status, 0);
+  assert.match(ops([], 'pg_dump', '--version').output, /PostgreSQL\) 18\./);
+  const secret = `secret-${randomUUID()}`;
+  const badConfig = ops(
+    [
+      'MYANLEX_ENV=production',
+      'NODE_ENV=production',
+      `DATABASE_URL=${databaseUrl}`,
+      `MYANLEX_API_KEY=${secret}`,
+      `AUTH_SECRET=${secret}`,
+    ],
+    'pnpm',
+    '--silent',
+    'config:check',
+  );
+  assert.equal(badConfig.status, 78);
+  assert.match(badConfig.output, /MYANLEX_API_KEY must not be set/);
+  assert.doesNotMatch(badConfig.output, new RegExp(secret));
+  const productionEnv = [
+    'MYANLEX_ENV=production',
+    'NODE_ENV=production',
+    `DATABASE_URL=${databaseUrl}`,
+    'REDIS_URL=redis://redis:6379',
+    'MYANLEX_QUOTAS_ENABLED=true',
+    `MYANLEX_METRICS_TOKEN=${randomUUID().replaceAll('-', '')}`,
+    'AUTH_ENABLED=true',
+    `AUTH_SECRET=${randomUUID()}${randomUUID()}`,
+    'AUTH_PUBLIC_URL=https://console.example',
+    'SMTP_HOST=127.0.0.1',
+    'SMTP_PORT=9',
+    'SMTP_USER=',
+    'SMTP_PASSWORD=',
+    'SMTP_FROM=auth@example.org',
+    'MYANLEX_BILLING_PAYMENT_INSTRUCTIONS=Bank transfer',
+  ];
+  assert.equal(
+    ops(productionEnv, 'pnpm', '--silent', 'config:check').status,
+    0,
+  );
+  const daily = ops(productionEnv, 'pnpm', '--silent', 'ops:daily');
+  assert.equal(daily.status, 0, daily.output);
+  const steps = daily.output
+    .split('\n')
+    .filter((line) => line.startsWith('{'))
+    .map((line) => JSON.parse(line))
+    .filter((line) => line.event === 'ops_step');
+  assert.deepEqual(
+    steps.map((line) => [line.step, line.outcome]),
+    [
+      ['backup', 'skipped'],
+      ['close-month', 'ok'],
+      ['issue-invoices', 'ok'],
+      ['dunning', 'ok'],
+      ['usage-cleanup', 'ok'],
+      ['audit-cleanup', 'ok'],
+      ['playground-cleanup', 'ok'],
+    ],
+  );
+
   const sql = (db, query) =>
     docker(
       'exec',
@@ -199,6 +290,11 @@ try {
   ]);
   const apiUrl = address(api, 3001);
   await ready(`${apiUrl}/v1/health/ready`);
+  // The image reports its build (MYANLEX_BUILD_ID), not the 0.0.0 default.
+  assert.notEqual(
+    (await (await request(`${apiUrl}/v1/health`)).json()).version,
+    '0.0.0',
+  );
   const payload = {
     text: '',
     from: 'zawgyi',
@@ -262,7 +358,7 @@ try {
   for (const id of [api, web, docs])
     assert.notEqual(docker('exec', id, 'id', '-u'), '0');
   log(
-    'Deployment smoke passed: non-root runtime images, readiness, conversion, portal proxy, docs/search/assets, migration replay, seed and isolated backup/restore.',
+    'Deployment smoke passed: non-root runtime images, readiness, build version, conversion, portal proxy, docs/search/assets, migration replay, seed, ops image (crontab, pg_dump, config check, daily run) and isolated backup/restore.',
   );
 } finally {
   for (const id of owned.reverse()) {

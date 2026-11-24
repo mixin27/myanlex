@@ -14,6 +14,7 @@ import { configureRequestObservability } from './common/http/request-observabili
 import type { RequestLogSink } from './common/http/request-observability.js';
 import { MetricsService } from './modules/operations/metrics.service.js';
 import { configureMetricsRoute } from './modules/operations/metrics.routes.js';
+import { parseTrustProxy } from './common/runtime/trust-proxy.js';
 
 export interface CreateApiApplicationOptions {
   readonly metricsToken?: string;
@@ -27,6 +28,8 @@ export interface CreateApiApplicationOptions {
   readonly redisUrl?: string;
   readonly redisPrefix?: string;
   readonly quotasEnabled?: boolean;
+  /** Overrides MYANLEX_TRUST_PROXY (see common/runtime/trust-proxy.ts). */
+  readonly trustProxy?: string;
 }
 
 export async function createApiApplication(
@@ -39,7 +42,9 @@ export async function createApiApplication(
       requestIdHeader: false,
       genReqId: () => randomUUID(),
       logger: false,
-      trustProxy: false,
+      trustProxy: parseTrustProxy(
+        options.trustProxy ?? process.env.MYANLEX_TRUST_PROXY,
+      ),
       requestTimeout: 30_000,
     }),
     {

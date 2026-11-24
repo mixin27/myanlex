@@ -21,6 +21,12 @@ import {
   BILLING_PAYMENT_INSTRUCTIONS,
 } from '../tokens.js';
 import { usageRetention } from '../../modules/platform/usage-ledger.js';
+import {
+  describeProblems,
+  isProduction,
+  productionConfigProblems,
+} from './production-config.js';
+import { parseTrustProxy } from './trust-proxy.js';
 
 export interface RuntimeConfigOptions {
   readonly metricsToken?: string;
@@ -38,7 +44,7 @@ const environmentFile = fileURLToPath(
   new URL('../../../.env', import.meta.url),
 );
 
-const runtimeEnvironmentSchema = z
+export const runtimeEnvironmentSchema = z
   .object({
     MYANLEX_METRICS_TOKEN: z
       .string()
@@ -84,6 +90,20 @@ const runtimeEnvironmentSchema = z
       .min(1_000)
       .default(60_000),
     MYANLEX_VERSION: z.string().trim().min(1).default('0.0.0'),
+    MYANLEX_ENV: z.enum(['development', 'staging', 'production']).optional(),
+    MYANLEX_TRUST_PROXY: z
+      .string()
+      .optional()
+      .superRefine((value, context) => {
+        try {
+          parseTrustProxy(value);
+        } catch (error) {
+          context.addIssue({
+            code: 'custom',
+            message: (error as Error).message,
+          });
+        }
+      }),
     PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
   })
   .superRefine((environment, context) => {
@@ -108,7 +128,7 @@ const runtimeEnvironmentSchema = z
 
 type RuntimeEnvironment = z.infer<typeof runtimeEnvironmentSchema>;
 
-function validateEnvironment(
+export function validateEnvironment(
   environment: Record<string, unknown>,
   options: RuntimeConfigOptions,
 ): Record<string, unknown> & RuntimeEnvironment {
@@ -147,7 +167,15 @@ function validateEnvironment(
     );
   }
 
-  return { ...environment, ...result.data };
+  const merged = { ...environment, ...result.data };
+  if (isProduction(merged)) {
+    const problems = productionConfigProblems(merged);
+    if (problems.length > 0)
+      throw new Error(
+        `Invalid production configuration: ${describeProblems(problems)}.`,
+      );
+  }
+  return merged;
 }
 
 @Global()

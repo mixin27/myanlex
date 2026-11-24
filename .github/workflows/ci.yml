@@ -50,8 +50,14 @@ jobs:
         run: |
           docker build --target api -t myanlex-api:packaging-test .
           docker build --target migrate -t myanlex-migrate:packaging-test .
+          docker build --target ops -t myanlex-ops:packaging-test .
           docker build --target web -t myanlex-web:packaging-test .
           docker build --target docs -t myanlex-docs:packaging-test .
+      - name: Check the production stack definition and smoke script
+        run: |
+          docker compose -f infra/compose.production.yaml --env-file infra/.env.production.example config --quiet
+          bash -n infra/smoke.sh
+          shellcheck infra/smoke.sh
       - name: Pre-pull isolated test dependencies
         run: docker pull postgres:18.6-alpine && docker pull redis:8.10.1-alpine
       - name: Verify runtime images, migrations and isolated restoration

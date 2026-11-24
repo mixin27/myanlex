@@ -1,0 +1,207 @@
+name: Deploy
+
+# Release flow (runbook: docs/dokploy-runbook.md, ADR 0027). Runs only when
+# triggered; pushing to main never deploys.
+#
+#   tag v*                  -> production (waits for approval on the
+#                              "production" GitHub environment)
+#   Actions -> Deploy -> Run -> staging or production (choose)
+#
+# 1. build: api, web, docs and ops images, tagged only with immutable tags
+#      <env>-sha-<7>  (and vX.Y.Z for production releases)
+#    web and docs are built per environment because Next.js inlines public
+#    URLs at build time. The api image is scanned before anything is tagged.
+# 2. deploy (after approval): point the moving <env> tag at this build, call
+#    the Dokploy webhook, then run infra/smoke.sh until the new build is live.
+#
+# Rollback: set IMAGE_TAG=<env>-sha-<7> in Dokploy and redeploy.
+#
+# Repository variables, per environment prefix STAGING_ / PRODUCTION_:
+#   <ENV>_CONSOLE_URL  e.g. https://console.example.com
+#   <ENV>_API_URL      e.g. https://api.example.com
+#   <ENV>_DOCS_URL     e.g. https://docs.example.com
+# Environment secrets (Settings -> Environments -> staging / production):
+#   DOKPLOY_WEBHOOK    the Compose app's deploy webhook URL (optional: without
+#                      it, images are built and tagged but nothing deploys)
+#   SMOKE_API_KEY      optional project key for one real API request
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+
+concurrency:
+  group:
+    deploy-${{ github.event_name == 'push' && 'production' || inputs.environment
+    }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.release.outputs.env }}
+      prefix: ${{ steps.release.outputs.prefix }}
+      sha: ${{ steps.release.outputs.sha }}
+      owner: ${{ steps.release.outputs.owner }}
+    steps:
+      - id: release
+        env:
+          EVENT: ${{ github.event_name }}
+          CHOSEN: ${{ inputs.environment }}
+        run: |
+          if [ "$EVENT" = "push" ]; then env=production; else env="$CHOSEN"; fi
+          case "$env" in staging|production) ;; *) echo "Unknown environment" >&2; exit 1 ;; esac
+          echo "env=$env" >> "$GITHUB_OUTPUT"
+          echo "prefix=$(echo "$env" | tr '[:lower:]' '[:upper:]')" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.target }} (${{ needs.prepare.outputs.env }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        target: [api, web, docs, ops]
+    env:
+      IMAGE:
+        ghcr.io/${{ needs.prepare.outputs.owner }}/myanlex-${{ matrix.target }}
+      TAG: ${{ needs.prepare.outputs.env }}-sha-${{ needs.prepare.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags
+        id: tags
+        run: |
+          tags="$IMAGE:$TAG"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then tags="$tags,$IMAGE:${GITHUB_REF_NAME}"; fi
+          echo "list=$tags" >> "$GITHUB_OUTPUT"
+
+      # Build locally first so the scan runs before anything is pushed.
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          load: true
+          tags: ${{ env.IMAGE }}:scan
+          build-args: &build-args |
+            MYANLEX_BUILD_ID=${{ github.sha }}
+            API_INTERNAL_URL=http://api:3001
+            NEXT_PUBLIC_DOCS_URL=${{ vars[format('{0}_DOCS_URL', needs.prepare.outputs.prefix)] }}
+            NEXT_PUBLIC_API_DOCS_URL=${{ vars[format('{0}_API_URL', needs.prepare.outputs.prefix)] }}/docs
+            NEXT_PUBLIC_CONSOLE_URL=${{ vars[format('{0}_CONSOLE_URL', needs.prepare.outputs.prefix)] }}
+          cache-from:
+            type=gha,scope=${{ matrix.target }}-${{ needs.prepare.outputs.env }}
+          cache-to:
+            type=gha,mode=max,scope=${{ matrix.target }}-${{
+            needs.prepare.outputs.env }}
+
+      - name: Scan for critical vulnerabilities
+        if: matrix.target == 'api' || matrix.target == 'web'
+        # Pinned by commit: v0.36.0.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.IMAGE }}:scan
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: *build-args
+          cache-from:
+            type=gha,scope=${{ matrix.target }}-${{ needs.prepare.outputs.env }}
+
+  deploy:
+    name: Deploy to ${{ needs.prepare.outputs.env }}
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    # Add "Required reviewers" to the production environment for approval.
+    environment:
+      name: ${{ needs.prepare.outputs.env }}
+      url: ${{ vars[format('{0}_CONSOLE_URL', needs.prepare.outputs.prefix)] }}
+    env:
+      ENV_NAME: ${{ needs.prepare.outputs.env }}
+      SHA: ${{ needs.prepare.outputs.sha }}
+      OWNER: ${{ needs.prepare.outputs.owner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Only now (after approval) does the moving tag point at this build.
+      - name: Point ${{ needs.prepare.outputs.env }} at this build
+        run: |
+          for target in api web docs ops; do
+            image="ghcr.io/$OWNER/myanlex-$target"
+            docker buildx imagetools create --tag "$image:$ENV_NAME" "$image:$ENV_NAME-sha-$SHA"
+          done
+          echo "Images: \`$ENV_NAME-sha-$SHA\` (roll back by setting IMAGE_TAG to it)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Trigger Dokploy deploy
+        env:
+          WEBHOOK: ${{ secrets.DOKPLOY_WEBHOOK }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DOKPLOY_WEBHOOK is not set for $ENV_NAME; images are tagged but nothing was deployed."
+            echo "SKIP_SMOKE=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          curl -fsS --max-time 30 -X POST "$WEBHOOK" > /dev/null
+
+      - name: Smoke check
+        if: env.SKIP_SMOKE != '1'
+        env:
+          API_URL:
+            ${{ vars[format('{0}_API_URL', needs.prepare.outputs.prefix)] }}
+          CONSOLE_URL:
+            ${{ vars[format('{0}_CONSOLE_URL', needs.prepare.outputs.prefix)] }}
+          DOCS_URL:
+            ${{ vars[format('{0}_DOCS_URL', needs.prepare.outputs.prefix)] }}
+          EXPECT_VERSION: ${{ github.sha }}
+          SMOKE_API_KEY: ${{ secrets.SMOKE_API_KEY }}
+          WAIT_SECONDS: '600'
+        run: infra/smoke.sh

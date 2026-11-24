@@ -4,13 +4,22 @@ Status: packaging for controlled staging, not approval for production launch.
 See [RC1 gates](quality/rc1-checklist.md). Nothing here deploys remotely or
 changes the existing development Compose project.
 
+**Production** runs on one VPS with Dokploy
+([0027](decisions/0027-self-hosted-dokploy.md)): follow the
+[Dokploy runbook](dokploy-runbook.md) and the
+[go-live checklist](production-checklist.md). This page covers the images and a
+local or loopback rehearsal with `compose.staging.yaml`.
+
 ## Images and boundaries
 
-The root Dockerfile provides `api`, `web`, `docs`, and `migrate` targets.
-Runtime containers use the unprivileged Node user. The API contains production
-package dependencies, compiled application code and OpenAPI; the separate
-migration image includes development tooling needed by Prisma/seed. Do not
-expose or run the migration image as a service. Images never contain local
+The root Dockerfile provides `api`, `web`, `docs`, `migrate` and `ops` targets.
+`ops` is `migrate` plus supercronic (pinned and checksum-verified) and the
+PostgreSQL 18 client; the production stack uses it for the migrate job and the
+daily jobs. The API image reports `MYANLEX_BUILD_ID` as its `/v1/health`
+version. Runtime containers use the unprivileged Node user. The API contains
+production package dependencies, compiled application code and OpenAPI; the
+separate migration image includes development tooling needed by Prisma/seed. Do
+not expose or run the migration image as a service. Images never contain local
 `.env` or `local/` files; `.dockerignore` also excludes dependency/build caches
 and credential files. Do not place secrets elsewhere in the repository or pass
 them as build args.
@@ -156,6 +165,7 @@ With Docker running, build the test-tagged targets from this repository:
 ```sh
 docker build --target api -t myanlex-api:packaging-test .
 docker build --target migrate -t myanlex-migrate:packaging-test .
+docker build --target ops -t myanlex-ops:packaging-test .
 docker build --target web -t myanlex-web:packaging-test .
 docker build --target docs -t myanlex-docs:packaging-test .
 pnpm deployment:smoke
@@ -163,10 +173,11 @@ pnpm deployment:smoke
 
 The smoke script owns uniquely named disposable containers and a network. It
 checks runtime non-root users, API readiness/conversion, portal proxy, docs
-search/static assets, repeated migrations, baseline seed and PostgreSQL dump /
-restore into a second fresh test database. No supplied URLs, credentials,
-existing containers or user data are used. Cleanup removes only its containers,
-their anonymous volumes and network; image/build caches remain. SIGKILL or a
-Docker failure can leave resources named `myanlex-packaging-*`: inspect exact
-targets before removing them. This is not a full production backup, tenant
-restore, OAuth, TLS or capacity acceptance test.
+search/static assets, repeated migrations, baseline seed, the build version, the
+ops image (crontab, `pg_dump`, production `config:check`, a full `ops:daily`)
+and PostgreSQL dump / restore into a second fresh test database. No supplied
+URLs, credentials, existing containers or user data are used. Cleanup removes
+only its containers, their anonymous volumes and network; image/build caches
+remain. SIGKILL or a Docker failure can leave resources named
+`myanlex-packaging-*`: inspect exact targets before removing them. This is not a
+full production backup, tenant restore, OAuth, TLS or capacity acceptance test.
