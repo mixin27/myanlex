@@ -7,7 +7,10 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { BILLING_NOTIFY_EMAIL } from '../../common/tokens.js';
+import {
+  BILLING_NOTIFY_EMAIL,
+  BILLING_PAYMENT_INSTRUCTIONS,
+} from '../../common/tokens.js';
 import {
   AccountAuthService,
   type MailDelivery,
@@ -19,6 +22,7 @@ import type { AuditActor } from './audit.js';
 import {
   PlanChangeError,
   USAGE_LEDGER_REPOSITORY,
+  type InvoiceRecord,
   type PlanChangeRecord,
   type UsageLedgerRepository,
 } from './usage-ledger.js';
@@ -40,6 +44,37 @@ function unavailable(cause: unknown): never {
     }
   throw new ServiceUnavailableException('Billing is temporarily unavailable.');
 }
+
+const presentInvoice = (invoice: InvoiceRecord) => ({
+  number: invoice.number,
+  kind: invoice.kind,
+  status: invoice.status,
+  periodStart: invoice.periodStart.toISOString(),
+  periodEnd: invoice.periodEnd.toISOString(),
+  currency: invoice.currency,
+  subtotalMinor: invoice.subtotalMinor.toString(),
+  totalMinor: invoice.totalMinor.toString(),
+  issuedAt: invoice.issuedAt.toISOString(),
+  dueAt: invoice.dueAt.toISOString(),
+  paidAt: invoice.paidAt?.toISOString() ?? null,
+  voidedAt: invoice.voidedAt?.toISOString() ?? null,
+  voidReason: invoice.voidReason,
+  overdue: invoice.status === 'open' && invoice.dueAt.getTime() <= Date.now(),
+  suspended: invoice.suspended,
+  lines: invoice.lines.map((line) => ({
+    kind: line.kind,
+    description: line.description,
+    quantity: line.quantity.toString(),
+    unitMinor: line.unitMinor.toString(),
+    amountMinor: line.amountMinor.toString(),
+  })),
+  payments: invoice.payments.map((payment) => ({
+    method: payment.method,
+    provider: payment.provider,
+    amountMinor: payment.amountMinor.toString(),
+    receivedAt: payment.receivedAt.toISOString(),
+  })),
+});
 
 const presentChange = (change: PlanChangeRecord) => ({
   id: change.id,
@@ -71,6 +106,8 @@ export class BillingService {
     @Inject(AccountAuthService) private readonly accounts: AccountAuthService,
     @Inject(BILLING_NOTIFY_EMAIL)
     private readonly notifyEmail: string | null,
+    @Inject(BILLING_PAYMENT_INSTRUCTIONS)
+    private readonly paymentInstructions: string | null,
   ) {}
 
   async overview(userId: string, organizationId: string) {
@@ -112,6 +149,16 @@ export class BillingService {
         note: period.note,
       })),
       publicPlans: billing.publicPlans,
+      freeChange: billing.freeChange,
+      outstanding: billing.outstanding.map((balance) => ({
+        currency: balance.currency,
+        totalMinor: balance.totalMinor.toString(),
+        invoices: balance.invoices,
+        oldestDueAt: balance.oldestDueAt.toISOString(),
+        overdue: balance.overdue,
+      })),
+      suspended: billing.suspended,
+      paymentInstructions: this.paymentInstructions,
       changes,
       openChange:
         changes.find(
@@ -119,6 +166,44 @@ export class BillingService {
             change.status === 'pending' || change.status === 'awaiting_payment',
         ) ?? null,
       canRequestChange: access.permissions.includes('billing.manage'),
+    };
+  }
+
+  async invoices(
+    userId: string,
+    organizationId: string,
+    query: { before?: string | undefined; limit: number },
+  ) {
+    await requireOrganizationPermission(
+      this.workspace,
+      userId,
+      organizationId,
+      'billing.read',
+    );
+    const rows = await this.ledger
+      .invoices(organizationId, query.before ?? null, query.limit + 1)
+      .catch(unavailable);
+    const items = rows.slice(0, query.limit).map(presentInvoice);
+    return {
+      items,
+      nextCursor: rows.length > query.limit ? items.at(-1)!.number : null,
+    };
+  }
+
+  async invoice(userId: string, organizationId: string, number: string) {
+    await requireOrganizationPermission(
+      this.workspace,
+      userId,
+      organizationId,
+      'billing.read',
+    );
+    const invoice = await this.ledger
+      .invoice(organizationId, number)
+      .catch(unavailable);
+    if (!invoice) throw new NotFoundException('Invoice not found.');
+    return {
+      ...presentInvoice(invoice),
+      paymentInstructions: this.paymentInstructions,
     };
   }
 

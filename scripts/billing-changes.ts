@@ -1,5 +1,10 @@
 import { parseArgs } from 'node:util';
 import { ZodError } from 'zod';
+import { InvoiceAdmin } from '../apps/api/src/infrastructure/database/billing-invoices.js';
+import {
+  deliverDunning,
+  money,
+} from '../apps/api/src/infrastructure/database/billing-mail.js';
 import { smtpSenderFromEnv } from '../apps/api/src/common/mail/smtp-transport.js';
 import {
   PlanAdmin,
@@ -82,6 +87,27 @@ async function main() {
         ),
       );
       console.log(`Requester email: ${mail}.`);
+      if (result.invoice) {
+        const invoices = new InvoiceAdmin(url);
+        try {
+          console.log(
+            `Issued ${result.invoice.number}: ${money(result.invoice.totalMinor, result.invoice.currency.trim())} for the rest of the month.`,
+          );
+          for (const sent of await deliverDunning(
+            await invoices.runDunning([result.invoice.id]),
+            (id) => invoices.contacts(id),
+            send,
+            {
+              portalUrl: process.env.AUTH_PUBLIC_URL,
+              paymentInstructions:
+                process.env.MYANLEX_BILLING_PAYMENT_INSTRUCTIONS,
+            },
+          ))
+            console.log(`${sent.number}: invoice email ${sent.mail}.`);
+        } finally {
+          await invoices.close();
+        }
+      }
     } else if (
       command === 'reject' &&
       changeId &&

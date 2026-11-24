@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { SessionRoute } from '../../common/auth/session-route.decorator.js';
@@ -14,7 +15,13 @@ import type { AuthenticatedRequest } from '../../common/auth/authenticated-reque
 import { ZodBodyPipe } from '../../common/validation/zod-body.pipe.js';
 import { BillingService } from './billing.service.js';
 import { auditActor } from './audit.js';
-import { planChangeInput, type PlanChangeBody } from './billing.schemas.js';
+import {
+  invoiceListQuery,
+  invoiceNumber,
+  planChangeInput,
+  type InvoiceListQuery,
+  type PlanChangeBody,
+} from './billing.schemas.js';
 
 @Controller('platform/organizations/:organizationId/billing')
 @SessionRoute()
@@ -31,6 +38,32 @@ export class BillingController {
     return this.billing.overview(
       request.accountPrincipal!.userId,
       organizationId,
+    );
+  }
+
+  @Get('invoices')
+  invoices(
+    @Req() request: AuthenticatedRequest,
+    @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
+    @Query(new ZodBodyPipe(invoiceListQuery)) query: InvoiceListQuery,
+  ) {
+    return this.billing.invoices(
+      request.accountPrincipal!.userId,
+      organizationId,
+      query,
+    );
+  }
+
+  @Get('invoices/:number')
+  invoice(
+    @Req() request: AuthenticatedRequest,
+    @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
+    @Param('number', new ZodBodyPipe(invoiceNumber)) number: string,
+  ) {
+    return this.billing.invoice(
+      request.accountPrincipal!.userId,
+      organizationId,
+      number,
     );
   }
 

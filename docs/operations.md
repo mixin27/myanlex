@@ -194,19 +194,14 @@ DATABASE_URL='<database connection>' pnpm billing:assign acme free --actor ops@e
 ```
 
 - The change applies to limits from its start time.
-- Each month is billed in full on the plan in effect at its end, without
-  proration. Schedule changes for 00:00 UTC on the first of a month to bill
-  exactly from then.
+- `billing:assign` changes the plan only; it issues no invoice. Use plan change
+  requests (below) when a change should be invoiced, or schedule assignments for
+  00:00 UTC on the 1st so the monthly invoice covers them.
 - Starts cannot be in the past.
 - `free` ends the paid subscription.
 - Every change is recorded in the workspace audit log as `billing.plan_changed`.
 
-**Monthly invoicing routine:**
-
-1. After the month ends, run `pnpm usage:close-month`.
-2. Read each workspace's statement (portal Usage page, or the statements API)
-   and invoice its `charges.totalMinor` in `charges.currency`.
-3. Investigate statements that don't reconcile before invoicing them.
+Invoicing is automatic; see [invoices and payments](#invoices-and-payments).
 
 Set `MYANLEX_BILLING_CONTACT` (an email address or short text) on the portal to
 tell customers who to contact with billing questions.
@@ -235,6 +230,61 @@ DATABASE_URL='<database connection>' pnpm billing:changes reject <change-id> --a
   - With the same `SMTP_*` variables as the API, the script emails the requester
     the decision; without them it prints `Requester email: skipped`.
   - Mail failures never undo a decision.
+- **Billing:** approving an upgrade that starts now issues a prorated invoice
+  for the rest of the month and emails it. Downgrades, moves to Free and
+  currency changes always start on the 1st of a month; one approved after its
+  date waits for the next 1st.
 - **Change policy:** plan files accept `"changePolicy": "approval"` (the
   default). `self_service` is refused until a payment provider (checkout)
   exists.
+
+## Invoices and payments
+
+MyanLex issues its own invoices; see
+[0026](decisions/0026-invoices-and-payments.md). Base fees are billed in advance
+each month and prorated by day for upgrades; overage is billed after the month
+closes. There is no payment provider yet, so you record payments.
+
+Run these daily, in this order, after `usage:close-month`:
+
+```sh
+DATABASE_URL='<database connection>' pnpm usage:close-month
+DATABASE_URL='<database connection>' pnpm billing:invoices issue-monthly
+DATABASE_URL='<database connection>' pnpm billing:dunning
+DATABASE_URL='<database connection>' MYANLEX_USAGE_RETENTION_MONTHS=13 pnpm usage:cleanup
+```
+
+- **`issue-monthly`** issues each workspace's invoice for the current month: the
+  base fee of the plan in effect on the 1st, plus the overage of the month just
+  closed. It is idempotent.
+  - A workspace whose previous month has no closed statement yet is skipped and
+    listed, and the script exits with status 2. Run `usage:close-month` first.
+  - Use `--month YYYY-MM` to issue a past month that was missed.
+- **`billing:dunning`** emails new invoices and reminders (on the day of issue
+  and days 3 and 6) to members with `billing.manage`.
+  - Invoices are due 7 days after issue.
+  - On day 7 an unpaid invoice moves its workspace to Free, so Free limits
+    apply. It records `billing.suspended_for_nonpayment` and emails the
+    workspace.
+- **Recording a payment:**
+
+  ```sh
+  DATABASE_URL='<database connection>' pnpm billing:invoices list --status open
+  DATABASE_URL='<database connection>' pnpm billing:invoices mark-paid MLX-2026-000123 --method bank_transfer --reference "KBZ transfer 0091" --actor ops@example.com
+  ```
+
+  - Payments must be for the full total; there are no partial payments.
+  - Marking an invoice paid emails a receipt, and if dunning had moved the
+    workspace to Free, restores the plan immediately.
+
+- **Voiding:** `void <number> --reason … --actor …` cancels an open invoice
+  issued in error. Issued invoices can't be edited or deleted; the database
+  enforces this.
+- **Numbering:** invoices are numbered `MLX-<year>-<6 digits>` with no gaps.
+- **Email settings:**
+  - Set `MYANLEX_BILLING_PAYMENT_INSTRUCTIONS` (for example your bank account)
+    on the API and in the scripts' environment. It appears on invoices, on the
+    Billing page and in emails.
+  - Set `AUTH_PUBLIC_URL` in the scripts' environment to include portal links.
+  - Emails need the `SMTP_*` variables; without them the scripts report
+    `skipped`.

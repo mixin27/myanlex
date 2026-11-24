@@ -38,6 +38,11 @@ export const auditActions = [
   'billing.plan_change_cancelled',
   'billing.plan_change_applied',
   'billing.plan_change_rejected',
+  'billing.invoice_issued',
+  'billing.invoice_paid',
+  'billing.invoice_voided',
+  'billing.suspended_for_nonpayment',
+  'billing.plan_restored',
 ] as const;
 export type AuditAction = (typeof auditActions)[number];
 

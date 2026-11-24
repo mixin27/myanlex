@@ -9,7 +9,9 @@ import {
   storeTerms,
   type StoredCharges,
 } from '../../common/billing/pricing.js';
-import { nextMonthStart } from './plan-admin.js';
+import { nextMonthStart, planTerms } from './plan-admin.js';
+import { changeKind, prorationLine } from '../../common/billing/invoicing.js';
+import type { PlanTerms } from '../../common/billing/pricing.js';
 import { recordAudit } from './audit-writer.js';
 import type { AuditActor } from '../../modules/platform/audit.js';
 import {
@@ -18,6 +20,9 @@ import {
   type PlanChangeRecord,
   type PlanChangeStatus,
   type PlanChangeTiming,
+  type ChangePreview,
+  type InvoiceRecord,
+  type OutstandingBalance,
 } from '../../modules/platform/usage-ledger.js';
 import type {
   BillingOverview,
@@ -48,6 +53,97 @@ function isSerializationFailure(error: unknown): boolean {
     meta?.code === '40001' ||
     (error instanceof Error && /\b40001\b/.test(error.message))
   );
+}
+
+async function outstandingOf(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+  now: Date,
+) {
+  const open = await tx.invoice.findMany({
+    where: { organizationId, status: 'open' },
+    orderBy: { dueAt: 'asc' },
+  });
+  const byCurrency = new Map<string, OutstandingBalance>();
+  for (const invoice of open) {
+    const seen = byCurrency.get(invoice.currency);
+    byCurrency.set(invoice.currency, {
+      currency: invoice.currency,
+      totalMinor: (seen?.totalMinor ?? 0n) + invoice.totalMinor,
+      invoices: (seen?.invoices ?? 0) + 1,
+      oldestDueAt: seen?.oldestDueAt ?? invoice.dueAt,
+      overdue: (seen?.overdue ?? false) || invoice.dueAt <= now,
+    });
+  }
+  const suspendedBy = open.find((invoice) => invoice.restoresPlanSlug);
+  return {
+    outstanding: [...byCurrency.values()],
+    suspended: suspendedBy
+      ? {
+          invoiceNumber: suspendedBy.number,
+          plan: suspendedBy.restoresPlanSlug!,
+        }
+      : null,
+  };
+}
+
+const toInvoiceRecord = (
+  row: Prisma.InvoiceGetPayload<{ include: { lines: true; payments: true } }>,
+): InvoiceRecord => ({
+  number: row.number,
+  kind: row.kind as InvoiceRecord['kind'],
+  status: row.status as InvoiceRecord['status'],
+  periodStart: row.periodStart,
+  periodEnd: row.periodEnd,
+  currency: row.currency.trim(),
+  subtotalMinor: row.subtotalMinor,
+  totalMinor: row.totalMinor,
+  issuedAt: row.issuedAt,
+  dueAt: row.dueAt,
+  paidAt: row.paidAt,
+  voidedAt: row.voidedAt,
+  voidReason: row.voidReason,
+  suspended: row.status === 'open' && row.restoresPlanSlug !== null,
+  lines: [...row.lines]
+    .sort((a, b) => a.position - b.position)
+    .map((line) => ({
+      kind: line.kind,
+      description: line.description,
+      quantity: line.quantity,
+      unitMinor: line.unitMinor,
+      amountMinor: line.amountMinor,
+    })),
+  payments: [...row.payments]
+    .sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime())
+    .map((payment) => ({
+      method: payment.method,
+      provider: payment.provider,
+      amountMinor: payment.amountMinor,
+      receivedAt: payment.receivedAt,
+    })),
+});
+
+const freePreviewTerms = {
+  slug: 'free',
+  name: 'Free',
+  currency: 'MMK',
+  baseFeeMinor: 0n,
+};
+
+/** How moving from `current` to `target` would be billed if it started now. */
+function changePreview(
+  current: Pick<PlanTerms, 'slug' | 'name' | 'currency' | 'baseFeeMinor'>,
+  target: Pick<PlanTerms, 'slug' | 'name' | 'currency' | 'baseFeeMinor'>,
+  now: Date,
+): ChangePreview {
+  const kind = changeKind(current, target);
+  const line = kind === 'upgrade' ? prorationLine(current, target, now) : null;
+  return {
+    kind,
+    nowAllowed: kind === 'upgrade',
+    prorationMinor: line?.amountMinor.toString() ?? null,
+    currency: target.currency,
+  };
 }
 
 function toChangeRecord(row: {
@@ -410,7 +506,10 @@ export class PrismaUsageLedgerRepository
             description: row.description,
             changePolicy:
               row.changePolicy === 'self_service' ? 'self_service' : 'approval',
+            change: changePreview(plan, planTerms(row), now),
           })),
+          freeChange: changePreview(plan, freePreviewTerms, now),
+          ...(await outstandingOf(tx, organizationId, now)),
           changes: (
             await tx.planChange.findMany({
               where: { organizationId },
@@ -423,6 +522,31 @@ export class PrismaUsageLedgerRepository
       },
       { isolationLevel: 'RepeatableRead', maxWait: 2_000, timeout: 10_000 },
     );
+  }
+
+  async invoices(
+    organizationId: string,
+    before: string | null,
+    limit: number,
+  ): Promise<InvoiceRecord[]> {
+    const rows = await this.client.invoice.findMany({
+      where: { organizationId, ...(before ? { number: { lt: before } } : {}) },
+      orderBy: { number: 'desc' },
+      take: limit,
+      include: { lines: true, payments: true },
+    });
+    return rows.map(toInvoiceRecord);
+  }
+
+  async invoice(
+    organizationId: string,
+    number: string,
+  ): Promise<InvoiceRecord | null> {
+    const row = await this.client.invoice.findFirst({
+      where: { organizationId, number },
+      include: { lines: true, payments: true },
+    });
+    return row ? toInvoiceRecord(row) : null;
   }
 
   requestPlanChange(
@@ -447,6 +571,15 @@ export class PrismaUsageLedgerRepository
           throw new PlanChangeError(
             'current_plan',
             'The workspace is already on that plan.',
+          );
+        // Only upgrades start mid-month; the rest wait for the 1st (ADR 0026).
+        if (
+          input.timing === 'now' &&
+          changeKind(current, planTerms(plan)) !== 'upgrade'
+        )
+          throw new PlanChangeError(
+            'timing_not_allowed',
+            'Downgrades, moves to Free and currency changes start on the 1st of next month.',
           );
         const change = await tx.planChange.create({
           data: {

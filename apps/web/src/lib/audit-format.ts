@@ -11,6 +11,11 @@ export const auditActionLabels: Record<AuditAction, string> = {
   'billing.plan_change_cancelled': 'Plan change cancelled',
   'billing.plan_change_applied': 'Plan change approved',
   'billing.plan_change_rejected': 'Plan change rejected',
+  'billing.invoice_issued': 'Invoice issued',
+  'billing.invoice_paid': 'Invoice paid',
+  'billing.invoice_voided': 'Invoice voided',
+  'billing.suspended_for_nonpayment': 'Moved to Free for non-payment',
+  'billing.plan_restored': 'Plan restored',
   'invitation.created': 'Invitation sent',
   'invitation.resent': 'Invitation resent',
   'invitation.revoked': 'Invitation revoked',
@@ -36,7 +41,11 @@ const list = (value: unknown) =>
 
 /** One plain sentence describing who did what. Metadata is untrusted input. */
 export function describeAuditEvent(event: AuditEvent): string {
-  const who = event.actor.email;
+  // Scheduled billing jobs act as the system billing actor.
+  const who =
+    event.actor.email === 'billing-system@myanlex.invalid'
+      ? 'MyanLex billing'
+      : event.actor.email;
   const meta = event.metadata;
   const email = text(meta.email, 'someone');
   switch (event.action) {
@@ -91,6 +100,16 @@ export function describeAuditEvent(event: AuditEvent): string {
       return `${who} approved the move from ${text(meta.from, 'a plan')} to ${text(meta.to, 'a plan')}.`;
     case 'billing.plan_change_rejected':
       return `${who} rejected the move to ${text(meta.to, 'a plan')}.`;
+    case 'billing.invoice_issued':
+      return `${who} issued invoice ${text(meta.number)}.`;
+    case 'billing.invoice_paid':
+      return `${who} recorded payment of invoice ${text(meta.number)}.`;
+    case 'billing.invoice_voided':
+      return `${who} voided invoice ${text(meta.number)}.`;
+    case 'billing.suspended_for_nonpayment':
+      return `${who} moved the workspace from ${text(meta.plan, 'its plan')} to Free because invoice ${text(meta.number)} is overdue.`;
+    case 'billing.plan_restored':
+      return `${who} restored the ${text(meta.plan, 'previous')} plan after invoice ${text(meta.number)} was paid.`;
     case 'billing.plan_changed':
       return `${who} changed the plan from ${text(meta.from, 'a plan')} to ${text(meta.to, 'a plan')}.`;
     default:

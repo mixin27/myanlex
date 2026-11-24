@@ -172,7 +172,7 @@ describe('monthly usage statement', () => {
       charges: { ...statement.charges!, estimated: true },
     });
     expect(open).toContain('Estimated total');
-    expect(open).toContain('plan in effect at the end of the month');
+    expect(open).toContain('Base fees are invoiced in advance');
     const old = render({ ...statement, charges: null });
     expect(old).toContain('Not priced');
     expect(old).not.toContain('Total');

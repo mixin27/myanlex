@@ -78,6 +78,9 @@ tests is not a measured linguistic accuracy score or release approval.
 - Plan change requests from the portal, approved by operators, on a plan-change
   model ready for a future checkout channel;
   [0025](docs/decisions/0025-plan-changes.md)
+- Invoices with prepaid, day-prorated base fees and overage in arrears, recorded
+  payments, reminders and suspension for non-payment;
+  [0026](docs/decisions/0026-invoices-and-payments.md)
 - Team management: member roles, custom roles with permission editing, and email
   invitations with an in-portal pending list;
   [team workflow](docs/platform.md#team-management)
@@ -89,7 +92,8 @@ tests is not a measured linguistic accuracy score or release approval.
 
 Planned next:
 
-- Payment collection: a checkout channel for self-service plan changes
+- Payment adapters: Myanmar wallets and cards (aggregator or direct), then
+  Stripe once a non-Myanmar entity exists
 
 ## Repository layout
 

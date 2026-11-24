@@ -11,8 +11,10 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/billing',
 }));
 import BillingPage from '../src/app/(portal)/billing/page';
+import InvoicePage from '../src/app/(portal)/billing/invoices/[number]/page';
 import type {
   BillingOverview,
+  Invoice,
   PlanChange,
   PlanTerms,
 } from '../src/lib/platform-types';
@@ -74,7 +76,17 @@ const overview: BillingOverview = {
     },
   ],
   publicPlans: [
-    { ...pro, description: null, changePolicy: 'approval' },
+    {
+      ...pro,
+      description: null,
+      changePolicy: 'approval',
+      change: {
+        kind: 'upgrade',
+        nowAllowed: true,
+        prorationMinor: null,
+        currency: 'MMK',
+      },
+    },
     {
       ...pro,
       name: 'Team',
@@ -85,8 +97,23 @@ const overview: BillingOverview = {
       requestCeiling: null,
       description: null,
       changePolicy: 'approval',
+      change: {
+        kind: 'upgrade',
+        nowAllowed: true,
+        prorationMinor: '4000',
+        currency: 'USD',
+      },
     },
   ],
+  freeChange: {
+    kind: 'downgrade',
+    nowAllowed: false,
+    prorationMinor: null,
+    currency: 'MMK',
+  },
+  outstanding: [],
+  suspended: null,
+  paymentInstructions: null,
   changes: [],
   openChange: null,
   canRequestChange: false,
@@ -116,6 +143,41 @@ const rejected: PlanChange = {
   decisionNote: 'Annual agreement needed first',
 };
 let current: BillingOverview = overview;
+const invoice: Invoice = {
+  number: 'MLX-2026-000007',
+  kind: 'monthly',
+  status: 'open',
+  periodStart: '2026-11-01T00:00:00.000Z',
+  periodEnd: '2026-12-01T00:00:00.000Z',
+  currency: 'MMK',
+  subtotalMinor: '55000',
+  totalMinor: '55000',
+  issuedAt: '2026-11-01T02:00:00.000Z',
+  dueAt: '2026-11-08T02:00:00.000Z',
+  paidAt: null,
+  voidedAt: null,
+  voidReason: null,
+  overdue: true,
+  suspended: true,
+  lines: [
+    {
+      kind: 'base_fee',
+      description: 'Pro plan, November 2026',
+      quantity: '1',
+      unitMinor: '50000',
+      amountMinor: '50000',
+    },
+    {
+      kind: 'request_overage',
+      description: '60 requests over the allowance in October 2026 (2 × 50)',
+      quantity: '2',
+      unitMinor: '2500',
+      amountMinor: '5000',
+    },
+  ],
+  payments: [],
+};
+let invoices: Invoice[] = [];
 
 function serve(permissions: string[]) {
   readPlatform.mockImplementation(async (path: string) => {
@@ -123,6 +185,13 @@ function serve(permissions: string[]) {
     if (path === `organizations/${organization}`)
       return { ...org, permissions };
     if (path === `organizations/${organization}/billing`) return current;
+    if (path.startsWith(`organizations/${organization}/billing/invoices?`))
+      return { items: invoices, nextCursor: null };
+    if (
+      path ===
+      `organizations/${organization}/billing/invoices/${invoice.number}`
+    )
+      return { ...invoice, paymentInstructions: 'KBZ Bank 123-456' };
     throw new Error(`unexpected ${path}`);
   });
 }
@@ -137,6 +206,7 @@ describe('billing page', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     current = overview;
+    invoices = [];
     vi.unstubAllEnvs();
   });
 
@@ -204,6 +274,85 @@ describe('billing page', () => {
     expect(html).toContain('Plan change requests');
     expect(html).toContain('Not approved');
     expect(html).toContain('Annual agreement needed first');
+  });
+
+  it('lists invoices and warns about overdue and suspended workspaces', async () => {
+    serve(['billing.read']);
+    invoices = [
+      invoice,
+      {
+        ...invoice,
+        number: 'MLX-2026-000003',
+        status: 'paid',
+        overdue: false,
+        suspended: false,
+        paidAt: '2026-10-03T00:00:00.000Z',
+      },
+    ];
+    current = {
+      ...overview,
+      outstanding: [
+        {
+          currency: 'MMK',
+          totalMinor: '55000',
+          invoices: 1,
+          oldestDueAt: invoice.dueAt,
+          overdue: true,
+        },
+      ],
+      suspended: { invoiceNumber: invoice.number, plan: 'pro' },
+      paymentInstructions: 'KBZ Bank 123-456',
+    };
+    const html = await render();
+    for (const text of [
+      'moved to the Free plan because invoice',
+      'Paying it restores the pro plan',
+      'How to pay: </span>KBZ Bank 123-456',
+      'MLX-2026-000007',
+      `/billing/invoices/MLX-2026-000007?organization=${organization}`,
+      '2026-11-01 – 2026-11-30',
+      'MMK 55,000',
+      'Overdue',
+      'Paid',
+    ])
+      expect(html).toContain(text);
+
+    current = { ...current, suspended: null };
+    expect(await render()).toContain('Overdue: MMK 55,000');
+    current = { ...overview, outstanding: [] };
+    invoices = [];
+    const quiet = await render();
+    expect(quiet).not.toContain('role="alert"');
+    expect(quiet).toContain('No invoices yet');
+  });
+
+  it('renders a printable invoice', async () => {
+    serve(['billing.read']);
+    const html = renderToStaticMarkup(
+      (await InvoicePage({
+        params: Promise.resolve({ number: invoice.number }),
+        searchParams: Promise.resolve({ organization }),
+      })) as ReactElement,
+    ).replace(/\u00a0/g, ' ');
+    for (const text of [
+      'invoice-print',
+      'Print or save as PDF',
+      'Billed to',
+      'Team',
+      'Pro plan, November 2026',
+      'Total (MMK)',
+      'MMK 55,000',
+      'How to pay',
+      'KBZ Bank 123-456',
+      'restores the workspace’s plan',
+    ])
+      expect(html).toContain(text);
+    await expect(
+      InvoicePage({
+        params: Promise.resolve({ number: 'bad' }),
+        searchParams: Promise.resolve({ organization }),
+      }),
+    ).rejects.toThrow('not-found');
   });
 
   it('rejects malformed workspace ids', async () => {

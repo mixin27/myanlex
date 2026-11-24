@@ -1184,6 +1184,101 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing/invoices:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listInvoices
+      summary: List the workspace's invoices, newest first (billing.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      description: |
+        Verified session required. Keyset pagination by invoice number: pass
+        the previous page's `nextCursor` as `before`.
+      parameters:
+        - name: before
+          in: query
+          schema: { type: string, pattern: '^MLX-[0-9]{4}-[0-9]{6}$' }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: A page of invoices.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Invoice' }
+                  nextCursor: { type: [string, 'null'] }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
+  /platform/organizations/{organizationId}/billing/invoices/{number}:
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        description: Tenant-scoped resource identifier.
+        schema:
+          type: string
+          format: uuid
+      - name: number
+        in: path
+        required: true
+        description: Invoice number.
+        schema: { type: string, pattern: '^MLX-[0-9]{4}-[0-9]{6}$' }
+    get:
+      operationId: getInvoice
+      summary: Read one invoice with lines and payments (billing.read)
+      tags: [Platform]
+      security:
+        - accountSession: []
+      responses:
+        '200':
+          description: The invoice and how to pay it.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Invoice'
+                type: object
+                required: [paymentInstructions]
+                properties:
+                  paymentInstructions: { type: [string, 'null'] }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/PlatformUnavailable'
   /platform/organizations/{organizationId}/billing/plan-changes:
     parameters:
       - name: organizationId
@@ -1205,7 +1300,8 @@ paths:
         with `pnpm billing:changes`. Recorded as billing.plan_change_requested.
         The operator billing address (MYANLEX_BILLING_NOTIFY_EMAIL) is emailed
         on a best-effort basis; `notification` reports the outcome. 409 when
-        the workspace already has an open change.
+        the workspace already has an open change; 400 when `timing` is `now`
+        for a downgrade, Free or a currency change (ADR 0026).
       requestBody:
         required: true
         content:
@@ -2527,6 +2623,11 @@ components:
         - billing.plan_change_cancelled
         - billing.plan_change_applied
         - billing.plan_change_rejected
+        - billing.invoice_issued
+        - billing.invoice_paid
+        - billing.invoice_voided
+        - billing.suspended_for_nonpayment
+        - billing.plan_restored
     AuditEvent:
       type: object
       additionalProperties: false
@@ -2890,6 +2991,97 @@ components:
         createdAt: { type: string, format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
+    ChangePreview:
+      type: object
+      additionalProperties: false
+      description: |
+        How moving to a plan is billed (ADR 0026). Only upgrades may start
+        now, invoiced for the rest of the month; downgrades, moves to Free and
+        currency changes start on the 1st of next month.
+      required: [kind, nowAllowed, prorationMinor, currency]
+      properties:
+        kind: { type: string, enum: [upgrade, downgrade, currency] }
+        nowAllowed: { type: boolean }
+        prorationMinor:
+          description: Invoiced for the rest of the month if it started now.
+          oneOf:
+            - $ref: '#/components/schemas/MinorAmount'
+            - type: 'null'
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+    Invoice:
+      type: object
+      additionalProperties: false
+      description: |
+        A MyanLex invoice. Monthly invoices bill the month's base fee in
+        advance and the previous month's overage in arrears; proration
+        invoices bill an upgrade for the rest of its month. Due seven days
+        after issue. Amounts are minor units.
+      required:
+        [
+          number,
+          kind,
+          status,
+          periodStart,
+          periodEnd,
+          currency,
+          subtotalMinor,
+          totalMinor,
+          issuedAt,
+          dueAt,
+          paidAt,
+          voidedAt,
+          voidReason,
+          overdue,
+          suspended,
+          lines,
+          payments,
+        ]
+      properties:
+        number: { type: string, pattern: '^MLX-[0-9]{4}-[0-9]{6}$' }
+        kind: { type: string, enum: [monthly, proration] }
+        status: { type: string, enum: [open, paid, void] }
+        periodStart: { type: string, format: date-time }
+        periodEnd:
+          type: string
+          format: date-time
+          description: Exclusive end of the period.
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        subtotalMinor: { $ref: '#/components/schemas/MinorAmount' }
+        totalMinor: { $ref: '#/components/schemas/MinorAmount' }
+        issuedAt: { type: string, format: date-time }
+        dueAt: { type: string, format: date-time }
+        paidAt: { type: [string, 'null'], format: date-time }
+        voidedAt: { type: [string, 'null'], format: date-time }
+        voidReason: { type: [string, 'null'] }
+        overdue: { type: boolean }
+        suspended:
+          type: boolean
+          description: Whether this overdue invoice moved the workspace to Free.
+        lines:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [kind, description, quantity, unitMinor, amountMinor]
+            properties:
+              kind:
+                type: string
+                enum: [base_fee, proration, request_overage, character_overage]
+              description: { type: string }
+              quantity: { $ref: '#/components/schemas/DecimalCount' }
+              unitMinor: { $ref: '#/components/schemas/MinorAmount' }
+              amountMinor: { $ref: '#/components/schemas/MinorAmount' }
+        payments:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [method, provider, amountMinor, receivedAt]
+            properties:
+              method: { type: string, enum: [bank_transfer, cash, provider] }
+              provider: { type: [string, 'null'] }
+              amountMinor: { $ref: '#/components/schemas/MinorAmount' }
+              receivedAt: { type: string, format: date-time }
     PlanChangeInput:
       type: object
       additionalProperties: false
@@ -3018,6 +3210,10 @@ components:
           changes,
           openChange,
           canRequestChange,
+          freeChange,
+          outstanding,
+          suspended,
+          paymentInstructions,
         ]
       properties:
         organizationId: { type: string, format: uuid }
@@ -3074,9 +3270,10 @@ components:
             allOf:
               - $ref: '#/components/schemas/PlanTerms'
             type: object
-            required: [description, changePolicy]
+            required: [description, changePolicy, change]
             properties:
               description: { type: [string, 'null'] }
+              change: { $ref: '#/components/schemas/ChangePreview' }
               changePolicy:
                 type: string
                 enum: [approval, self_service]
@@ -3095,6 +3292,36 @@ components:
         canRequestChange:
           type: boolean
           description: Whether the caller holds billing.manage.
+        freeChange: { $ref: '#/components/schemas/ChangePreview' }
+        outstanding:
+          type: array
+          description: Open invoices per currency.
+          items:
+            type: object
+            additionalProperties: false
+            required: [currency, totalMinor, invoices, oldestDueAt, overdue]
+            properties:
+              currency: { type: string, pattern: '^[A-Z]{3}$' }
+              totalMinor: { $ref: '#/components/schemas/MinorAmount' }
+              invoices: { type: integer, minimum: 1 }
+              oldestDueAt: { type: string, format: date-time }
+              overdue: { type: boolean }
+        suspended:
+          description:
+            Set when an overdue invoice moved the workspace to Free; paying it
+            restores `plan`.
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [invoiceNumber, plan]
+              properties:
+                invoiceNumber: { type: string }
+                plan: { type: string }
+            - type: 'null'
+        paymentInstructions:
+          type: [string, 'null']
+          description:
+            How to pay invoices (MYANLEX_BILLING_PAYMENT_INSTRUCTIONS).
     QuotaReport:
       type: object
       additionalProperties: false

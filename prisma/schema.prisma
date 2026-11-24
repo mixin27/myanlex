@@ -104,6 +104,7 @@ model Organization {
   usageEvents   UsageEvent[]
   statements    UsageStatement[]
   planChanges   PlanChange[]
+  invoices      Invoice[]
 
   @@map("organizations")
 }
@@ -446,10 +447,91 @@ model PlanChange {
   plan              Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
   requester         User?         @relation(fields: [requesterUserId], references: [id], onDelete: SetNull)
   subscription      Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  invoices          Invoice[]
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([planId])
   @@index([requesterUserId])
   @@index([subscriptionId])
   @@map("plan_changes")
+}
+
+/// Next invoice number per year (gap-free; taken under a row lock). ADR 0026.
+model InvoiceSequence {
+  year       Int @id
+  lastNumber Int @default(0) @map("last_number")
+
+  @@map("invoice_sequences")
+}
+
+/// A MyanLex-issued invoice: prepaid base fees and overage in arrears (ADR 0026).
+/// Lines and amounts are immutable once issued; only status, payment and void fields change.
+model Invoice {
+  id               String        @id @default(uuid()) @db.Uuid
+  number           String        @unique @db.VarChar(32)
+  organizationId   String        @map("organization_id") @db.Uuid
+  /// `monthly` (base fee for the month + previous month's overage) or `proration`.
+  kind             String        @db.VarChar(16)
+  periodStart      DateTime      @map("period_start") @db.Timestamptz(3)
+  periodEnd        DateTime      @map("period_end") @db.Timestamptz(3)
+  currency         String        @db.Char(3)
+  subtotalMinor    BigInt        @map("subtotal_minor")
+  totalMinor       BigInt        @map("total_minor")
+  /// open | paid | void
+  status           String        @default("open") @db.VarChar(8)
+  issuedAt         DateTime      @map("issued_at") @db.Timestamptz(3)
+  dueAt            DateTime      @map("due_at") @db.Timestamptz(3)
+  paidAt           DateTime?     @map("paid_at") @db.Timestamptz(3)
+  voidedAt         DateTime?     @map("voided_at") @db.Timestamptz(3)
+  voidReason       String?       @map("void_reason") @db.VarChar(500)
+  planChangeId     String?       @map("plan_change_id") @db.Uuid
+  /// Set when dunning moved the workspace to Free; payment restores this plan.
+  restoresPlanSlug String?       @map("restores_plan_slug") @db.VarChar(80)
+  remindersSent    Int           @default(0) @map("reminders_sent")
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planChange       PlanChange?   @relation(fields: [planChangeId], references: [id], onDelete: SetNull)
+  lines            InvoiceLine[]
+  payments         Payment[]
+
+  @@index([organizationId, issuedAt(sort: Desc)])
+  @@index([status, dueAt])
+  @@index([planChangeId])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  invoiceId   String  @map("invoice_id") @db.Uuid
+  position    Int
+  /// base_fee | proration | request_overage | character_overage
+  kind        String  @db.VarChar(24)
+  description String  @db.VarChar(300)
+  quantity    BigInt
+  unitMinor   BigInt  @map("unit_minor")
+  amountMinor BigInt  @map("amount_minor")
+  planSlug    String  @map("plan_slug") @db.VarChar(80)
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, position])
+  @@map("invoice_lines")
+}
+
+/// A payment settling an invoice in full. Provider callbacks are idempotent by (provider, external_ref).
+model Payment {
+  id          String   @id @default(uuid()) @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.Uuid
+  /// bank_transfer | cash | provider
+  method      String   @db.VarChar(16)
+  provider    String?  @db.VarChar(32)
+  externalRef String?  @map("external_ref") @db.VarChar(200)
+  amountMinor BigInt   @map("amount_minor")
+  currency    String   @db.Char(3)
+  receivedAt  DateTime @map("received_at") @db.Timestamptz(3)
+  recordedBy  String   @map("recorded_by") @db.VarChar(320)
+  note        String?  @db.VarChar(500)
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalRef])
+  @@index([invoiceId])
+  @@map("payments")
 }

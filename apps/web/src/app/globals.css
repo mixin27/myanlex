@@ -261,3 +261,19 @@
     @apply font-sans;
   }
 }
+
+/* Printing an invoice ("Save as PDF"): only the invoice, no portal chrome. */
+@media print {
+  body:has(.invoice-print) [data-slot='sidebar'],
+  body:has(.invoice-print) [data-slot='sidebar-gap'],
+  body:has(.invoice-print) [data-slot='sidebar-inset'] > header,
+  body:has(.invoice-print) [data-slot='sidebar-inset'] > footer,
+  body:has(.invoice-print) nextjs-portal {
+    display: none !important;
+  }
+  body:has(.invoice-print),
+  body:has(.invoice-print) [data-slot='sidebar-wrapper'],
+  body:has(.invoice-print) [data-slot='sidebar-inset'] {
+    background: #fff !important;
+  }
+}

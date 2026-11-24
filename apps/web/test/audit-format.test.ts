@@ -36,6 +36,27 @@ describe('audit event sentences', () => {
     expect(
       describeAuditEvent(event('billing.plan_change_rejected', { to: 'team' })),
     ).toBe('olivia@example.com rejected the move to team.');
+    expect(
+      describeAuditEvent(
+        event('billing.suspended_for_nonpayment', {
+          number: 'MLX-2026-000007',
+          plan: 'pro',
+        }),
+      ),
+    ).toBe(
+      'olivia@example.com moved the workspace from pro to Free because invoice MLX-2026-000007 is overdue.',
+    );
+    expect(
+      describeAuditEvent(
+        event('billing.invoice_paid', { number: 'MLX-2026-000007' }),
+      ),
+    ).toBe('olivia@example.com recorded payment of invoice MLX-2026-000007.');
+    expect(
+      describeAuditEvent({
+        ...event('billing.invoice_issued', { number: 'MLX-2026-000008' }),
+        actor: { userId: null, email: 'billing-system@myanlex.invalid' },
+      }),
+    ).toBe('MyanLex billing issued invoice MLX-2026-000008.');
   });
 
   it('names the actor, target and change', () => {

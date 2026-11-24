@@ -14,9 +14,9 @@ will change:
 - **Checkout** (later): the Owner pays at a payment provider, and its webhook
   confirms payment and applies the change automatically.
 
-Both channels end in the same step, so limits, statements, the audit log and "a
-month is billed on the plan in effect at its end" behave the same whichever way
-a change came. No money is charged by this change.
+Both channels end in the same step, so limits, statements, the audit log and
+billing ([0026](0026-invoices-and-payments.md)) behave the same whichever way a
+change came. No money is charged by this change.
 
 ## Plan changes
 
@@ -44,8 +44,9 @@ a change came. No money is charged by this change.
 - `next_month` applies at 00:00 UTC on the 1st of the month after the request.
   If the change is applied after that date, it applies at that moment instead. A
   change never starts in the past, so closed months are never re-priced.
-- Because a month is billed on the plan in effect at its end, `next_month` keeps
-  the current month on the current plan.
+- Since [0026](0026-invoices-and-payments.md), only upgrades may start `now`
+  (invoiced for the rest of the month); downgrades, Free and currency changes
+  start on the 1st, and one applied after its date waits for the next 1st.
 
 ## Applying a change
 

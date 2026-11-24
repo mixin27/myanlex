@@ -15,4 +15,6 @@ export const disabledUsageLedgerRepository: UsageLedgerRepository = {
   billing: unavailable,
   requestPlanChange: unavailable,
   cancelPlanChange: unavailable,
+  invoices: unavailable,
+  invoice: unavailable,
 };

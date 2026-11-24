@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { readPlatform } from '@/lib/platform-server';
 import type {
   BillingOverview,
+  ChangePreview,
+  InvoicePage,
   Organization,
   OrganizationAccess,
   Page,
@@ -18,6 +20,7 @@ import {
   OpenChangeBanner,
   RequestPlanButton,
 } from '@/components/billing/plan-change';
+import { BillingAlerts, InvoiceList } from '@/components/billing/invoices';
 import { ChargesTable } from '@/components/billing/charges';
 import { formatUsageCount } from '@/lib/usage-range';
 
@@ -48,6 +51,12 @@ export default async function BillingPage({
           `organizations/${organization.id}/billing`,
         )
       : null;
+  const invoices =
+    organization && billing
+      ? await readPlatform<InvoicePage>(
+          `organizations/${organization.id}/billing/invoices?limit=12`,
+        )
+      : null;
   const contact = process.env.MYANLEX_BILLING_CONTACT?.trim();
   const others = billing?.publicPlans.filter(
     (plan) => plan.slug !== billing.plan.slug,
@@ -60,12 +69,14 @@ export default async function BillingPage({
   ).toISOString();
   const requestButton = (
     plan: { slug: string; name: string },
+    change: ChangePreview,
     label?: string,
   ) =>
     organization && canRequest ? (
       <RequestPlanButton
         organizationId={organization.id}
         plan={plan}
+        change={change}
         nextMonthStart={nextMonthStart}
         {...(label ? { label } : {})}
       />
@@ -110,6 +121,12 @@ export default async function BillingPage({
         </section>
       ) : (
         <>
+          <BillingAlerts
+            organizationId={organization.id}
+            outstanding={billing.outstanding}
+            suspended={billing.suspended}
+            paymentInstructions={billing.paymentInstructions}
+          />
           {billing.openChange && (
             <OpenChangeBanner
               organizationId={organization.id}
@@ -123,6 +140,7 @@ export default async function BillingPage({
               billing.plan.slug !== 'free'
                 ? requestButton(
                     { slug: 'free', name: 'Free' },
+                    billing.freeChange,
                     'Switch to Free',
                   )
                 : null
@@ -143,8 +161,8 @@ export default async function BillingPage({
             <p className="text-sm text-muted-foreground">
               {formatUsageCount(billing.currentMonth.totals.requests)} requests
               and {formatUsageCount(billing.currentMonth.totals.characters)}{' '}
-              characters in {billing.currentMonth.month} (UTC). The month is
-              billed on the plan in effect when it ends, without proration.
+              characters in {billing.currentMonth.month} (UTC). Base fees are
+              invoiced in advance; overage is invoiced after the month closes.
             </p>
             <ChargesTable charges={billing.currentMonth.charges} />
             <p className="text-xs text-muted-foreground">
@@ -157,6 +175,12 @@ export default async function BillingPage({
               list each closed month’s charges and every billable request.
             </p>
           </section>
+          {invoices && (
+            <InvoiceList
+              organizationId={organization.id}
+              invoices={invoices.items}
+            />
+          )}
           <PlanHistory periods={billing.subscriptions} />
           <ChangeHistory changes={billing.changes} />
           {others && others.length > 0 && (
@@ -170,7 +194,7 @@ export default async function BillingPage({
                     key={plan.slug}
                     plan={plan}
                     compact
-                    action={requestButton(plan)}
+                    action={requestButton(plan, plan.change)}
                   />
                 ))}
               </div>
