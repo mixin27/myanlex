@@ -36,7 +36,10 @@ Next.js developer portal shell.
 Do not use the API or package interfaces as stable production contracts yet.
 
 For controlled self-hosted staging, see the
-[deployment runbook](docs/deployment.md).
+[deployment runbook](docs/deployment.md). Production is prepared for one VPS
+with Dokploy ([0027](docs/decisions/0027-self-hosted-dokploy.md)): the
+[Dokploy runbook](docs/dokploy-runbook.md) and
+[go-live checklist](docs/production-checklist.md).
 
 NLP quality validation and RC1 preparation are documented in
 [the quality workflow](docs/quality/README.md). Run `pnpm quality:report` to
@@ -81,6 +84,10 @@ tests is not a measured linguistic accuracy score or release approval.
 - Invoices with prepaid, day-prorated base fees and overage in arrears, recorded
   payments, reminders and suspension for non-payment;
   [0026](docs/decisions/0026-invoices-and-payments.md)
+- Production preparation for one Dokploy VPS: a production Compose stack, a
+  release workflow with GHCR images and smoke checks, a daily jobs runner with
+  backups and a heartbeat, and production configuration checks;
+  [0027](docs/decisions/0027-self-hosted-dokploy.md)
 - Team management: member roles, custom roles with permission editing, and email
   invitations with an in-portal pending list;
   [team workflow](docs/platform.md#team-management)

@@ -67,6 +67,10 @@ An empty audit reports only known advisories, not proof of security.
   [readiness probes and bounded-cardinality metrics](../operations.md).
 - Staging load tests, graceful shutdown and dependency outage exercises.
 - TLS/HSTS, explicit proxy trust topology, backups and tested restoration.
+  Prepared: Cloudflare/Traefik TLS and HSTS steps, `MYANLEX_TRUST_PROXY`,
+  nightly dumps and the restore drill in the
+  [Dokploy runbook](../dokploy-runbook.md); still to be verified on a real
+  server ([go-live checklist](../production-checklist.md)).
 - Real SMTP and Google/GitHub OAuth deployment verification and secret rotation.
 - Independent linguistic/corpus review and documented beta limitations.
 - Browser-level dashboard/docs security and accessibility verification.

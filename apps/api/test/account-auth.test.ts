@@ -341,5 +341,15 @@ describe('self-hosted account authentication', () => {
       expect(() =>
         parseAccountAuthConfig({ ...environment, ...overrides }),
       ).toThrow();
+    // Compose and Dokploy pass unset optional variables as empty strings.
+    expect(
+      parseAccountAuthConfig({
+        ...environment,
+        SMTP_USER: '',
+        SMTP_PASSWORD: '',
+        GOOGLE_CLIENT_ID: '',
+        GOOGLE_CLIENT_SECRET: '',
+      }),
+    ).toMatchObject({ SMTP_USER: undefined, GOOGLE_CLIENT_ID: undefined });
   });
 });

@@ -5,6 +5,12 @@ const origin = z.url().refine((value) => {
   return ['http:', 'https:'].includes(url.protocol) && url.origin === value;
 }, 'Use an HTTP(S) origin without a trailing slash or path.');
 
+// Deployment tools (Compose, Dokploy) pass unset optional variables as "".
+const optionalText = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().min(1).optional(),
+);
+
 const schema = z
   .object({
     DATABASE_URL: z.string().min(1),
@@ -13,13 +19,13 @@ const schema = z
     SMTP_HOST: z.string().min(1),
     SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
     SMTP_SECURE: z.enum(['true', 'false']).default('false'),
-    SMTP_USER: z.string().min(1).optional(),
-    SMTP_PASSWORD: z.string().min(1).optional(),
+    SMTP_USER: optionalText,
+    SMTP_PASSWORD: optionalText,
     SMTP_FROM: z.email(),
-    GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-    GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
-    GITHUB_CLIENT_ID: z.string().min(1).optional(),
-    GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+    GOOGLE_CLIENT_ID: optionalText,
+    GOOGLE_CLIENT_SECRET: optionalText,
+    GITHUB_CLIENT_ID: optionalText,
+    GITHUB_CLIENT_SECRET: optionalText,
     NODE_ENV: z.string().optional(),
   })
   .superRefine((value, context) => {

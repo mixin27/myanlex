@@ -245,7 +245,8 @@ MyanLex issues its own invoices; see
 each month and prorated by day for upgrades; overage is billed after the month
 closes. There is no payment provider yet, so you record payments.
 
-Run these daily, in this order, after `usage:close-month`:
+These run daily, in this order, after `usage:close-month`. The
+[daily run](#the-daily-run) does it for you:
 
 ```sh
 DATABASE_URL='<database connection>' pnpm usage:close-month
@@ -288,3 +289,87 @@ DATABASE_URL='<database connection>' MYANLEX_USAGE_RETENTION_MONTHS=13 pnpm usag
   - Set `AUTH_PUBLIC_URL` in the scripts' environment to include portal links.
   - Emails need the `SMTP_*` variables; without them the scripts report
     `skipped`.
+
+## The daily run
+
+`pnpm ops:daily` is the single entry point for cron
+([0027](decisions/0027-self-hosted-dokploy.md)). In the production stack, the
+`jobs` container runs it at 00:30 UTC (`infra/crontab`). Elsewhere, schedule it
+once a day after midnight UTC.
+
+| Order | Step               | Script                                            |
+| ----- | ------------------ | ------------------------------------------------- |
+| 1     | backup             | `ops:backup`, only when `BACKUP_S3_BUCKET` is set |
+| 2     | close-month        | `usage:close-month`                               |
+| 3     | issue-invoices     | `billing:invoices issue-monthly`                  |
+| 4     | dunning            | `billing:dunning`                                 |
+| 5     | usage-cleanup      | `usage:cleanup`                                   |
+| 6     | audit-cleanup      | `audit:cleanup`                                   |
+| 7     | playground-cleanup | `playground:cleanup`                              |
+
+- **Billing stops at its first failure.** If close-month fails, invoices aren't
+  issued from an unclosed month and dunning doesn't run. Every step is
+  idempotent, so the next run, or a manual one after you fix the cause, resumes.
+- **A failed backup or cleanup doesn't stop billing**, but the run still fails.
+- **Exit codes:**
+  - `0`: everything succeeded;
+  - otherwise, the first failed step's code (for example `2` when close-month
+    finds a ledger that doesn't reconcile);
+  - `75`: another run holds the lock (a Postgres advisory lock), so nothing ran;
+  - `1`: the run couldn't start.
+- **Logs** are one JSON line per step (`ops_step`: step, outcome, exit code,
+  duration), then an `ops_daily` summary. The scripts' own lines appear in
+  between. No secrets or email addresses are logged.
+- **Heartbeat:** set `MYANLEX_HEARTBEAT_URL` to a Healthchecks.io check (https
+  only), with a daily schedule and 1 hour of grace. The run pings `/start`, then
+  the URL itself on success or `/<exit code>` on failure, with each step's
+  outcome in the body. You're alerted both when a run fails and when none
+  happens (the server is down or cron is broken). A heartbeat outage never fails
+  the run.
+- **Running it by hand** on the server:
+
+  ```sh
+  docker exec myanlex-production-jobs-1 pnpm ops:daily
+  docker exec myanlex-production-jobs-1 pnpm billing:invoices list --status open
+  ```
+
+### Backups
+
+When `BACKUP_S3_*` is set, `ops:backup`:
+
+- runs `pg_dump --format=custom` of `DATABASE_URL`;
+- uploads it to `<bucket>/<prefix>/myanlex-<UTC time>.dump`;
+- deletes this job's dumps older than `BACKUP_RETENTION_DAYS` (default 14).
+
+Credentials reach `pg_dump` through libpq variables, not its command line. Use a
+private bucket and a token scoped to that bucket only, and add a bucket
+lifecycle rule as a second line of defence. Restore into a **new, empty**
+database as described in the [deployment runbook](deployment.md), and repeat the
+drill after major upgrades.
+
+## Production configuration check
+
+`pnpm config:check` validates the API environment and prints the names of
+invalid variables, never their values. It exits with `78` when the configuration
+is invalid. With `MYANLEX_ENV=production`, it also requires:
+
+- `NODE_ENV=production`;
+- `AUTH_ENABLED=true`, an `AUTH_SECRET` of 32 characters or more, and an https
+  `AUTH_PUBLIC_URL`;
+- `SMTP_HOST`, `SMTP_PORT` and `SMTP_FROM`;
+- `REDIS_URL`, `MYANLEX_QUOTAS_ENABLED=true` and `MYANLEX_METRICS_TOKEN`;
+- `MYANLEX_BILLING_PAYMENT_INSTRUCTIONS`;
+- a `DATABASE_URL` without `sslmode=disable`;
+- no `MYANLEX_API_KEY` (the bootstrap key).
+
+The production stack runs it before migrations, so a bad configuration stops the
+deploy before anything changes. The API applies the same rules at boot.
+
+## Client addresses behind proxies
+
+Rate limits for unauthenticated requests and sign-in limits key on the client
+address. Behind Traefik (and Cloudflare), set `MYANLEX_TRUST_PROXY` to a
+comma-separated list of the proxies' addresses or CIDR ranges. Leave it `false`
+(the default) when the API is reached directly. A hop count or `true` is
+refused, because either would let a client choose its own address. See the
+[Dokploy runbook](dokploy-runbook.md#client-addresses) for the exact values.

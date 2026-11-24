@@ -37,9 +37,38 @@ ENV NODE_ENV=production
 USER node
 CMD ["pnpm", "db:deploy"]
 
+FROM migrate AS ops
+# Production operations image (infra/compose.production.yaml): the migrate
+# job, config check and the daily jobs under supercronic, plus pg_dump for
+# backups. Same tooling as migrate; never serves traffic.
+USER root
+ARG TARGETARCH
+ARG SUPERCRONIC_VERSION=v0.2.51
+ARG SUPERCRONIC_SHA256_AMD64=cc232108374e8e2b537045f2d5eaa1229f619db314c3ba6a14d38b35dc0aa123
+ARG SUPERCRONIC_SHA256_ARM64=4ae22576a78223d8ccdf5f3b3660a5cbb5288416bf0ca96afc4a36d195932b94
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl postgresql-common \
+  && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
+  && apt-get install -y --no-install-recommends postgresql-client-18 \
+  && case "${TARGETARCH:-amd64}" in \
+       amd64) sum="$SUPERCRONIC_SHA256_AMD64" ;; \
+       arm64) sum="$SUPERCRONIC_SHA256_ARM64" ;; \
+       *) echo "Unsupported architecture ${TARGETARCH}" >&2; exit 1 ;; \
+     esac \
+  && curl -fsSL -o /usr/local/bin/supercronic \
+       "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH:-amd64}" \
+  && echo "$sum  /usr/local/bin/supercronic" | sha256sum -c - \
+  && chmod 0755 /usr/local/bin/supercronic \
+  && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+COPY --chown=node:node infra/crontab /app/infra/crontab
+USER node
+CMD ["supercronic", "-passthrough-logs", "/app/infra/crontab"]
+
 FROM ${NODE_IMAGE} AS api
 WORKDIR /app
-ENV NODE_ENV=production PORT=3001
+ARG MYANLEX_BUILD_ID=development
+# /v1/health reports the build, so deploy checks can wait for the new version.
+ENV NODE_ENV=production PORT=3001 MYANLEX_VERSION=$MYANLEX_BUILD_ID
 COPY --from=api-build --chown=node:node /runtime /app
 COPY --from=api-build --chown=node:node /app/openapi /app/openapi
 COPY LICENSE THIRD_PARTY_NOTICES.md /app/

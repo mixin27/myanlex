@@ -1,0 +1,5 @@
+# Daily operations (supercronic, UTC). See docs/operations.md.
+# 00:30 UTC: after the month boundary, so close-month and issue-monthly see
+# the new month on the 1st. ops:daily takes a lock, so a manual run at the
+# same time is skipped, not doubled.
+30 0 * * * pnpm --silent ops:daily
